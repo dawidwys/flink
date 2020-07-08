@@ -40,7 +40,7 @@ public class DefaultInMemorySorterFactory<T> implements InMemorySorterFactory<T>
 
 	private final boolean useFixedLengthRecordSorter;
 
-	DefaultInMemorySorterFactory(
+	public DefaultInMemorySorterFactory(
 			@Nonnull TypeSerializerFactory<T> typeSerializerFactory,
 			@Nonnull TypeComparator<T> typeComparator,
 			int thresholdForInPlaceSorting) {
