@@ -29,12 +29,12 @@ import java.io.IOException;
  * The threads are designed to terminate themselves when the task they are set up to do is completed. Further more,
  * they terminate immediately when the <code>shutdown()</code> method is called.
  */
-abstract class ThreadBase<E> extends Thread implements Thread.UncaughtExceptionHandler {
+abstract class ThreadBase<E> extends Thread implements Thread.UncaughtExceptionHandler, StageRunner {
 
 	/**
 	 * The queue of empty buffer that can be used for reading;
 	 */
-	protected final SortStageRunner.StageMessageDispatcher<E> dispatcher;
+	protected final StageRunner.StageMessageDispatcher<E> dispatcher;
 
 	/**
 	 * The exception handler for any problems.
@@ -56,7 +56,7 @@ abstract class ThreadBase<E> extends Thread implements Thread.UncaughtExceptionH
 	protected ThreadBase(
 			ExceptionHandler<IOException> exceptionHandler,
 			String name,
-			SortStageRunner.StageMessageDispatcher<E> queues) {
+			StageRunner.StageMessageDispatcher<E> queues) {
 		// thread setup
 		super(name);
 		this.setDaemon(true);
@@ -102,9 +102,10 @@ abstract class ThreadBase<E> extends Thread implements Thread.UncaughtExceptionH
 	 * Forces an immediate shutdown of the thread. Looses any state and all buffers that the thread is currently
 	 * working on. This terminates cleanly for the JVM, but looses intermediate results.
 	 */
-	public void shutdown() {
+	public void shutdown() throws InterruptedException {
 		this.alive = false;
 		this.interrupt();
+		this.join();
 	}
 
 	/**

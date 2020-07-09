@@ -18,25 +18,16 @@
 
 package org.apache.flink.runtime.operators.sort.v2;
 
-import org.apache.flink.runtime.operators.sort.ExceptionHandler;
+public class PushElementProvider implements StageRunner {
 
-import java.io.IOException;
 
-public interface SortStageRunner<E> {
-	void start(
-		String name,
-		StageMessageDispatcher<E> dispatcher,
-		ExceptionHandler<IOException> exceptionHandler) throws Exception;
+	@Override
+	public void start() {
 
-	enum SortStage {
-		READ,
-		SPILL,
-		SORT
 	}
 
-	interface StageMessageDispatcher<E> {
-		void send(SortStage stage, CircularElement<E> element);
-		CircularElement<E> take(SortStage stage);
-		CircularElement<E> poll(SortStage stage);
+	@Override
+	public void shutdown() throws Exception {
+
 	}
 }

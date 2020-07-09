@@ -45,7 +45,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.runtime.operators.sort.v2.CircularElement.EOF_MARKER;
 import static org.apache.flink.runtime.operators.sort.v2.CircularElement.SPILLING_MARKER;
@@ -79,14 +78,12 @@ final class SpillingThread<E> extends ThreadBase<E> {
 
 	private final LargeRecordHandler<E> largeRecordHandler;
 
-	private final CompletableFuture<MutableObjectIterator<E>> result = new CompletableFuture<>();
-
 	private final boolean objectReuseEnabled;
 
 	/**
 	 * Creates the spilling thread.
 	 * @param exceptionHandler The exception handler to call for all exceptions.
-	 * @param queues The queues used to pass buffers between the threads.
+	 * @param dispatcher The queues used to pass buffers between the threads.
 	 * @param memManager The memory manager used to allocate buffers for the readers and writers.
 	 * @param ioManager The I/I manager used to instantiate readers and writers from.
 	 * @param serializer
@@ -99,7 +96,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 	 */
 	public SpillingThread(
 			ExceptionHandler<IOException> exceptionHandler,
-			SortStageRunner.StageMessageDispatcher<E> dispatcher,
+			StageRunner.StageMessageDispatcher<E> dispatcher,
 			MemoryManager memManager,
 			IOManager ioManager,
 			TypeSerializer<E> serializer,
@@ -124,10 +121,6 @@ final class SpillingThread<E> extends ThreadBase<E> {
 		this.objectReuseEnabled = objectReuseEnabled;
 	}
 
-	public CompletableFuture<MutableObjectIterator<E>> getResult() {
-		return result;
-	}
-
 	/**
 	 * Entry point of the thread.
 	 */
@@ -141,7 +134,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 		// fill cache
 		while (isRunning()) {
 			// take next element from queue
-			element = this.dispatcher.take(SortStageRunner.SortStage.SPILL);
+			element = this.dispatcher.take(StageRunner.SortStage.SPILL);
 
 			if (element == SPILLING_MARKER) {
 				break;
@@ -165,7 +158,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 			List<MemorySegment> memoryForLargeRecordSorting = new ArrayList<MemorySegment>();
 
 			CircularElement<E> circElement;
-			while ((circElement = this.dispatcher.poll(SortStageRunner.SortStage.READ)) != null) {
+			while ((circElement = this.dispatcher.poll(StageRunner.SortStage.READ)) != null) {
 				circElement.buffer.dispose();
 				memoryForLargeRecordSorting.addAll(circElement.memory);
 			}
@@ -201,9 +194,9 @@ final class SpillingThread<E> extends ThreadBase<E> {
 			disposeSortBuffers(true);
 
 			// set lazy iterator
-			result.complete(iterators.isEmpty() ? EmptyMutableObjectIterator.<E>get() :
-					iterators.size() == 1 ? iterators.get(0) :
-					new MergeIterator<E>(iterators, this.comparator));
+			this.dispatcher.sendResult(iterators.isEmpty() ? EmptyMutableObjectIterator.<E>get() :
+				iterators.size() == 1 ? iterators.get(0) :
+					new MergeIterator<>(iterators, this.comparator));
 			return;
 		}
 
@@ -214,7 +207,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 
 		// loop as long as the thread is marked alive and we do not see the final element
 		while (isRunning()) {
-			element = cache.isEmpty() ? this.dispatcher.take(SortStageRunner.SortStage.SPILL) : cache.poll();
+			element = cache.isEmpty() ? this.dispatcher.take(StageRunner.SortStage.SPILL) : cache.poll();
 
 			// check if we are still running
 			if (!isRunning()) {
@@ -249,7 +242,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 
 			// pass empty sort-buffer to reading thread
 			element.buffer.reset();
-			this.dispatcher.send(SortStageRunner.SortStage.READ, element);
+			this.dispatcher.send(StageRunner.SortStage.READ, element);
 		}
 
 		// done with the spilling
@@ -314,9 +307,9 @@ final class SpillingThread<E> extends ThreadBase<E> {
 		// check if we have spilled some data at all
 		if (channelIDs.isEmpty()) {
 			if (largeRecords == null) {
-				result.complete(EmptyMutableObjectIterator.get());
+				this.dispatcher.sendResult(EmptyMutableObjectIterator.get());
 			} else {
-				result.complete(largeRecords);
+				this.dispatcher.sendResult(largeRecords);
 			}
 		}
 		else {
@@ -329,7 +322,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 			getSegmentsForReaders(readBuffers, mergeReadMemory, channelIDs.size());
 
 			// get the readers and register them to be released
-			result.complete(getMergingIterator(channelIDs, readBuffers,
+			this.dispatcher.sendResult(getMergingIterator(channelIDs, readBuffers,
 				new ArrayList<>(channelIDs.size()), largeRecords));
 		}
 
@@ -342,7 +335,7 @@ final class SpillingThread<E> extends ThreadBase<E> {
 	 */
 	protected final void disposeSortBuffers(boolean releaseMemory) {
 		CircularElement<E> element;
-		while ((element = this.dispatcher.poll(SortStageRunner.SortStage.READ)) != null) {
+		while ((element = this.dispatcher.poll(StageRunner.SortStage.READ)) != null) {
 			element.buffer.dispose();
 			if (releaseMemory) {
 				this.memManager.release(element.memory);
@@ -542,11 +535,5 @@ final class SpillingThread<E> extends ThreadBase<E> {
 				segs.add(segments.next());
 			}
 		}
-	}
-
-	@Override
-	public void shutdown() {
-		result.completeExceptionally(new IOException("The sorter has been closed."));
-		super.shutdown();
 	}
 }

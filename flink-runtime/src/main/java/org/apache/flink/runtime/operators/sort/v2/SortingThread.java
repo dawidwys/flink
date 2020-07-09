@@ -47,7 +47,7 @@ class SortingThread<E> extends ThreadBase<E> {
 	 * @param dispatcher The queues used to pass buffers between the threads.
 	 */
 	public SortingThread(
-		ExceptionHandler<IOException> exceptionHandler, SortStageRunner.StageMessageDispatcher<E> dispatcher) {
+		ExceptionHandler<IOException> exceptionHandler, StageRunner.StageMessageDispatcher<E> dispatcher) {
 		super(exceptionHandler, "SortMerger sorting thread", dispatcher);
 
 		// members
@@ -62,13 +62,13 @@ class SortingThread<E> extends ThreadBase<E> {
 
 		// loop as long as the thread is marked alive
 		while (isRunning() && alive) {
-			CircularElement<E> element = this.dispatcher.take(SortStageRunner.SortStage.SORT);
+			CircularElement<E> element = this.dispatcher.take(StageRunner.SortStage.SORT);
 
 			if (element != EOF_MARKER && element != SPILLING_MARKER) {
 
 				if (element.buffer.size() == 0) {
 					element.buffer.reset();
-					this.dispatcher.send(SortStageRunner.SortStage.READ, element);
+					this.dispatcher.send(StageRunner.SortStage.READ, element);
 					continue;
 				}
 
@@ -80,7 +80,7 @@ class SortingThread<E> extends ThreadBase<E> {
 				LOG.debug("Sorting thread done.");
 				alive = false;
 			}
-			this.dispatcher.send(SortStageRunner.SortStage.SPILL, element);
+			this.dispatcher.send(StageRunner.SortStage.SPILL, element);
 		}
 	}
 }

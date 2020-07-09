@@ -78,13 +78,13 @@ public class ExternalSorter<E> implements Sorter<E> {
 	// ------------------------------------------------------------------------
 
 	/** The thread that reads the input channels into buffers and passes them on to the merger. */
-	private final ThreadBase<E> readThread;
+	private final StageRunner readThread;
 
 	/** The thread that merges the buffer handed from the reading thread. */
-	private final ThreadBase<E> sortThread;
+	private final StageRunner sortThread;
 
 	/** The thread that handles spilling to secondary storage. */
-	private final ThreadBase<E> spillThread;
+	private final StageRunner spillThread;
 	
 	// ------------------------------------------------------------------------
 	//                                   Memory
@@ -119,7 +119,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 	 * The iterator to be returned by the sort-merger. This variable is null, while receiving and merging is still in
 	 * progress and it will be set once we have &lt; merge factor sorted sub-streams that will then be streamed sorted.
 	 */
-	protected volatile CompletableFuture<MutableObjectIterator<E>> iteratorFuture;
+	protected volatile CompletableFuture<MutableObjectIterator<E>> iteratorFuture = new CompletableFuture<>();
 	
 	/**
 	 * Flag indicating that the sorter was closed.
@@ -237,10 +237,11 @@ public class ExternalSorter<E> implements Sorter<E> {
 			noSpillingMemory,
 			handleLargeRecords,
 			objectReuseEnabled,
-			new DefaultInMemorySorterFactory<>(serializerFactory, comparator, THRESHOLD_FOR_IN_PLACE_SORTING));
+			new DefaultInMemorySorterFactory<>(serializerFactory, comparator, THRESHOLD_FOR_IN_PLACE_SORTING),
+			ReadingThread::new);
 	}
 
-	protected ExternalSorter(
+	private ExternalSorter(
 			MemoryManager memoryManager,
 			List<MemorySegment> memory,
 			IOManager ioManager,
@@ -254,7 +255,8 @@ public class ExternalSorter<E> implements Sorter<E> {
 			boolean noSpillingMemory,
 			boolean handleLargeRecords,
 			boolean objectReuseEnabled,
-			InMemorySorterFactory<E> inMemorySorterFactory) throws IOException {
+			InMemorySorterFactory<E> inMemorySorterFactory,
+			ReadingStageFactory readingStageFactory) throws IOException {
 		// sanity checks
 		if (memoryManager == null || (ioManager == null && !noSpillingMemory) || serializerFactory == null || comparator == null) {
 			throw new NullPointerException();
@@ -366,7 +368,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 		}
 		
 		// circular queues pass buffers between the threads
-		final CircularQueues<E> circularQueues = new CircularQueues<E>();
+		final CircularQueues circularQueues = new CircularQueues();
 
 		inMemorySorters = new ArrayList<>(numSortBuffers);
 		
@@ -375,7 +377,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 		for (int i = 0; i < numSortBuffers; i++)
 		{
 			// grab some memory
-			final List<MemorySegment> sortSegments = new ArrayList<MemorySegment>(numSegmentsPerSortBuffer);
+			final List<MemorySegment> sortSegments = new ArrayList<>(numSegmentsPerSortBuffer);
 			for (int k = (i == numSortBuffers - 1 ? Integer.MAX_VALUE : numSegmentsPerSortBuffer); k > 0 && segments.hasNext(); k--) {
 				sortSegments.add(segments.next());
 			}
@@ -401,14 +403,19 @@ public class ExternalSorter<E> implements Sorter<E> {
 		this.spillChannelManager = new SpillChannelManager();
 
 		// start the thread that reads the input channels
-		this.readThread = getReadingThread(exceptionHandler, input, circularQueues, largeRecordHandler,
-			serializer, ((long) (startSpillingFraction * sortMemory)));
+		this.readThread = readingStageFactory.getReadingThread(
+			exceptionHandler,
+			input,
+			circularQueues,
+			largeRecordHandler,
+			serializer.createInstance(),
+			((long) (startSpillingFraction * sortMemory)));
 
 		// start the thread that sorts the buffers
 		this.sortThread = getSortingThread(exceptionHandler, circularQueues);
 
 		// start the thread that handles spilling to secondary storage
-		SpillingThread<E> spillingThread = getSpillingThread(
+		this.spillThread = getSpillingThread(
 			exceptionHandler,
 			circularQueues,
 			memoryManager,
@@ -418,24 +425,10 @@ public class ExternalSorter<E> implements Sorter<E> {
 			this.sortReadMemory,
 			this.writeMemory,
 			maxNumFileHandles);
-		this.iteratorFuture = spillingThread.getResult();
-		this.spillThread = spillingThread;
 
-		// propagate the context class loader to the spawned threads
-		ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
-		if (contextLoader != null) {
-			if (this.readThread != null) {
-				this.readThread.setContextClassLoader(contextLoader);
-			}
-			if (this.sortThread != null) {
-				this.sortThread.setContextClassLoader(contextLoader);
-			}
-			this.spillThread.setContextClassLoader(contextLoader);
-		}
-		
 		startThreads();
 	}
-	
+
 	/**
 	 * Starts all the threads that are used by this sort-merger.
 	 */
@@ -501,24 +494,6 @@ public class ExternalSorter<E> implements Sorter<E> {
 					LOG.error("Error shutting down spilling thread: " + t.getMessage(), t);
 				}
 			}
-
-			try {
-				if (this.readThread != null) {
-					this.readThread.join();
-				}
-				
-				if (this.sortThread != null) {
-					this.sortThread.join();
-				}
-				
-				if (this.spillThread != null) {
-					this.spillThread.join();
-				}
-			}
-			catch (InterruptedException iex) {
-				LOG.debug("Closing of sort/merger was interrupted. " +
-						"The reading/sorting/spilling threads may still be working.", iex);
-			}
 		}
 		finally {
 
@@ -562,52 +537,41 @@ public class ExternalSorter<E> implements Sorter<E> {
 	//                           Factory Methods
 	// ------------------------------------------------------------------------
 
-	/**
-	 * Creates the reading thread. The reading thread simply reads the data off the input and puts it
-	 * into the buffer where it will be sorted.
-	 * <p>
-	 * The returned thread is not yet started.
-	 * 
-	 * @param exceptionHandler
-	 *        The handler for exceptions in the thread.
-	 * @param reader
-	 *        The reader from which the thread reads.
-	 * @param queues
-	 *        The queues through which the thread communicates with the other threads.
-	 * @param serializer
-	 *        The serializer used to serialize records.
-	 * @param startSpillingBytes
-	 *        The number of bytes after which the reader thread will send the notification to
-	 *        start the spilling.
-	 *        
-	 * @return The thread that reads data from an input, writes it into sort buffers and puts 
-	 *         them into a queue.
-	 */
-	protected ThreadBase<E> getReadingThread(
-			ExceptionHandler<IOException> exceptionHandler,
-			MutableObjectIterator<E> reader,
-			CircularQueues<E> queues,
-			LargeRecordHandler<E> largeRecordHandler,
-			TypeSerializer<E> serializer,
-			long startSpillingBytes) {
-		return new ReadingThread<>(
-			exceptionHandler,
-			reader,
-			queues,
-			largeRecordHandler,
-			serializer.createInstance(),
-			startSpillingBytes);
+	@FunctionalInterface
+	interface ReadingStageFactory {
+		/**
+		 * Creates the reading thread. The reading thread simply reads the data off the input and puts it
+		 * into the buffer where it will be sorted.
+		 * <p>
+		 * The returned thread is not yet started.
+		 *
+		 * @param exceptionHandler The handler for exceptions in the thread.
+		 * @param reader The reader from which the thread reads.
+		 * @param dispatcher The queues through which the thread communicates with the other threads.
+		 * @param serializer The serializer used to serialize records.
+		 * @param startSpillingBytes The number of bytes after which the reader thread will send the notification to
+		 * start the spilling.
+		 * @return The thread that reads data from an input, writes it into sort buffers and puts
+		 * them into a queue.
+		 */
+		<E> StageRunner getReadingThread(
+				ExceptionHandler<IOException> exceptionHandler,
+				MutableObjectIterator<E> reader,
+				StageRunner.StageMessageDispatcher<E> dispatcher,
+				LargeRecordHandler<E> largeRecordHandler,
+				E reuse,
+				long startSpillingBytes);
 	}
 
 	protected ThreadBase<E> getSortingThread(
 			ExceptionHandler<IOException> exceptionHandler,
-			CircularQueues<E> queues) {
+			CircularQueues queues) {
 		return new SortingThread<>(exceptionHandler, queues);
 	}
 
 	protected SpillingThread<E> getSpillingThread(
 			ExceptionHandler<IOException> exceptionHandler,
-			CircularQueues<E> queues,
+			CircularQueues queues,
 			MemoryManager memoryManager,
 			IOManager ioManager,
 			TypeSerializerFactory<E> serializerFactory,
@@ -656,8 +620,8 @@ public class ExternalSorter<E> implements Sorter<E> {
 	/**
 	 * Collection of queues that are used for the communication between the threads.
 	 */
-	private static final class CircularQueues<E> implements SortStageRunner.StageMessageDispatcher<E> {
-		
+	private final class CircularQueues implements StageRunner.StageMessageDispatcher<E> {
+
 		final BlockingQueue<CircularElement<E>> empty;
 
 		final BlockingQueue<CircularElement<E>> sort;
@@ -670,7 +634,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 			this.spill = new LinkedBlockingQueue<>();
 		}
 
-		private BlockingQueue<CircularElement<E>> getQueue(SortStageRunner.SortStage stage) {
+		private BlockingQueue<CircularElement<E>> getQueue(StageRunner.SortStage stage) {
 			switch (stage) {
 				case READ:
 					return empty;
@@ -684,12 +648,17 @@ public class ExternalSorter<E> implements Sorter<E> {
 		}
 
 		@Override
-		public void send(SortStageRunner.SortStage stage, CircularElement<E> element) {
+		public void send(StageRunner.SortStage stage, CircularElement<E> element) {
 			getQueue(stage).add(element);
 		}
 
 		@Override
-		public CircularElement<E> take(SortStageRunner.SortStage stage) {
+		public void sendResult(MutableObjectIterator<E> result) {
+			iteratorFuture.complete(result);
+		}
+
+		@Override
+		public CircularElement<E> take(StageRunner.SortStage stage) {
 			try {
 				return getQueue(stage).take();
 			} catch (InterruptedException e) {
@@ -698,7 +667,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 		}
 
 		@Override
-		public CircularElement<E> poll(SortStageRunner.SortStage stage) {
+		public CircularElement<E> poll(StageRunner.SortStage stage) {
 			return getQueue(stage).poll();
 		}
 	}
