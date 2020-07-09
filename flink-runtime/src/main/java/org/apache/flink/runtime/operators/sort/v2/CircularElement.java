@@ -32,8 +32,8 @@ final class CircularElement<E> {
 	final InMemorySorter<E> buffer;
 	final List<MemorySegment> memory;
 
-	public CircularElement() {
-		this.id = -1;
+	public CircularElement(int id) {
+		this.id = id;
 		this.buffer = null;
 		this.memory = null;
 	}
@@ -47,12 +47,12 @@ final class CircularElement<E> {
 	/**
 	 * The element that is passed as marker for the end of data.
 	 */
-	static final CircularElement<Object> EOF_MARKER = new CircularElement<>();
+	static final CircularElement<Object> EOF_MARKER = new CircularElement<>(-1);
 
 	/**
 	 * The element that is passed as marker for signal beginning of spilling.
 	 */
-	static final CircularElement<Object> SPILLING_MARKER = new CircularElement<>();
+	static final CircularElement<Object> SPILLING_MARKER = new CircularElement<>(-2);
 
 	/**
 	 * Gets the element that is passed as marker for the end of data.

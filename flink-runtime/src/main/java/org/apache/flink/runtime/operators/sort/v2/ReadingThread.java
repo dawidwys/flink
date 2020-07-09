@@ -69,10 +69,10 @@ class ReadingThread<E> extends ThreadBase<E> {
 		this.bytesUntilSpilling = startSpillingBytes;
 		this.largeRecords = largeRecordsHandler;
 
-		signalSpillingIfNecessary();
+		signalSpillingIfNecessary(0);
 	}
 
-	public void newGo() throws IOException {
+	public void go() throws IOException {
 		final MutableObjectIterator<E> reader = this.reader;
 
 		E current = reader.next(readTarget);
@@ -81,154 +81,50 @@ class ReadingThread<E> extends ThreadBase<E> {
 			current = reader.next(current);
 		}
 
+		if (!currentBuffer.buffer.isEmpty()) {
+			this.dispatcher.send(SortStage.SORT, currentBuffer);
+		}
+
 		if (isRunning()) {
 			finishReading();
 		}
 	}
 
 	public void writeRecord(E record) throws IOException {
-		CircularElement<E> buffer = this.dispatcher.take(SortStage.READ);
-		InMemorySorter<E> sorter = buffer.buffer;
 
+		if (currentBuffer == null) {
+			this.currentBuffer = this.dispatcher.take(SortStage.READ);
+		}
+
+		InMemorySorter<E> sorter = currentBuffer.buffer;
+
+		long occupancyPreWrite = sorter.getOccupancy();
 		if (!sorter.write(record)) {
+			boolean isLarge = sorter.isEmpty();
 			if (sorter.isEmpty()) {
 				// did not fit in a fresh buffer, must be large...
-				if (this.largeRecords != null) {
-					LOG.debug("Large record did not fit into a fresh sort buffer. Putting into large record store.");
-					this.largeRecords.addRecord(record);
-				} else {
-					throw new IOException("The record exceeds the maximum size of a sort buffer (current maximum: "
-						+ sorter.getCapacity() + " bytes).");
-				}
+				writeLarge(record, sorter, occupancyPreWrite);
 			}
-		}
-	}
-
-	/**
-	 * The entry point for the thread. Gets a buffer for all threads and then loops as long as there is input
-	 * available.
-	 */
-	public void go() throws IOException {
-
-		final MutableObjectIterator<E> reader = this.reader;
-
-		E current = this.readTarget;
-		E leftoverRecord = null;
-
-		CircularElement<E> element = null;
-		boolean done = false;
-
-		// now loop until all channels have no more input data
-		while (!done && isRunning())
-		{
-			// grab the next buffer
-			while (element == null) {
-				element = this.dispatcher.take(StageRunner.SortStage.READ);
+			this.dispatcher.send(SortStage.SORT, currentBuffer);
+			if (!isLarge) {
+				this.currentBuffer = this.dispatcher.take(SortStage.READ);
+				writeRecord(record);
 			}
-
-			// get the new buffer and check it
-			final InMemorySorter<E> buffer = element.buffer;
-			if (!buffer.isEmpty()) {
-				throw new IOException("New buffer is not empty.");
-			}
-
-			LOG.debug("Retrieved empty read buffer " + element.id + ".");
-
-			// write the last leftover pair, if we have one
-			if (leftoverRecord != null) {
-				writeLeftOver(leftoverRecord, buffer);
-				leftoverRecord = null;
-			}
-
-			// we have two distinct code paths, depending on whether the spilling
-			// threshold will be crossed in the current buffer, or not.
-			boolean available = true;
-			if (bytesUntilSpilling > 0 && buffer.getCapacity() >= bytesUntilSpilling)
-			{
-				boolean fullBuffer = false;
-
-				// spilling will be triggered while this buffer is filled
-				// loop until the buffer is full or the reader is exhausted
-				E newCurrent;
-				while (isRunning() && (available = (newCurrent = reader.next(current)) != null))
-				{
-					current = newCurrent;
-					if (!buffer.write(current)) {
-						leftoverRecord = current;
-						fullBuffer = true;
-						break;
-					}
-
-					// successfully added record
-
-					bytesUntilSpilling = bytesUntilSpilling - buffer.getOccupancy();
-					if (signalSpillingIfNecessary()) {
-						break;
-					}
-				}
-
-				if (fullBuffer) {
-					// buffer is full. it may be that the last element would have crossed the
-					// spilling threshold, so check it
-					bytesUntilSpilling -= buffer.getCapacity();
-					signalSpillingIfNecessary();
-
-					// send the buffer
-					LOG.debug("Emitting full buffer from reader thread: " + element.id + ".");
-					this.dispatcher.send(StageRunner.SortStage.SORT, element);
-					element = null;
-					continue;
-				}
-			} else if (bytesUntilSpilling > 0) {
-				// this block must not be entered, if the last loop dropped out because
-				// the input is exhausted.
-				bytesUntilSpilling -= buffer.getCapacity();
-				signalSpillingIfNecessary();
-			}
-
-			// no spilling will be triggered (any more) while this buffer is being processed
-			// loop until the buffer is full or the reader is exhausted
-			if (available) {
-				E newCurrent;
-				while (isRunning() && ((newCurrent = reader.next(current)) != null)) {
-					current = newCurrent;
-					if (!buffer.write(current)) {
-						leftoverRecord = current;
-						break;
-					}
-				}
-			}
-			done = wasEntireRecordWritten(leftoverRecord, element);
-			finalizeBuffer(element);
-			element = null;
-		}
-
-		// we read all there is to read, or we are no longer running
-		if (!isRunning()) {
-			return;
-		}
-		finishReading();
-	}
-
-	private boolean wasEntireRecordWritten(E leftoverRecord, CircularElement<E> element) {
-		// check whether the buffer is exhausted or the reader is
-		if (leftoverRecord != null) {
-			LOG.debug("Emitting full buffer from reader thread: " + element.id + ".");
-			return false;
 		} else {
-			LOG.debug("Emitting final buffer from reader thread: " + element.id + ".");
-			return true;
+			long recordSize = sorter.getOccupancy() - occupancyPreWrite;
+			signalSpillingIfNecessary(recordSize);
 		}
 	}
 
-	private void finalizeBuffer(CircularElement<E> element) {
-		final InMemorySorter<E> buffer = element.buffer;
-		// we can use add to add the element because we have no capacity restriction
-		if (!buffer.isEmpty()) {
-			this.dispatcher.send(SortStage.SORT, element);
+	private void writeLarge(E record, InMemorySorter<E> sorter, long occupancyPreWrite) throws IOException {
+		if (this.largeRecords != null) {
+			LOG.debug("Large record did not fit into a fresh sort buffer. Putting into large record store.");
+			this.largeRecords.addRecord(record);
+			long remainingCapacity = sorter.getCapacity() - occupancyPreWrite;
+			signalSpillingIfNecessary(remainingCapacity);
 		} else {
-			buffer.reset();
-			this.dispatcher.send(SortStage.READ, element);
+			throw new IOException("The record exceeds the maximum size of a sort buffer (current maximum: "
+				+ sorter.getCapacity() + " bytes).");
 		}
 	}
 
@@ -240,28 +136,16 @@ class ReadingThread<E> extends ThreadBase<E> {
 		LOG.debug("Reading thread done.");
 	}
 
-	private boolean signalSpillingIfNecessary() {
+	private void signalSpillingIfNecessary(long writtenSize) {
+		if (bytesUntilSpilling <= 0) {
+			return;
+		}
+
+		bytesUntilSpilling -= writtenSize;
 		if (bytesUntilSpilling < 1) {
 			// add the spilling marker
 			this.dispatcher.send(SortStage.SORT, CircularElement.spillingMarker());
 			bytesUntilSpilling = 0;
-			return true;
-		}
-		return false;
-	}
-
-	private void writeLeftOver(E leftoverRecord, InMemorySorter<E> buffer) throws IOException {
-		if (!buffer.write(leftoverRecord)) {
-
-			// did not fit in a fresh buffer, must be large...
-			if (this.largeRecords != null) {
-				LOG.debug("Large record did not fit into a fresh sort buffer. Putting into large record store.");
-				this.largeRecords.addRecord(leftoverRecord);
-			} else {
-				throw new IOException("The record exceeds the maximum size of a sort buffer (current maximum: "
-					+ buffer.getCapacity() + " bytes).");
-			}
-			buffer.reset();
 		}
 	}
 }
