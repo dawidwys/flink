@@ -73,7 +73,7 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 				new StreamElementSerializer<>(outSerializer);
 
 		if (outSerializer != null) {
-			serializationDelegate = new SerializationDelegate<StreamElement>(outRecordSerializer);
+			serializationDelegate = new SerializationDelegate<>(outRecordSerializer);
 		}
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);

@@ -548,7 +548,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 		 * @param exceptionHandler The handler for exceptions in the thread.
 		 * @param reader The reader from which the thread reads.
 		 * @param dispatcher The queues through which the thread communicates with the other threads.
-		 * @param serializer The serializer used to serialize records.
+		 * @param reuse An instance of record to reuse
 		 * @param startSpillingBytes The number of bytes after which the reader thread will send the notification to
 		 * start the spilling.
 		 * @return The thread that reads data from an input, writes it into sort buffers and puts
