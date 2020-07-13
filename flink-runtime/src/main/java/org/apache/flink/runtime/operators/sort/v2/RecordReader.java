@@ -41,7 +41,7 @@ public class RecordReader<E> {
 	 *
 	 * @param dispatcher The queues used to pass buffers between the threads.
 	 */
-	RecordReader(
+	public RecordReader(
 		StageRunner.StageMessageDispatcher<E> dispatcher,
 		LargeRecordHandler<E> largeRecordsHandler,
 		long startSpillingBytes) {
@@ -84,7 +84,7 @@ public class RecordReader<E> {
 
 	public void finishReading() {
 
-		if (!currentBuffer.buffer.isEmpty()) {
+		if (currentBuffer != null && !currentBuffer.buffer.isEmpty()) {
 			this.dispatcher.send(SortStage.SORT, currentBuffer);
 		}
 

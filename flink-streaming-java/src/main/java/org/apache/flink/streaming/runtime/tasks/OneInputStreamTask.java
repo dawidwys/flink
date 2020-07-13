@@ -20,28 +20,40 @@ package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
+import org.apache.flink.api.common.typeutils.base.CharComparator;
+import org.apache.flink.api.java.typeutils.runtime.RuntimeSerializerFactory;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
 import org.apache.flink.runtime.metrics.MetricNames;
 import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.AbstractDataOutput;
 import org.apache.flink.streaming.runtime.io.CheckpointedInputGate;
 import org.apache.flink.streaming.runtime.io.InputProcessorUtil;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
+import org.apache.flink.streaming.runtime.io.SortingDataOutput;
 import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
 import org.apache.flink.streaming.runtime.io.StreamTaskInput;
 import org.apache.flink.streaming.runtime.io.StreamTaskNetworkInput;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 
 import javax.annotation.Nullable;
+
+import java.util.List;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -86,7 +98,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 
 		if (numberOfInputs > 0) {
 			CheckpointedInputGate inputGate = createCheckpointedInputGate();
-			DataOutput<IN> output = createDataOutput();
+			DataOutput<IN> output = createDataOutput(configuration);
 			StreamTaskInput<IN> input = createTaskInput(inputGate, output);
 			inputProcessor = new StreamOneInputProcessor<>(
 				input,
@@ -110,12 +122,32 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 			getTaskNameWithSubtaskAndId());
 	}
 
-	private DataOutput<IN> createDataOutput() {
-		return new StreamTaskNetworkOutput<>(
+	private DataOutput<IN> createDataOutput(StreamConfig configuration) {
+		StreamTaskNetworkOutput<IN> networkOutput = new StreamTaskNetworkOutput<>(
 			headOperator,
 			getStreamStatusMaintainer(),
 			inputWatermarkGauge,
 			setupNumRecordsInCounter(headOperator));
+
+		ClassLoader userClassLoader = getEnvironment().getUserClassLoader();
+		List<StreamEdge> physicalEdges = configuration.getInPhysicalEdges(userClassLoader);
+		StreamEdge streamEdge = physicalEdges.get(0);
+		// TODO
+		if (streamEdge.getShuffleMode() != ShuffleMode.PIPELINED) {
+			TypeSerializer<Object> elementSerializer = configuration.getTypeSerializerIn1(userClassLoader);
+			return new SortingDataOutput<>(
+				networkOutput,
+				getEnvironment(),
+				new RuntimeSerializerFactory<>(
+					new StreamElementSerializer<>(elementSerializer),
+					StreamElement.class
+				),
+				// TODO get a proper comparator
+				(TypeComparator<IN>) new CharComparator(true),
+				this
+			);
+		}
+		return networkOutput;
 	}
 
 	private StreamTaskInput<IN> createTaskInput(CheckpointedInputGate inputGate, DataOutput<IN> output) {

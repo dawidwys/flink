@@ -89,17 +89,17 @@ public class ExternalSorter<E> implements Sorter<E> {
 	// ------------------------------------------------------------------------
 	//                                   Memory
 	// ------------------------------------------------------------------------
-	
+
 	/** The memory segments used first for sorting and later for reading/pre-fetching
 	 * during the external merge. */
 	protected final List<MemorySegment> sortReadMemory;
 	
 	/** The memory segments used to stage data to be written. */
 	protected final List<MemorySegment> writeMemory;
-	
+
 	/** The memory manager through which memory is allocated and released. */
 	protected final MemoryManager memoryManager;
-	
+
 	// ------------------------------------------------------------------------
 	//                            Miscellaneous Fields
 	// ------------------------------------------------------------------------
@@ -241,7 +241,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 			ReadingThread::new);
 	}
 
-	private ExternalSorter(
+	public ExternalSorter(
 			MemoryManager memoryManager,
 			List<MemorySegment> memory,
 			IOManager ioManager,
@@ -538,7 +538,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 	// ------------------------------------------------------------------------
 
 	@FunctionalInterface
-	interface ReadingStageFactory {
+	public interface ReadingStageFactory {
 		/**
 		 * Creates the reading thread. The reading thread simply reads the data off the input and puts it
 		 * into the buffer where it will be sorted.
