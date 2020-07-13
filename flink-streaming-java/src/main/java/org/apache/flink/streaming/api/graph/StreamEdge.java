@@ -57,12 +57,12 @@ public class StreamEdge implements Serializable {
 	/**
 	 * The side-output tag (if any) of this {@link StreamEdge}.
 	 */
-	private final OutputTag outputTag;
+	private final OutputTag<?> outputTag;
 
 	/**
 	 * The {@link StreamPartitioner} on this {@link StreamEdge}.
 	 */
-	private StreamPartitioner<?> outputPartitioner;
+	private final StreamPartitioner<?> outputPartitioner;
 
 	/**
 	 * The name of the operator in the source vertex.
@@ -76,8 +76,13 @@ public class StreamEdge implements Serializable {
 
 	private final ShuffleMode shuffleMode;
 
-	public StreamEdge(StreamNode sourceVertex, StreamNode targetVertex, int typeNumber,
-			List<String> selectedNames, StreamPartitioner<?> outputPartitioner, OutputTag outputTag) {
+	public StreamEdge(
+			StreamNode sourceVertex,
+			StreamNode targetVertex,
+			int typeNumber,
+			List<String> selectedNames,
+			StreamPartitioner<?> outputPartitioner,
+			OutputTag<?> outputTag) {
 		this(sourceVertex,
 				targetVertex,
 				typeNumber,
@@ -87,8 +92,13 @@ public class StreamEdge implements Serializable {
 				ShuffleMode.UNDEFINED);
 	}
 
-	public StreamEdge(StreamNode sourceVertex, StreamNode targetVertex, int typeNumber,
-			List<String> selectedNames, StreamPartitioner<?> outputPartitioner, OutputTag outputTag,
+	public StreamEdge(
+			StreamNode sourceVertex,
+			StreamNode targetVertex,
+			int typeNumber,
+			List<String> selectedNames,
+			StreamPartitioner<?> outputPartitioner,
+			OutputTag<?> outputTag,
 			ShuffleMode shuffleMode) {
 		this.sourceId = sourceVertex.getId();
 		this.targetId = targetVertex.getId();
@@ -130,10 +140,6 @@ public class StreamEdge implements Serializable {
 
 	public ShuffleMode getShuffleMode() {
 		return shuffleMode;
-	}
-
-	public void setPartitioner(StreamPartitioner<?> partitioner) {
-		this.outputPartitioner = partitioner;
 	}
 
 	@Override

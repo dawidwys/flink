@@ -131,7 +131,7 @@ public class StreamGraphGenerator {
 
 	private String jobName = DEFAULT_JOB_NAME;
 
-	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
+	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.FORWARD_EDGES_PIPELINED;
 
 	// This is used to assign a unique ID to iteration source/sink
 	protected static Integer iterationIdCounter = 0;

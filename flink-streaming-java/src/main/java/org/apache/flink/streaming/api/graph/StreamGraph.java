@@ -32,6 +32,7 @@ import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.typeutils.MissingTypeInfo;
+import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.jobgraph.ScheduleMode;
@@ -45,6 +46,7 @@ import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.RebalancePartitioner;
+import org.apache.flink.streaming.runtime.partitioner.RescalePartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.tasks.MultipleInputStreamTask;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
@@ -564,7 +566,7 @@ public class StreamGraph implements Pipeline {
 			}
 
 			if (shuffleMode == null) {
-				shuffleMode = ShuffleMode.UNDEFINED;
+				shuffleMode = determineResultPartitionType(partitioner);
 			}
 
 			StreamEdge edge = new StreamEdge(upstreamNode, downstreamNode, typeNumber, outputNames, partitioner, outputTag, shuffleMode);
@@ -572,6 +574,33 @@ public class StreamGraph implements Pipeline {
 			getStreamNode(edge.getSourceId()).addOutEdge(edge);
 			getStreamNode(edge.getTargetId()).addInEdge(edge);
 		}
+	}
+
+	private ShuffleMode determineResultPartitionType(StreamPartitioner<?> partitioner) {
+		switch (getGlobalDataExchangeMode()) {
+			case ALL_EDGES_BLOCKING:
+				return ShuffleMode.BATCH;
+			case FORWARD_EDGES_PIPELINED:
+				if (partitioner instanceof ForwardPartitioner) {
+					return ShuffleMode.PIPELINED;
+				} else {
+					return ShuffleMode.BATCH;
+				}
+			case POINTWISE_EDGES_PIPELINED:
+				if (isPointwisePartitioner(partitioner)) {
+					return ShuffleMode.PIPELINED;
+				} else {
+					return ShuffleMode.BATCH;
+				}
+			case ALL_EDGES_PIPELINED:
+				return ShuffleMode.PIPELINED;
+			default:
+				throw new RuntimeException("Unrecognized global data exchange mode " + getGlobalDataExchangeMode());
+		}
+	}
+
+	private static boolean isPointwisePartitioner(StreamPartitioner<?> partitioner) {
+		return partitioner instanceof ForwardPartitioner || partitioner instanceof RescalePartitioner;
 	}
 
 	public <T> void addOutputSelector(Integer vertexID, OutputSelector<T> outputSelector) {

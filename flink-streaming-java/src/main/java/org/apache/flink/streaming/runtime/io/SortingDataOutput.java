@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.api.common.typeutils.TypeComparator;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
@@ -46,7 +47,7 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 	public SortingDataOutput(
 			PushingAsyncDataInput.DataOutput<T> chained,
 			Environment environment,
-			TypeSerializerFactory<StreamElement> typeSerializerFactory,
+			TypeSerializer<StreamElement> typeSerializer,
 			TypeComparator<T> typeComparator,
 			AbstractInvokable containingTask) {
 		try {
@@ -55,7 +56,7 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 			this.sorter = ExternalSorter.newBuilder(
 				environment.getMemoryManager(),
 				containingTask,
-				typeSerializerFactory.getSerializer(),
+				typeSerializer,
 				elementComparator
 			)
 				.enableSpilling(environment.getIOManager())

@@ -138,10 +138,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 			return new SortingDataOutput<>(
 				networkOutput,
 				getEnvironment(),
-				new RuntimeSerializerFactory<>(
-					new StreamElementSerializer<>(elementSerializer),
-					StreamElement.class
-				),
+				new StreamElementSerializer<>(elementSerializer),
 				// TODO get a proper comparator
 				(TypeComparator<IN>) new CharComparator(true),
 				this

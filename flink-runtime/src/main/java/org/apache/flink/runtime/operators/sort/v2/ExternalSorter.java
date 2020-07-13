@@ -367,7 +367,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 		}
 
 		public Builder<T> enableSpilling(IOManager ioManager) {
-			this.noSpillingMemory = true;
+			this.noSpillingMemory = false;
 			this.ioManager = ioManager;
 			return this;
 		}
