@@ -27,13 +27,8 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.memory.MemoryAllocationException;
 import org.apache.flink.runtime.memory.MemoryManager;
-import org.apache.flink.runtime.operators.sort.DefaultInMemorySorterFactory;
-import org.apache.flink.runtime.operators.sort.ExceptionHandler;
-import org.apache.flink.runtime.operators.sort.LargeRecordHandler;
 import org.apache.flink.runtime.operators.sort.v2.ExternalSorter;
-import org.apache.flink.runtime.operators.sort.v2.PushBasedRecordProducer;
-import org.apache.flink.runtime.operators.sort.v2.RecordReader;
-import org.apache.flink.runtime.operators.sort.v2.StageRunner;
+import org.apache.flink.runtime.operators.sort.v2.PushSorter;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
@@ -45,9 +40,8 @@ import java.io.IOException;
 
 public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T> {
 
-	private final ExternalSorter<StreamElement> sorter;
+	private final PushSorter<StreamElement> sorter;
 	private final PushingAsyncDataInput.DataOutput<T> chained;
-	private RecordReader<StreamElement> pushBasedRecordProducer;
 
 	public SortingDataOutput(
 			PushingAsyncDataInput.DataOutput<T> chained,
@@ -55,51 +49,25 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 			TypeSerializerFactory<StreamElement> typeSerializerFactory,
 			TypeComparator<T> typeComparator,
 			AbstractInvokable containingTask) {
-		MemoryManager memoryManager = environment.getMemoryManager();
 		try {
 			StreamElementComparator<T> elementComparator = new StreamElementComparator<>(typeComparator);
 			this.chained = chained;
-			this.sorter = new ExternalSorter<>(
-				memoryManager,
-				memoryManager.allocatePages(containingTask, memoryManager.computeNumberOfPages(0.5)),
-				environment.getIOManager(),
-				null,
+			this.sorter = ExternalSorter.newBuilder(
+				environment.getMemoryManager(),
 				containingTask,
-				typeSerializerFactory,
-				elementComparator,
-				-1,
-				2,
-				0.7f,
-				false,
-				false,
-				environment.getExecutionConfig().isObjectReuseEnabled(),
-				new DefaultInMemorySorterFactory<>(typeSerializerFactory, elementComparator, 1),
-				new ExternalSorter.ReadingStageFactory() {
-					@Override
-					@SuppressWarnings("unchecked")
-					public <E> StageRunner getReadingThread(
-						ExceptionHandler<IOException> exceptionHandler,
-						MutableObjectIterator<E> reader,
-						StageRunner.StageMessageDispatcher<E> dispatcher,
-						LargeRecordHandler<E> largeRecordHandler,
-						E reuse,
-						long startSpillingBytes) {
-						SortingDataOutput.this.pushBasedRecordProducer = (RecordReader<StreamElement>) (RecordReader) new RecordReader<>(
-							dispatcher,
-							largeRecordHandler,
-							startSpillingBytes);
-						return new PushBasedRecordProducer<>(SortingDataOutput.this.pushBasedRecordProducer);
-					}
-				}
-			);
-		} catch (MemoryAllocationException | IOException e) {
+				typeSerializerFactory.getSerializer(),
+				elementComparator
+			)
+				.enableSpilling(environment.getIOManager())
+				.build();
+		} catch (MemoryAllocationException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
 	public void emitRecord(StreamRecord<T> streamRecord) throws Exception {
-		this.pushBasedRecordProducer.writeRecord(streamRecord);
+		this.sorter.writeRecord(streamRecord);
 	}
 
 	@Override
@@ -119,7 +87,7 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 
 	@Override
 	public void endOutput() throws Exception {
-		this.pushBasedRecordProducer.finishReading();
+		this.sorter.finishReading();
 		StreamElement next;
 		MutableObjectIterator<StreamElement> iterator = sorter.getIterator();
 		while ((next = iterator.next()) != null) {

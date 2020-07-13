@@ -20,7 +20,6 @@ package org.apache.flink.runtime.operators.sort.v2;
 
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
@@ -33,6 +32,7 @@ import org.apache.flink.runtime.operators.sort.InMemorySorterFactory;
 import org.apache.flink.runtime.operators.sort.LargeRecordHandler;
 import org.apache.flink.runtime.operators.sort.Sorter;
 import org.apache.flink.util.MutableObjectIterator;
+import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,317 +115,36 @@ public class ExternalSorter<E> implements Sorter<E> {
 	 */
 	private final SpillChannelManager spillChannelManager;
 
-	/**
-	 * The iterator to be returned by the sort-merger. This variable is null, while receiving and merging is still in
-	 * progress and it will be set once we have &lt; merge factor sorted sub-streams that will then be streamed sorted.
-	 */
-	protected volatile CompletableFuture<MutableObjectIterator<E>> iteratorFuture = new CompletableFuture<>();
-	
+	private final CircularQueues<E> queues;
+
 	/**
 	 * Flag indicating that the sorter was closed.
 	 */
 	protected volatile boolean closed;
 
-	/**
-	 * Whether to reuse objects during deserialization.
-	 */
-	protected final boolean objectReuseEnabled;
+	private final Collection<InMemorySorter<E>> inMemorySorters;
 
-	private final Collection<InMemorySorter<?>> inMemorySorters;
-
-	// ------------------------------------------------------------------------
-	//                         Constructor & Shutdown
-	// ------------------------------------------------------------------------
-
-	public ExternalSorter(
+	private ExternalSorter(
+			StageRunner readThread,
+			StageRunner sortThread,
+			StageRunner spillThread,
+			List<MemorySegment> sortReadMemory,
+			List<MemorySegment> writeMemory,
 			MemoryManager memoryManager,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			double memoryFraction,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled) throws IOException, MemoryAllocationException {
-		this(memoryManager, ioManager, input, parentTask, serializerFactory, comparator,
-			memoryFraction, -1, maxNumFileHandles, startSpillingFraction, handleLargeRecords, objectReuseEnabled);
-	}
-
-	public ExternalSorter(
-			MemoryManager memoryManager,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			double memoryFraction,
-			int numSortBuffers,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled) throws IOException, MemoryAllocationException {
-		this(memoryManager, ioManager, input, parentTask, serializerFactory, comparator,
-			memoryFraction, numSortBuffers, maxNumFileHandles, startSpillingFraction, false, handleLargeRecords,
-			objectReuseEnabled);
-	}
-
-	public ExternalSorter(
-			MemoryManager memoryManager,
-			List<MemorySegment> memory,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			int numSortBuffers,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled) throws IOException {
-		this(memoryManager, memory, ioManager, input, parentTask, serializerFactory, comparator,
-			numSortBuffers, maxNumFileHandles, startSpillingFraction, false, handleLargeRecords,
-			objectReuseEnabled);
-	}
-
-	protected ExternalSorter(
-			MemoryManager memoryManager,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			double memoryFraction,
-			int numSortBuffers,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean noSpillingMemory,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled) throws IOException, MemoryAllocationException {
-		this(memoryManager, memoryManager.allocatePages(parentTask, memoryManager.computeNumberOfPages(memoryFraction)),
-				ioManager, input, parentTask, serializerFactory, comparator,
-				numSortBuffers, maxNumFileHandles, startSpillingFraction, noSpillingMemory, handleLargeRecords,
-				objectReuseEnabled);
-	}
-
-	protected ExternalSorter(
-			MemoryManager memoryManager,
-			List<MemorySegment> memory,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			int numSortBuffers,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean noSpillingMemory,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled) throws IOException {
-		this (
-			memoryManager,
-			memory,
-			ioManager,
-			input,
-			parentTask,
-			serializerFactory,
-			comparator,
-			numSortBuffers,
-			maxNumFileHandles,
-			startSpillingFraction,
-			noSpillingMemory,
-			handleLargeRecords,
-			objectReuseEnabled,
-			new DefaultInMemorySorterFactory<>(serializerFactory, comparator, THRESHOLD_FOR_IN_PLACE_SORTING),
-			ReadingThread::new);
-	}
-
-	public ExternalSorter(
-			MemoryManager memoryManager,
-			List<MemorySegment> memory,
-			IOManager ioManager,
-			MutableObjectIterator<E> input,
-			AbstractInvokable parentTask,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			int numSortBuffers,
-			int maxNumFileHandles,
-			float startSpillingFraction,
-			boolean noSpillingMemory,
-			boolean handleLargeRecords,
-			boolean objectReuseEnabled,
-			InMemorySorterFactory<E> inMemorySorterFactory,
-			ReadingStageFactory readingStageFactory) throws IOException {
-		// sanity checks
-		if (memoryManager == null || (ioManager == null && !noSpillingMemory) || serializerFactory == null || comparator == null) {
-			throw new NullPointerException();
-		}
-		if (parentTask == null) {
-			throw new NullPointerException("Parent Task must not be null.");
-		}
-		if (maxNumFileHandles < 2) {
-			throw new IllegalArgumentException("Merger cannot work with less than two file handles.");
-		}
-		
+			LargeRecordHandler<E> largeRecordHandler,
+			SpillChannelManager spillChannelManager,
+			Collection<InMemorySorter<E>> inMemorySorters,
+			CircularQueues<E> queues) {
+		this.readThread = readThread;
+		this.sortThread = sortThread;
+		this.spillThread = spillThread;
+		this.sortReadMemory = sortReadMemory;
+		this.writeMemory = writeMemory;
 		this.memoryManager = memoryManager;
-		this.objectReuseEnabled = objectReuseEnabled;
-
-		// adjust the memory quotas to the page size
-		final int numPagesTotal = memory.size();
-
-		if (numPagesTotal < MIN_NUM_WRITE_BUFFERS + MIN_NUM_SORT_MEM_SEGMENTS) {
-			throw new IllegalArgumentException("Too little memory provided to sorter to perform task. " +
-				"Required are at least " + (MIN_NUM_WRITE_BUFFERS + MIN_NUM_SORT_MEM_SEGMENTS) + 
-				" pages. Current page size is " + memoryManager.getPageSize() + " bytes.");
-		}
-		
-		// determine how many buffers to use for writing
-		final int numWriteBuffers;
-		final int numLargeRecordBuffers;
-		
-		if (noSpillingMemory && !handleLargeRecords) {
-			numWriteBuffers = 0;
-			numLargeRecordBuffers = 0;
-		}
-		else {
-			int numConsumers = (noSpillingMemory ? 0 : 1) + (handleLargeRecords ? 2 : 0);
-			
-			// determine how many buffers we have when we do a full mere with maximal fan-in 
-			final int minBuffersForMerging = maxNumFileHandles + numConsumers * MIN_NUM_WRITE_BUFFERS;
-
-			if (minBuffersForMerging > numPagesTotal) {
-				numWriteBuffers = noSpillingMemory ? 0 : MIN_NUM_WRITE_BUFFERS;
-				numLargeRecordBuffers = handleLargeRecords ? 2*MIN_NUM_WRITE_BUFFERS : 0;
-
-				maxNumFileHandles = numPagesTotal - numConsumers * MIN_NUM_WRITE_BUFFERS;
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("Reducing maximal merge fan-in to " + maxNumFileHandles + " due to limited memory availability during merge");
-				}
-			}
-			else {
-				// we are free to choose. make sure that we do not eat up too much memory for writing
-				final int fractionalAuxBuffers = numPagesTotal / (numConsumers * 100);
-				
-				if (fractionalAuxBuffers >= MAX_NUM_WRITE_BUFFERS) {
-					numWriteBuffers = noSpillingMemory ? 0 : MAX_NUM_WRITE_BUFFERS;
-					numLargeRecordBuffers = handleLargeRecords ? 2*MAX_NUM_WRITE_BUFFERS : 0;
-				}
-				else {
-					numWriteBuffers = noSpillingMemory ? 0 :
-							Math.max(MIN_NUM_WRITE_BUFFERS, fractionalAuxBuffers);	// at least the lower bound
-					
-					numLargeRecordBuffers = handleLargeRecords ? 
-							Math.max(2*MIN_NUM_WRITE_BUFFERS, fractionalAuxBuffers) // at least the lower bound
-							: 0;
-				}
-			}
-		}
-		
-		final int sortMemPages = numPagesTotal - numWriteBuffers - numLargeRecordBuffers;
-		final long sortMemory = ((long) sortMemPages) * memoryManager.getPageSize();
-		
-		// decide how many sort buffers to use
-		if (numSortBuffers < 1) {
-			if (sortMemory > 100 * 1024 * 1024) {
-				numSortBuffers = 2;
-			}
-			else {
-				numSortBuffers = 1;
-			}
-		}
-		final int numSegmentsPerSortBuffer = sortMemPages / numSortBuffers;
-
-		LOG.debug(String.format("Instantiating sorter with %d pages of sorting memory (="
-				+ "%d bytes total) divided over %d sort buffers (%d pages per buffer). Using %d"
-				+ " buffers for writing sorted results and merging maximally %d streams at once. "
-				+ "Using %d memory segments for large record spilling.",
-			sortMemPages, sortMemory, numSortBuffers, numSegmentsPerSortBuffer, numWriteBuffers,
-			maxNumFileHandles, numLargeRecordBuffers));
-
-		this.sortReadMemory = memory;
-		this.writeMemory = new ArrayList<>(numWriteBuffers);
-		
-		final TypeSerializer<E> serializer = serializerFactory.getSerializer();
-		
-		// move some pages from the sort memory to the write memory
-		if (numWriteBuffers > 0) {
-			for (int i = 0; i < numWriteBuffers; i++) {
-				this.writeMemory.add(this.sortReadMemory.remove(this.sortReadMemory.size() - 1));
-			}
-		}
-		if (numLargeRecordBuffers > 0) {
-			List<MemorySegment> mem = new ArrayList<>();
-			for (int i = 0; i < numLargeRecordBuffers; i++) {
-				mem.add(this.sortReadMemory.remove(this.sortReadMemory.size() - 1));
-			}
-			
-			this.largeRecordHandler = new LargeRecordHandler<E>(serializer, comparator.duplicate(), 
-					ioManager, memoryManager, mem, parentTask, maxNumFileHandles);
-		}
-		else {
-			this.largeRecordHandler = null;
-		}
-		
-		// circular queues pass buffers between the threads
-		final CircularQueues circularQueues = new CircularQueues();
-
-		inMemorySorters = new ArrayList<>(numSortBuffers);
-		
-		// allocate the sort buffers and fill empty queue with them
-		final Iterator<MemorySegment> segments = this.sortReadMemory.iterator();
-		for (int i = 0; i < numSortBuffers; i++)
-		{
-			// grab some memory
-			final List<MemorySegment> sortSegments = new ArrayList<>(numSegmentsPerSortBuffer);
-			for (int k = (i == numSortBuffers - 1 ? Integer.MAX_VALUE : numSegmentsPerSortBuffer); k > 0 && segments.hasNext(); k--) {
-				sortSegments.add(segments.next());
-			}
-			
-			final InMemorySorter<E> inMemorySorter = inMemorySorterFactory.create(sortSegments);
-			inMemorySorters.add(inMemorySorter);
-
-			// add to empty queue
-			CircularElement<E> element = new CircularElement<>(i, inMemorySorter, sortSegments);
-			circularQueues.empty.add(element);
-		}
-
-		// exception handling
-		ExceptionHandler<IOException> exceptionHandler = exception -> {
-			// forward exception
-			if (!closed) {
-				iteratorFuture.completeExceptionally(exception);
-				close();
-			}
-		};
-
-		// create sets that track the channels we need to clean up when closing the sorter
-		this.spillChannelManager = new SpillChannelManager();
-
-		// start the thread that reads the input channels
-		this.readThread = readingStageFactory.getReadingThread(
-			exceptionHandler,
-			input,
-			circularQueues,
-			largeRecordHandler,
-			serializer.createInstance(),
-			((long) (startSpillingFraction * sortMemory)));
-
-		// start the thread that sorts the buffers
-		this.sortThread = getSortingThread(exceptionHandler, circularQueues);
-
-		// start the thread that handles spilling to secondary storage
-		this.spillThread = getSpillingThread(
-			exceptionHandler,
-			circularQueues,
-			memoryManager,
-			ioManager,
-			serializerFactory,
-			comparator,
-			this.sortReadMemory,
-			this.writeMemory,
-			maxNumFileHandles);
-
+		this.largeRecordHandler = largeRecordHandler;
+		this.spillChannelManager = spillChannelManager;
+		this.inMemorySorters = inMemorySorters;
+		this.queues = queues;
 		startThreads();
 	}
 
@@ -538,7 +257,7 @@ public class ExternalSorter<E> implements Sorter<E> {
 	// ------------------------------------------------------------------------
 
 	@FunctionalInterface
-	public interface ReadingStageFactory {
+	public interface ReadingStageFactory<E> {
 		/**
 		 * Creates the reading thread. The reading thread simply reads the data off the input and puts it
 		 * into the buffer where it will be sorted.
@@ -546,52 +265,17 @@ public class ExternalSorter<E> implements Sorter<E> {
 		 * The returned thread is not yet started.
 		 *
 		 * @param exceptionHandler The handler for exceptions in the thread.
-		 * @param reader The reader from which the thread reads.
 		 * @param dispatcher The queues through which the thread communicates with the other threads.
-		 * @param reuse An instance of record to reuse
 		 * @param startSpillingBytes The number of bytes after which the reader thread will send the notification to
 		 * start the spilling.
 		 * @return The thread that reads data from an input, writes it into sort buffers and puts
 		 * them into a queue.
 		 */
-		<E> StageRunner getReadingThread(
-				ExceptionHandler<IOException> exceptionHandler,
-				MutableObjectIterator<E> reader,
-				StageRunner.StageMessageDispatcher<E> dispatcher,
-				LargeRecordHandler<E> largeRecordHandler,
-				E reuse,
-				long startSpillingBytes);
-	}
-
-	protected ThreadBase<E> getSortingThread(
+		StageRunner getReadingThread(
 			ExceptionHandler<IOException> exceptionHandler,
-			CircularQueues queues) {
-		return new SortingThread<>(exceptionHandler, queues);
-	}
-
-	protected SpillingThread<E> getSpillingThread(
-			ExceptionHandler<IOException> exceptionHandler,
-			CircularQueues queues,
-			MemoryManager memoryManager,
-			IOManager ioManager,
-			TypeSerializerFactory<E> serializerFactory,
-			TypeComparator<E> comparator,
-			List<MemorySegment> sortReadMemory,
-			List<MemorySegment> writeMemory,
-			int maxFileHandles) {
-		return new SpillingThread<>(
-			exceptionHandler,
-			queues,
-			memoryManager,
-			ioManager,
-			serializerFactory.getSerializer(),
-			comparator,
-			sortReadMemory,
-			writeMemory,
-			maxFileHandles,
-			spillChannelManager,
-			largeRecordHandler,
-			objectReuseEnabled);
+			StageRunner.StageMessageDispatcher<E> dispatcher,
+			LargeRecordHandler<E> largeRecordHandler,
+			long startSpillingBytes);
 	}
 
 	public boolean isClosed() {
@@ -604,13 +288,336 @@ public class ExternalSorter<E> implements Sorter<E> {
 
 	@Override
 	public MutableObjectIterator<E> getIterator() throws InterruptedException {
-		return iteratorFuture.exceptionally(
+		return queues.getIteratorFuture().exceptionally(
 			exception -> {
 				throw new RuntimeException(
 					"Error obtaining the sorted input: " + exception.getMessage(),
 					exception);
 			}
 		).join();
+	}
+
+	public static <E> Builder<E> newBuilder(
+			MemoryManager memoryManager,
+			AbstractInvokable parentTask,
+			TypeSerializer<E> serializerFactory,
+			TypeComparator<E> comparator) {
+		Preconditions.checkNotNull(memoryManager);
+		Preconditions.checkNotNull(serializerFactory);
+		Preconditions.checkNotNull(comparator);
+		Preconditions.checkNotNull(parentTask);
+		return new Builder<>(
+			memoryManager,
+			parentTask,
+			serializerFactory,
+			comparator
+		);
+	}
+
+	public static class Builder<T> {
+
+		private final MemoryManager memoryManager;
+		private final AbstractInvokable parentTask;
+		private final TypeSerializer<T> serializer;
+		private final TypeComparator<T> comparator;
+		private final InMemorySorterFactory<T> inMemorySorterFactory;
+
+		private int maxNumFileHandles = 2;
+		private boolean objectReuseEnabled = false;
+		private boolean handleLargeRecords = false;
+		private double memoryFraction = 0.7;
+		private int numSortBuffers = -1;
+		private double startSpillingFraction = 0; //TODO
+
+		private IOManager ioManager;
+		private boolean noSpillingMemory = true;
+
+
+		public Builder(
+				MemoryManager memoryManager,
+				AbstractInvokable parentTask,
+				TypeSerializer<T> serializer,
+				TypeComparator<T> comparator) {
+			this.memoryManager = memoryManager;
+			this.parentTask = parentTask;
+			this.serializer = serializer;
+			this.comparator = comparator;
+			this.inMemorySorterFactory = new DefaultInMemorySorterFactory<>(
+				serializer,
+				comparator,
+				THRESHOLD_FOR_IN_PLACE_SORTING);
+		}
+
+		public Builder<T> maxNumFileHandles(int maxNumFileHandles) {
+			if (maxNumFileHandles < 2) {
+				throw new IllegalArgumentException("Merger cannot work with less than two file handles.");
+			}
+			this.maxNumFileHandles = maxNumFileHandles;
+			return this;
+		}
+
+		public Builder<T> objectReuse(boolean enabled) {
+			this.objectReuseEnabled = enabled;
+			return this;
+		}
+
+		public Builder<T> largeRecords(boolean enabled) {
+			this.handleLargeRecords = enabled;
+			return this;
+		}
+
+		public Builder<T> enableSpilling(IOManager ioManager) {
+			this.noSpillingMemory = true;
+			this.ioManager = ioManager;
+			return this;
+		}
+
+		public Builder<T> memoryFraction(double fraction) {
+			this.memoryFraction = fraction;
+			return this;
+		}
+
+		public Builder<T> sortBuffers(int numSortBuffers) {
+			this.numSortBuffers = numSortBuffers;
+			return this;
+		}
+
+		public Builder<T> startSpillingFraction(double startSpillingFraction) {
+			this.startSpillingFraction = startSpillingFraction;
+			return this;
+		}
+
+		public ExternalSorter<T> build(MutableObjectIterator<T> input) throws MemoryAllocationException {
+			return doBuild((exceptionHandler, dispatcher, largeRecordHandler, startSpillingBytes) ->
+				new ReadingThread<>(
+					exceptionHandler,
+					input,
+					dispatcher,
+					largeRecordHandler,
+					serializer.createInstance(),
+					startSpillingBytes
+				)
+			);
+		}
+
+		private static final class PushFactory<E> implements ReadingStageFactory<E> {
+
+			private RecordReader<E> recordReader;
+
+			@Override
+			public StageRunner getReadingThread(
+					ExceptionHandler<IOException> exceptionHandler,
+					StageRunner.StageMessageDispatcher<E> dispatcher,
+					LargeRecordHandler<E> largeRecordHandler, long startSpillingBytes) {
+				recordReader = new RecordReader<>(
+					dispatcher,
+					largeRecordHandler,
+					startSpillingBytes
+				);
+				return new PushBasedRecordProducer<>(recordReader);
+			}
+		}
+
+		public PushSorter<T> build() throws MemoryAllocationException {
+			PushFactory<T> pushFactory = new PushFactory<>();
+			ExternalSorter<T> tExternalSorter = doBuild(pushFactory);
+
+			return new PushSorter<T>() {
+
+				private final RecordReader<T> recordProducer = pushFactory.recordReader;
+
+				@Override
+				public void writeRecord(T record) throws IOException {
+					recordProducer.writeRecord(record);
+				}
+
+				@Override
+				public void finishReading() {
+					recordProducer.finishReading();
+				}
+
+				@Override
+				public MutableObjectIterator<T> getIterator() throws InterruptedException {
+					return tExternalSorter.getIterator();
+				}
+
+				@Override
+				public void close() throws IOException {
+					tExternalSorter.close();
+				}
+			};
+		}
+
+		private ExternalSorter<T> doBuild(ReadingStageFactory<T> readingStageFactory) throws MemoryAllocationException {
+
+			List<MemorySegment> memory = memoryManager.allocatePages(
+				parentTask,
+				memoryManager.computeNumberOfPages(memoryFraction));
+
+			// adjust the memory quotas to the page size
+			final int numPagesTotal = memory.size();
+
+			if (numPagesTotal < MIN_NUM_WRITE_BUFFERS + MIN_NUM_SORT_MEM_SEGMENTS) {
+				throw new IllegalArgumentException("Too little memory provided to sorter to perform task. " +
+					"Required are at least " + (MIN_NUM_WRITE_BUFFERS + MIN_NUM_SORT_MEM_SEGMENTS) +
+					" pages. Current page size is " + memoryManager.getPageSize() + " bytes.");
+			}
+
+			// determine how many buffers to use for writing
+			final int numWriteBuffers;
+			final int numLargeRecordBuffers;
+
+			if (noSpillingMemory && !handleLargeRecords) {
+				numWriteBuffers = 0;
+				numLargeRecordBuffers = 0;
+			} else {
+				int numConsumers = (noSpillingMemory ? 0 : 1) + (handleLargeRecords ? 2 : 0);
+
+				// determine how many buffers we have when we do a full mere with maximal fan-in
+				final int minBuffersForMerging = maxNumFileHandles + numConsumers * MIN_NUM_WRITE_BUFFERS;
+
+				if (minBuffersForMerging > numPagesTotal) {
+					numWriteBuffers = noSpillingMemory ? 0 : MIN_NUM_WRITE_BUFFERS;
+					numLargeRecordBuffers = handleLargeRecords ? 2*MIN_NUM_WRITE_BUFFERS : 0;
+
+					maxNumFileHandles = numPagesTotal - numConsumers * MIN_NUM_WRITE_BUFFERS;
+					if (LOG.isDebugEnabled()) {
+						LOG.debug("Reducing maximal merge fan-in to " + maxNumFileHandles + " due to limited memory availability during merge");
+					}
+				}
+				else {
+					// we are free to choose. make sure that we do not eat up too much memory for writing
+					final int fractionalAuxBuffers = numPagesTotal / (numConsumers * 100);
+
+					if (fractionalAuxBuffers >= MAX_NUM_WRITE_BUFFERS) {
+						numWriteBuffers = noSpillingMemory ? 0 : MAX_NUM_WRITE_BUFFERS;
+						numLargeRecordBuffers = handleLargeRecords ? 2 * MAX_NUM_WRITE_BUFFERS : 0;
+					} else {
+						numWriteBuffers = noSpillingMemory ? 0 :
+							Math.max(MIN_NUM_WRITE_BUFFERS, fractionalAuxBuffers);    // at least the lower bound
+
+						numLargeRecordBuffers = handleLargeRecords ?
+							Math.max(2 * MIN_NUM_WRITE_BUFFERS, fractionalAuxBuffers) // at least the lower bound
+							: 0;
+					}
+				}
+			}
+
+			final int sortMemPages = numPagesTotal - numWriteBuffers - numLargeRecordBuffers;
+			final long sortMemory = ((long) sortMemPages) * memoryManager.getPageSize();
+
+			// decide how many sort buffers to use
+			if (numSortBuffers < 1) {
+				if (sortMemory > 100 * 1024 * 1024) {
+					numSortBuffers = 2;
+				}
+				else {
+					numSortBuffers = 1;
+				}
+			}
+			final int numSegmentsPerSortBuffer = sortMemPages / numSortBuffers;
+
+			LOG.debug(String.format("Instantiating sorter with %d pages of sorting memory (="
+					+ "%d bytes total) divided over %d sort buffers (%d pages per buffer). Using %d"
+					+ " buffers for writing sorted results and merging maximally %d streams at once. "
+					+ "Using %d memory segments for large record spilling.",
+				sortMemPages, sortMemory, numSortBuffers, numSegmentsPerSortBuffer, numWriteBuffers,
+				maxNumFileHandles, numLargeRecordBuffers));
+
+			List<MemorySegment> writeMemory = new ArrayList<>(numWriteBuffers);
+
+			LargeRecordHandler<T> largeRecordHandler;
+			// move some pages from the sort memory to the write memory
+			if (numWriteBuffers > 0) {
+				for (int i = 0; i < numWriteBuffers; i++) {
+					writeMemory.add(memory.remove(memory.size() - 1));
+				}
+			}
+			if (numLargeRecordBuffers > 0) {
+				List<MemorySegment> mem = new ArrayList<>();
+				for (int i = 0; i < numLargeRecordBuffers; i++) {
+					mem.add(memory.remove(memory.size() - 1));
+				}
+
+				largeRecordHandler = new LargeRecordHandler<>(serializer, comparator.duplicate(),
+					ioManager, memoryManager, mem, parentTask, maxNumFileHandles);
+			}
+			else {
+				largeRecordHandler = null;
+			}
+
+			// circular queues pass buffers between the threads
+			final CircularQueues<T> circularQueues = new CircularQueues<>();
+
+			final List<InMemorySorter<T>> inMemorySorters = new ArrayList<>(numSortBuffers);
+
+			// allocate the sort buffers and fill empty queue with them
+			final Iterator<MemorySegment> segments = memory.iterator();
+			for (int i = 0; i < numSortBuffers; i++)
+			{
+				// grab some memory
+				final List<MemorySegment> sortSegments = new ArrayList<>(numSegmentsPerSortBuffer);
+				for (int k = (i == numSortBuffers - 1 ? Integer.MAX_VALUE : numSegmentsPerSortBuffer); k > 0 && segments.hasNext(); k--) {
+					sortSegments.add(segments.next());
+				}
+
+				final InMemorySorter<T> inMemorySorter = inMemorySorterFactory.create(sortSegments);
+				inMemorySorters.add(inMemorySorter);
+
+				// add to empty queue
+				CircularElement<T> element = new CircularElement<>(i, inMemorySorter, sortSegments);
+				circularQueues.empty.add(element);
+			}
+
+			// exception handling
+			ExceptionHandler<IOException> exceptionHandler = exception -> {
+				circularQueues.getIteratorFuture().completeExceptionally(exception);
+				// forward exception
+//				if (!closed) {
+//					iteratorFuture.completeExceptionally(exception);
+//					close();
+//				}
+			};
+
+			SpillChannelManager spillChannelManager = new SpillChannelManager();
+			// start the thread that reads the input channels
+			StageRunner readingThread = readingStageFactory.getReadingThread(
+				exceptionHandler,
+				circularQueues,
+				largeRecordHandler,
+				((long) (startSpillingFraction * sortMemory)));
+
+			// start the thread that sorts the buffers
+			StageRunner sortingStage = new SortingThread<>(exceptionHandler, circularQueues);
+
+			// start the thread that handles spilling to secondary storage
+			StageRunner spillingStage = new SpillingThread<>(
+				exceptionHandler,
+				circularQueues,
+				memoryManager,
+				ioManager,
+				serializer,
+				comparator,
+				memory,
+				writeMemory,
+				maxNumFileHandles,
+				spillChannelManager,
+				largeRecordHandler,
+				objectReuseEnabled);
+
+			return new ExternalSorter<>(
+				readingThread,
+				sortingStage,
+				spillingStage,
+				memory,
+				writeMemory,
+				memoryManager,
+				largeRecordHandler,
+				spillChannelManager,
+				inMemorySorters,
+				circularQueues
+			);
+		}
 	}
 
 	// ------------------------------------------------------------------------
@@ -620,13 +627,19 @@ public class ExternalSorter<E> implements Sorter<E> {
 	/**
 	 * Collection of queues that are used for the communication between the threads.
 	 */
-	private final class CircularQueues implements StageRunner.StageMessageDispatcher<E> {
+	private static final class CircularQueues<E> implements StageRunner.StageMessageDispatcher<E> {
 
 		final BlockingQueue<CircularElement<E>> empty;
 
 		final BlockingQueue<CircularElement<E>> sort;
 
 		final BlockingQueue<CircularElement<E>> spill;
+
+		/**
+		 * The iterator to be returned by the sort-merger. This variable is null, while receiving and merging is still in
+		 * progress and it will be set once we have &lt; merge factor sorted sub-streams that will then be streamed sorted.
+		 */
+		private final CompletableFuture<MutableObjectIterator<E>> iteratorFuture = new CompletableFuture<>();
 
 		public CircularQueues() {
 			this.empty = new LinkedBlockingQueue<>();
@@ -645,6 +658,10 @@ public class ExternalSorter<E> implements Sorter<E> {
 				default:
 					throw new IllegalArgumentException();
 			}
+		}
+
+		public CompletableFuture<MutableObjectIterator<E>> getIteratorFuture() {
+			return iteratorFuture;
 		}
 
 		@Override

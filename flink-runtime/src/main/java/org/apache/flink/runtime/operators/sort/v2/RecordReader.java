@@ -42,9 +42,9 @@ public class RecordReader<E> {
 	 * @param dispatcher The queues used to pass buffers between the threads.
 	 */
 	public RecordReader(
-		StageRunner.StageMessageDispatcher<E> dispatcher,
-		LargeRecordHandler<E> largeRecordsHandler,
-		long startSpillingBytes) {
+			StageRunner.StageMessageDispatcher<E> dispatcher,
+			LargeRecordHandler<E> largeRecordsHandler,
+			long startSpillingBytes) {
 
 		// members
 		this.bytesUntilSpilling = startSpillingBytes;

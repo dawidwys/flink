@@ -58,7 +58,7 @@ public class BatchExecutionITCase {
 			.slotSharingGroup("group1")
 			.keyBy(value -> 'a')
 			.process(new TestStatefulKeyedProcessFunction())
-			.addSink(new DiscardingSink<>())//.addSink(new DiscardingSink<>())
+			.print()//.addSink(new DiscardingSink<>())
 			.slotSharingGroup("group2");
 		final StreamGraph streamGraph = env.getStreamGraph();
 		streamGraph.setGlobalDataExchangeMode(GlobalDataExchangeMode.ALL_EDGES_BLOCKING);

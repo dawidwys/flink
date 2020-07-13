@@ -230,7 +230,10 @@ public class UnilateralSortMerger<E> implements Sorter<E> {
 			noSpillingMemory,
 			handleLargeRecords,
 			objectReuseEnabled,
-			new DefaultInMemorySorterFactory<>(serializerFactory, comparator, THRESHOLD_FOR_IN_PLACE_SORTING));
+			new DefaultInMemorySorterFactory<>(
+				serializerFactory.getSerializer(),
+				comparator,
+				THRESHOLD_FOR_IN_PLACE_SORTING));
 	}
 
 	protected UnilateralSortMerger(

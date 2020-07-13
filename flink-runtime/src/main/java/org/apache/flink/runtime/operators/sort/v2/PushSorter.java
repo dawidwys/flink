@@ -18,24 +18,13 @@
 
 package org.apache.flink.runtime.operators.sort.v2;
 
-public class PushBasedRecordProducer<T> implements StageRunner {
-	private final RecordReader<T> recordProducer;
+import org.apache.flink.runtime.operators.sort.Sorter;
 
-	public PushBasedRecordProducer(RecordReader<T> recordProducer) {
-		this.recordProducer = recordProducer;
-	}
+import java.io.IOException;
 
-	public RecordReader<T> getRecordProducer() {
-		return recordProducer;
-	}
+public interface PushSorter<E> extends Sorter<E> {
 
-	@Override
-	public void start() {
-		//do nothing
-	}
+	void writeRecord(E record) throws IOException;
 
-	@Override
-	public void shutdown() throws Exception {
-		//do nothing
-	}
+	void finishReading();
 }

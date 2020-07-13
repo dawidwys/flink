@@ -111,10 +111,19 @@ public class ExternalSort2ITCase extends TestLogger {
 			// merge iterator
 			LOG.debug("Initializing sortmerger...");
 			
-			Sorter<Tuple2<Integer, String>> merger = new ExternalSorter<>(this.memoryManager, this.ioManager,
-				source, this.parentTask, this.pactRecordSerializer, this.pactRecordComparator,
-					(double)64/78, 2, 0.9f, true /*use large record handler*/, true);
-	
+			Sorter<Tuple2<Integer, String>> merger = ExternalSorter.newBuilder(
+				this.memoryManager,
+				this.parentTask,
+				this.pactRecordSerializer.getSerializer(),
+				this.pactRecordComparator)
+				.enableSpilling(this.ioManager)
+				.memoryFraction((double)64/78)
+				.startSpillingFraction(0.9f)
+				.maxNumFileHandles(2)
+				.largeRecords(true)
+				.objectReuse(true)
+				.build(source);
+
 			// emit data
 			LOG.debug("Reading and sorting data...");
 	
@@ -160,10 +169,21 @@ public class ExternalSort2ITCase extends TestLogger {
 			// merge iterator
 			LOG.debug("Initializing sortmerger...");
 			
-			Sorter<Tuple2<Integer, String>> merger = new ExternalSorter<>(this.memoryManager, this.ioManager,
-					source, this.parentTask, this.pactRecordSerializer, this.pactRecordComparator,
-					(double)64/78, 10, 2, 0.9f, true /*use large record handler*/, false);
-	
+			Sorter<Tuple2<Integer, String>> merger =
+				ExternalSorter.newBuilder(
+					this.memoryManager,
+					this.parentTask,
+					this.pactRecordSerializer.getSerializer(),
+					this.pactRecordComparator)
+					.enableSpilling(this.ioManager)
+					.memoryFraction((double)64/78)
+					.startSpillingFraction(0.9f)
+					.sortBuffers(10)
+					.maxNumFileHandles(2)
+					.largeRecords(true)
+					.objectReuse(false)
+					.build(source);
+
 			// emit data
 			LOG.debug("Reading and sorting data...");
 	
@@ -208,11 +228,21 @@ public class ExternalSort2ITCase extends TestLogger {
 	
 			// merge iterator
 			LOG.debug("Initializing sortmerger...");
-			
-			Sorter<Tuple2<Integer, String>> merger = new ExternalSorter<>(this.memoryManager, this.ioManager,
-					source, this.parentTask, this.pactRecordSerializer, this.pactRecordComparator,
-					(double)16/78, 64, 0.7f, true /*use large record handler*/, true);
-	
+
+			Sorter<Tuple2<Integer, String>> merger =
+				ExternalSorter.newBuilder(
+					this.memoryManager,
+					this.parentTask,
+					this.pactRecordSerializer.getSerializer(),
+					this.pactRecordComparator)
+					.enableSpilling(this.ioManager)
+					.memoryFraction((double)16/78)
+					.startSpillingFraction(0.7f)
+					.maxNumFileHandles(64)
+					.largeRecords(true)
+					.objectReuse(false)
+					.build(source);
+
 			// emit data
 			LOG.debug("Reading and sorting data...");
 	
@@ -260,11 +290,21 @@ public class ExternalSort2ITCase extends TestLogger {
 			
 			// merge iterator
 			LOG.debug("Initializing sortmerger...");
-			
-			Sorter<Tuple2<Integer, String>> merger = new ExternalSorter<>(this.memoryManager, this.ioManager,
-					source, this.parentTask, this.pactRecordSerializer, this.pactRecordComparator,
-					(double)64/78, 16, 0.7f, true /*use large record handler*/, false);
-			
+
+			Sorter<Tuple2<Integer, String>> merger =
+				ExternalSorter.newBuilder(
+					this.memoryManager,
+					this.parentTask,
+					this.pactRecordSerializer.getSerializer(),
+					this.pactRecordComparator)
+					.enableSpilling(this.ioManager)
+					.memoryFraction((double)64/78)
+					.startSpillingFraction(0.7f)
+					.maxNumFileHandles(16)
+					.largeRecords(true)
+					.objectReuse(false)
+					.build(source);
+
 			// emit data
 			LOG.debug("Emitting data...");
 	
@@ -318,11 +358,21 @@ public class ExternalSort2ITCase extends TestLogger {
 			
 			// merge iterator
 			LOG.debug("Initializing sortmerger...");
-			
-			Sorter<IntPair> merger = new ExternalSorter<IntPair>(this.memoryManager, this.ioManager,
-					generator, this.parentTask, serializerFactory, comparator, (double)64/78, 4, 0.7f,
-					true /*use large record handler*/, true);
-	
+
+			Sorter<IntPair> merger =
+				ExternalSorter.newBuilder(
+					this.memoryManager,
+					this.parentTask,
+					serializerFactory.getSerializer(),
+					comparator)
+					.enableSpilling(this.ioManager)
+					.memoryFraction((double)64/78)
+					.startSpillingFraction(0.7f)
+					.maxNumFileHandles(4)
+					.largeRecords(true)
+					.objectReuse(true)
+					.build(generator);
+
 			// emit data
 			LOG.debug("Emitting data...");
 			

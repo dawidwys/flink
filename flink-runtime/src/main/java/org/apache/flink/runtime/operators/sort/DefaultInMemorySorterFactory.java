@@ -33,7 +33,7 @@ import java.util.List;
 public class DefaultInMemorySorterFactory<T> implements InMemorySorterFactory<T> {
 
 	@Nonnull
-	private final TypeSerializerFactory<T> typeSerializerFactory;
+	private final TypeSerializer<T> typeSerializer;
 
 	@Nonnull
 	private final TypeComparator<T> typeComparator;
@@ -41,13 +41,11 @@ public class DefaultInMemorySorterFactory<T> implements InMemorySorterFactory<T>
 	private final boolean useFixedLengthRecordSorter;
 
 	public DefaultInMemorySorterFactory(
-			@Nonnull TypeSerializerFactory<T> typeSerializerFactory,
+			@Nonnull TypeSerializer<T> typeSerializerFactory,
 			@Nonnull TypeComparator<T> typeComparator,
 			int thresholdForInPlaceSorting) {
-		this.typeSerializerFactory = typeSerializerFactory;
+		this.typeSerializer = typeSerializerFactory;
 		this.typeComparator = typeComparator;
-
-		TypeSerializer<T> typeSerializer = typeSerializerFactory.getSerializer();
 
 		this.useFixedLengthRecordSorter = typeComparator.supportsSerializationWithKeyNormalization() &&
 			typeSerializer.getLength() > 0 && typeSerializer.getLength() <= thresholdForInPlaceSorting;
@@ -55,13 +53,13 @@ public class DefaultInMemorySorterFactory<T> implements InMemorySorterFactory<T>
 
 	@Override
 	public InMemorySorter<T> create(List<MemorySegment> sortSegments) {
-		final TypeSerializer<T> typeSerializer = typeSerializerFactory.getSerializer();
+		final TypeSerializer<T> duplicateSerializer = typeSerializer.duplicate();
 		final TypeComparator<T> duplicateTypeComparator = typeComparator.duplicate();
 
 		if (useFixedLengthRecordSorter) {
-			return new FixedLengthRecordSorter<>(typeSerializer, duplicateTypeComparator, sortSegments);
+			return new FixedLengthRecordSorter<>(duplicateSerializer, duplicateTypeComparator, sortSegments);
 		} else {
-			return new NormalizedKeySorter<>(typeSerializer, duplicateTypeComparator, sortSegments);
+			return new NormalizedKeySorter<>(duplicateSerializer, duplicateTypeComparator, sortSegments);
 		}
 	}
 }
