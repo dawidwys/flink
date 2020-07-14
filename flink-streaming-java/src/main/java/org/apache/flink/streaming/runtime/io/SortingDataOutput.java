@@ -20,26 +20,26 @@ package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.memory.MemoryAllocationException;
-import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.operators.sort.v2.ExternalSorter;
 import org.apache.flink.runtime.operators.sort.v2.PushSorter;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.util.MutableObjectIterator;
 
 import java.io.IOException;
 
-public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T> {
+public class SortingDataOutput<T, K> implements PushingAsyncDataInput.DataOutput<T> {
 
 	private final PushSorter<StreamElement> sorter;
 	private final PushingAsyncDataInput.DataOutput<T> chained;
@@ -47,18 +47,22 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 	public SortingDataOutput(
 			PushingAsyncDataInput.DataOutput<T> chained,
 			Environment environment,
-			TypeSerializer<StreamElement> typeSerializer,
-			TypeComparator<T> typeComparator,
+			TypeSerializer<T> typeSerializer,
+			KeySelector<T, K> keySelector,
+			TypeComparator<K> keyComparator,
 			AbstractInvokable containingTask) {
 		try {
-			StreamElementComparator<T> elementComparator = new StreamElementComparator<>(typeComparator);
+			StreamElementSerializer<T> streamElementSerializer = new StreamElementSerializer<>(typeSerializer);
+			StreamElementComparator<T, K> elementComparator = new StreamElementComparator<>(
+				keySelector,
+				keyComparator,
+				streamElementSerializer);
 			this.chained = chained;
 			this.sorter = ExternalSorter.newBuilder(
-				environment.getMemoryManager(),
-				containingTask,
-				typeSerializer,
-				elementComparator
-			)
+					environment.getMemoryManager(),
+					containingTask,
+				streamElementSerializer,
+					elementComparator)
 				.enableSpilling(environment.getIOManager())
 				.build();
 		} catch (MemoryAllocationException e) {
@@ -96,39 +100,50 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 		}
 	}
 
-	private static final class StreamElementComparator<T> extends TypeComparator<StreamElement> {
+	private static final class StreamElementComparator<IN, KEY> extends TypeComparator<StreamElement> {
 
-		private final TypeComparator<T> elementComparator;
+		private final TypeComparator<KEY> keyComparator;
+		private final TypeSerializer<StreamElement> typeSerializer;
+		private final KeySelector<IN, KEY> keySelector;
 
-		private StreamElementComparator(TypeComparator<T> elementComparator) {
-			this.elementComparator = elementComparator;
+		private StreamElementComparator(
+				KeySelector<IN, KEY> keySelector,
+				TypeComparator<KEY> keyComparator,
+				TypeSerializer<StreamElement> typeSerializer) {
+			this.keySelector = keySelector;
+			this.keyComparator = keyComparator;
+			this.typeSerializer = typeSerializer;
 		}
 
 		@Override
 		public int hash(StreamElement record) {
-			return elementComparator.hash(getValue(record));
+			return keyComparator.hash(getKey(record));
 		}
 
 		@Override
 		public void setReference(StreamElement toCompare) {
-			elementComparator.setReference(getValue(toCompare));
+			keyComparator.setReference(getKey(toCompare));
 		}
 
-		private T getValue(StreamElement toCompare) {
-			StreamRecord<T> streamRecord = toCompare.asRecord();
-			return streamRecord.getValue();
+		private KEY getKey(StreamElement toCompare) {
+			try {
+				StreamRecord<IN> streamRecord = toCompare.asRecord();
+				return keySelector.getKey(streamRecord.getValue());
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public boolean equalToReference(StreamElement candidate) {
-			return elementComparator.equalToReference(getValue(candidate));
+			return keyComparator.equalToReference(getKey(candidate));
 		}
 
 		@Override
 		public int compareToReference(TypeComparator<StreamElement> referencedComparator) {
 			if (referencedComparator instanceof StreamElementComparator) {
-				StreamElementComparator<T> otherComparator = (StreamElementComparator<T>) referencedComparator;
-				return elementComparator.compareToReference(otherComparator.elementComparator);
+				StreamElementComparator<IN, KEY> otherComparator = (StreamElementComparator<IN, KEY>) referencedComparator;
+				return keyComparator.compareToReference(otherComparator.keyComparator);
 			}
 
 			throw new IllegalArgumentException();
@@ -136,7 +151,7 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 
 		@Override
 		public int compare(StreamElement first, StreamElement second) {
-			return elementComparator.compare(getValue(first), getValue(second));
+			return keyComparator.compare(getKey(first), getKey(second));
 		}
 
 		@Override
@@ -144,15 +159,16 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 				DataInputView firstSource,
 				DataInputView secondSource) throws IOException {
 
-			skipTimestamp(firstSource);
-			skipTimestamp(secondSource);
-			return elementComparator.compareSerialized(firstSource, secondSource);
-		}
+			StreamElement firstElement = typeSerializer.deserialize(firstSource);
+			StreamElement secondElement = typeSerializer.deserialize(secondSource);
+			KEY key1 = getKey(firstElement);
+			KEY key2 = getKey(secondElement);
+			int compareKey = keyComparator.compare(key1, key2);
 
-		private void skipTimestamp(DataInputView serialized) throws IOException {
-			int tag = serialized.readByte();
-			if (tag == 0) {
-				serialized.readLong();
+			if (compareKey == 0) {
+				return Long.compare(firstElement.asRecord().getTimestamp(), secondElement.asRecord().getTimestamp());
+			} else {
+				return compareKey;
 			}
 		}
 
@@ -168,12 +184,12 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 
 		@Override
 		public int getNormalizeKeyLen() {
-			return elementComparator.getNormalizeKeyLen();
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
 		public boolean isNormalizedKeyPrefixOnly(int keyBytes) {
-			return elementComparator.isNormalizedKeyPrefixOnly(keyBytes);
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
@@ -182,33 +198,33 @@ public class SortingDataOutput<T> implements PushingAsyncDataInput.DataOutput<T>
 				MemorySegment target,
 				int offset,
 				int numBytes) {
-			elementComparator.putNormalizedKey(getValue(record), target, offset, numBytes);
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
 		public void writeWithKeyNormalization(StreamElement record, DataOutputView target) throws IOException {
-			elementComparator.writeWithKeyNormalization(getValue(record), target);
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
 		public StreamElement readWithKeyDenormalization(StreamElement reuse, DataInputView source) throws IOException {
-			return new StreamRecord<T>(elementComparator.readWithKeyDenormalization(null, source));
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
 		public boolean invertNormalizedKey() {
-			return elementComparator.invertNormalizedKey();
+			return false;
 		}
 
 		@Override
 		public TypeComparator<StreamElement> duplicate() {
-			return new StreamElementComparator<>(elementComparator.duplicate());
+			return new StreamElementComparator<>(keySelector, keyComparator.duplicate(), typeSerializer.duplicate());
 		}
 
 		@Override
 		public int extractKeys(Object record, Object[] target, int index) {
-			StreamRecord<T> record1 = (StreamRecord<T>) record;
-			return elementComparator.extractKeys(record1.getValue(), target, index);
+			StreamRecord<IN> record1 = (StreamRecord<IN>) record;
+			return keyComparator.extractKeys(record1.getValue(), target, index);
 		}
 
 		@Override

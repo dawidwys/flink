@@ -18,30 +18,24 @@
 
 package org.apache.flink.streaming.api;
 
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.CharSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
-import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
-import org.apache.flink.runtime.jobgraph.IntermediateDataSet;
 import org.apache.flink.runtime.jobgraph.JobGraph;
-import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.ScheduleMode;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
-import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.apache.flink.streaming.api.graph.GlobalDataExchangeMode;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.streaming.api.graph.StreamingJobGraphGenerator;
 import org.apache.flink.util.Collector;
 
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class BatchExecutionITCase {
 	@Test
@@ -53,10 +47,15 @@ public class BatchExecutionITCase {
 	private JobGraph getJobGraphUnderTest() {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.disableOperatorChaining();
-		env.setParallelism(5);
+		env.setParallelism(2);
+		env.setMaxParallelism(2);
 		env.fromElements('d', 'u', 'f', 'c', 'a', 'b')
+			.assignTimestampsAndWatermarks(
+				WatermarkStrategy.<Character>noWatermarks()
+					.withTimestampAssigner((element, recordTimestamp) -> (long) element)
+			)
 			.slotSharingGroup("group1")
-			.keyBy(value -> 'a')
+			.keyBy(value -> ((int) value) % 2 + 1)
 			.process(new TestStatefulKeyedProcessFunction())
 			.print()//.addSink(new DiscardingSink<>())
 			.slotSharingGroup("group2");
@@ -71,7 +70,7 @@ public class BatchExecutionITCase {
 		return jobGraph;
 	}
 
-	private static class TestStatefulKeyedProcessFunction extends KeyedProcessFunction<Character, Character, String> {
+	private static class TestStatefulKeyedProcessFunction extends KeyedProcessFunction<Integer, Character, String> {
 		private ValueState<Character> state;
 
 		@Override

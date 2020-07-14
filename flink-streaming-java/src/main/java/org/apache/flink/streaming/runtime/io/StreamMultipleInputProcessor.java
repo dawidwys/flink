@@ -31,6 +31,7 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.runtime.streamstatus.MultipleInputStatusMaintainer;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
@@ -55,13 +56,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 	private final InputProcessor<?>[] inputProcessors;
 
 	private final OperatorChain<?, ?> operatorChain;
-
-	/**
-	 * Stream status for the two inputs. We need to keep track for determining when
-	 * to forward stream status changes downstream.
-	 */
-	private final StreamStatus[] streamStatuses;
-
 	private final Counter numRecordsIn;
 
 	/** Always try to read from the first input. */
@@ -86,16 +80,16 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		int inputsCount = inputs.size();
 
 		this.inputProcessors = new InputProcessor[inputsCount];
-		this.streamStatuses = new StreamStatus[inputsCount];
+		MultipleInputStatusMaintainer streamStatus = new MultipleInputStatusMaintainer(
+			inputsCount,
+			streamStatusMaintainer);
 		this.numRecordsIn = numRecordsIn;
 
 		for (int i = 0; i < inputsCount; i++) {
-			streamStatuses[i] = StreamStatus.ACTIVE;
 			StreamTaskNetworkOutput dataOutput = new StreamTaskNetworkOutput<>(
 				inputs.get(i),
-				streamStatusMaintainer,
-				inputWatermarkGauges[i],
-				i);
+				streamStatus.getMaintainerForInput(i),
+				inputWatermarkGauges[i]);
 
 			inputProcessors[i] = new InputProcessor(
 				dataOutput,
@@ -224,15 +218,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		return inputIndex + 1;
 	}
 
-	private boolean allStreamStatusesAreIdle() {
-		for (StreamStatus streamStatus : streamStatuses) {
-			if (streamStatus.isActive()) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	private class InputProcessor<T> implements Closeable {
 		private final StreamTaskNetworkOutput<T> dataOutput;
 		private final StreamTaskNetworkInput<T> networkInput;
@@ -268,19 +253,14 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 		private final WatermarkGauge inputWatermarkGauge;
 
-		/** The input index to indicate how to process elements by two input operator. */
-		private final int inputIndex;
-
 		private StreamTaskNetworkOutput(
 				Input<T> input,
 				StreamStatusMaintainer streamStatusMaintainer,
-				WatermarkGauge inputWatermarkGauge,
-				int inputIndex) {
+				WatermarkGauge inputWatermarkGauge) {
 			super(streamStatusMaintainer);
 
 			this.input = checkNotNull(input);
 			this.inputWatermarkGauge = checkNotNull(inputWatermarkGauge);
-			this.inputIndex = inputIndex;
 		}
 
 		@Override
@@ -295,23 +275,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		public void emitWatermark(Watermark watermark) throws Exception {
 			inputWatermarkGauge.setCurrentWatermark(watermark.getTimestamp());
 			input.processWatermark(watermark);
-		}
-
-		@Override
-		public void emitStreamStatus(StreamStatus streamStatus) {
-			final StreamStatus anotherStreamStatus;
-
-			streamStatuses[inputIndex] = streamStatus;
-
-			// check if we need to toggle the task's stream status
-			if (!streamStatus.equals(streamStatusMaintainer.getStreamStatus())) {
-				if (streamStatus.isActive()) {
-					// we're no longer idle if at least one input has become active
-					streamStatusMaintainer.toggleStreamStatus(StreamStatus.ACTIVE);
-				} else if (allStreamStatusesAreIdle()) {
-					streamStatusMaintainer.toggleStreamStatus(StreamStatus.IDLE);
-				}
-			}
 		}
 
 		@Override

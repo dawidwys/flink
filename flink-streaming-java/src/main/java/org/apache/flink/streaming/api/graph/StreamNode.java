@@ -22,6 +22,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.operators.ResourceSpec;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.functions.KeySelector;
@@ -67,6 +68,7 @@ public class StreamNode implements Serializable {
 	private @Nullable String coLocationGroup;
 	private KeySelector<?, ?>[] statePartitioners = new KeySelector[0];
 	private TypeSerializer<?> stateKeySerializer;
+	private TypeComparator<?> stateKeyComparator;
 
 	private transient StreamOperatorFactory<?> operatorFactory;
 	private List<OutputSelector<?>> outputSelectors;
@@ -321,6 +323,14 @@ public class StreamNode implements Serializable {
 
 	public void setStateKeySerializer(TypeSerializer<?> stateKeySerializer) {
 		this.stateKeySerializer = stateKeySerializer;
+	}
+
+	public TypeComparator<?> getStateKeyComparator() {
+		return stateKeyComparator;
+	}
+
+	public void setStateKeyComparator(TypeComparator<?> stateKeyComparator) {
+		this.stateKeyComparator = stateKeyComparator;
 	}
 
 	public String getTransformationUID() {

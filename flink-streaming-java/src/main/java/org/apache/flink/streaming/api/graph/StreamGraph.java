@@ -26,6 +26,7 @@ import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.operators.ResourceSpec;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.java.functions.KeySelector;
@@ -480,6 +481,10 @@ public class StreamGraph implements Pipeline {
 			throw new IllegalStateException("Already has virtual partition node with id " + virtualId);
 		}
 
+		if (shuffleMode == ShuffleMode.UNDEFINED) {
+			shuffleMode = determineResultPartitionType(partitioner);
+		}
+
 		virtualPartitionNodes.put(virtualId, new Tuple3<>(originalId, partitioner, shuffleMode));
 	}
 
@@ -642,10 +647,15 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public void setOneInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector, TypeSerializer<?> keySerializer) {
+	public void setOneInputStateKey(
+			Integer vertexID,
+			KeySelector<?, ?> keySelector,
+			TypeSerializer<?> keySerializer,
+			TypeComparator<?> keyComparator) {
 		StreamNode node = getStreamNode(vertexID);
 		node.setStatePartitioners(keySelector);
 		node.setStateKeySerializer(keySerializer);
+		node.setStateKeyComparator(keyComparator);
 	}
 
 	public void setTwoInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector1, KeySelector<?, ?> keySelector2, TypeSerializer<?> keySerializer) {

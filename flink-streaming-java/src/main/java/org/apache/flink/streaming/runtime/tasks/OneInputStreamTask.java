@@ -24,6 +24,7 @@ import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
 import org.apache.flink.api.common.typeutils.base.CharComparator;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.typeutils.runtime.RuntimeSerializerFactory;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Counter;
@@ -53,6 +54,7 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 
 import javax.annotation.Nullable;
 
+import java.io.Serializable;
 import java.util.List;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -130,17 +132,17 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 			setupNumRecordsInCounter(headOperator));
 
 		ClassLoader userClassLoader = getEnvironment().getUserClassLoader();
-		List<StreamEdge> physicalEdges = configuration.getInPhysicalEdges(userClassLoader);
-		StreamEdge streamEdge = physicalEdges.get(0);
-		// TODO
-		if (streamEdge.getShuffleMode() != ShuffleMode.PIPELINED) {
-			TypeSerializer<Object> elementSerializer = configuration.getTypeSerializerIn1(userClassLoader);
+		StreamEdge streamEdge = configuration.getInPhysicalEdges(userClassLoader).get(0);
+		KeySelector<?, Serializable> keySelector = configuration.getStatePartitioner(0, userClassLoader);
+		TypeComparator<Object> keyComparator = configuration.getStateKeyComparator(userClassLoader);
+		if (keyComparator != null && keySelector != null && streamEdge.getShuffleMode() == ShuffleMode.BATCH) {
+			TypeSerializer<IN> elementSerializer = configuration.getTypeSerializerIn1(userClassLoader);
 			return new SortingDataOutput<>(
 				networkOutput,
 				getEnvironment(),
-				new StreamElementSerializer<>(elementSerializer),
-				// TODO get a proper comparator
-				(TypeComparator<IN>) new CharComparator(true),
+				elementSerializer,
+				(KeySelector<IN, Object>) (KeySelector) keySelector,
+				keyComparator,
 				this
 			);
 		}

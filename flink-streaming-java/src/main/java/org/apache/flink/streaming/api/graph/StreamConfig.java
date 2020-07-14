@@ -19,6 +19,7 @@ package org.apache.flink.streaming.api.graph;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
@@ -95,6 +96,7 @@ public class StreamConfig implements Serializable {
 	private static final String STATE_PARTITIONER = "statePartitioner";
 
 	private static final String STATE_KEY_SERIALIZER = "statekeyser";
+	private static final String STATE_KEY_COMPARATOR = "statekeycomp";
 
 	private static final String TIME_CHARACTERISTIC = "timechar";
 
@@ -571,7 +573,21 @@ public class StreamConfig implements Serializable {
 		}
 	}
 
+	public void setStateKeyComparator(TypeComparator<?> typeComparator) {
+		try {
+			InstantiationUtil.writeObjectToConfig(typeComparator, this.config, STATE_KEY_COMPARATOR);
+		} catch (IOException e) {
+			throw new StreamTaskException("Could not serialize state key serializer.", e);
+		}
+	}
 
+	public <K> TypeComparator<K> getStateKeyComparator(ClassLoader cl) {
+		try {
+			return InstantiationUtil.readObjectFromConfig(this.config, STATE_KEY_COMPARATOR, cl);
+		} catch (Exception e) {
+			throw new StreamTaskException("Could not instantiate state key serializer from task config.", e);
+		}
+	}
 
 	// ------------------------------------------------------------------------
 	//  Miscellaneous

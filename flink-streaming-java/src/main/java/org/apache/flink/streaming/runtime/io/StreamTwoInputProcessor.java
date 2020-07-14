@@ -31,6 +31,7 @@ import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.runtime.streamstatus.MultipleInputStatusMaintainer;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
@@ -66,14 +67,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 	/** Input status to keep track for determining whether the input is finished or not. */
 	private InputStatus firstInputStatus = InputStatus.MORE_AVAILABLE;
 	private InputStatus secondInputStatus = InputStatus.MORE_AVAILABLE;
-
-	/**
-	 * Stream status for the two inputs. We need to keep track for determining when
-	 * to forward stream status changes downstream.
-	 */
-	private StreamStatus firstStatus = StreamStatus.ACTIVE;
-	private StreamStatus secondStatus = StreamStatus.ACTIVE;
-
 	/** Always try to read from the first input. */
 	private int lastReadInputIndex = 1;
 
@@ -94,18 +87,21 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 		this.inputSelectionHandler = checkNotNull(inputSelectionHandler);
 
-		this.output1 = new StreamTaskNetworkOutput<>(
+		MultipleInputStatusMaintainer streamStatus = new MultipleInputStatusMaintainer(2, streamStatusMaintainer);
+		this.output1 = createDataOutput(
+			streamStatus.getMaintainerForInput(0),
 			streamOperator,
-			record -> processRecord1(record, streamOperator, numRecordsIn),
-			streamStatusMaintainer,
 			input1WatermarkGauge,
-			0);
-		this.output2 = new StreamTaskNetworkOutput<>(
+			record -> processRecord1(record, streamOperator, numRecordsIn),
+			0
+		);
+		this.output2 = createDataOutput(
+			streamStatus.getMaintainerForInput(1),
 			streamOperator,
-			record -> processRecord2(record, streamOperator, numRecordsIn),
-			streamStatusMaintainer,
 			input2WatermarkGauge,
-			1);
+			record -> processRecord2(record, streamOperator, numRecordsIn),
+			1
+		);
 
 		this.input1 = new StreamTaskNetworkInput<>(
 			checkpointedInputGates[0],
@@ -121,6 +117,20 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 			1);
 
 		this.operatorChain = checkNotNull(operatorChain);
+	}
+
+	private <IN> StreamTaskNetworkOutput<IN> createDataOutput(
+			StreamStatusMaintainer streamStatusMaintainer,
+			TwoInputStreamOperator<IN1, IN2, ?> streamOperator,
+			WatermarkGauge input1WatermarkGauge,
+			ThrowingConsumer<StreamRecord<IN>, Exception> recordConsumer,
+			int inputIndex) {
+		return new StreamTaskNetworkOutput<>(
+			streamOperator,
+			recordConsumer,
+			streamStatusMaintainer,
+			input1WatermarkGauge,
+			inputIndex);
 	}
 
 	private void processRecord1(
@@ -371,29 +381,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 				operator.processWatermark1(watermark);
 			} else {
 				operator.processWatermark2(watermark);
-			}
-		}
-
-		@Override
-		public void emitStreamStatus(StreamStatus streamStatus) {
-			final StreamStatus anotherStreamStatus;
-			if (inputIndex == 0) {
-				firstStatus = streamStatus;
-				anotherStreamStatus = secondStatus;
-			} else {
-				secondStatus = streamStatus;
-				anotherStreamStatus = firstStatus;
-			}
-
-			// check if we need to toggle the task's stream status
-			if (!streamStatus.equals(streamStatusMaintainer.getStreamStatus())) {
-				if (streamStatus.isActive()) {
-					// we're no longer idle if at least one input has become active
-					streamStatusMaintainer.toggleStreamStatus(StreamStatus.ACTIVE);
-				} else if (anotherStreamStatus.isIdle()) {
-					// we're idle once both inputs are idle
-					streamStatusMaintainer.toggleStreamStatus(StreamStatus.IDLE);
-				}
 			}
 		}
 

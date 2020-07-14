@@ -20,7 +20,12 @@ package org.apache.flink.streaming.api.graph;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.cache.DistributedCache;
+import org.apache.flink.api.common.typeinfo.AtomicType;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -54,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -653,8 +659,10 @@ public class StreamGraphGenerator {
 		}
 
 		if (sink.getStateKeySelector() != null) {
-			TypeSerializer<?> keySerializer = sink.getStateKeyType().createSerializer(executionConfig);
-			streamGraph.setOneInputStateKey(sink.getId(), sink.getStateKeySelector(), keySerializer);
+			TypeInformation<?> stateKeyType = sink.getStateKeyType();
+			TypeSerializer<?> keySerializer = stateKeyType.createSerializer(executionConfig);
+			TypeComparator<?> keyComparator = getTypeComparator(executionConfig, stateKeyType);
+			streamGraph.setOneInputStateKey(sink.getId(), sink.getStateKeySelector(), keySerializer, keyComparator);
 		}
 
 		return Collections.emptyList();
@@ -686,8 +694,14 @@ public class StreamGraphGenerator {
 				transform.getName());
 
 		if (transform.getStateKeySelector() != null) {
-			TypeSerializer<?> keySerializer = transform.getStateKeyType().createSerializer(executionConfig);
-			streamGraph.setOneInputStateKey(transform.getId(), transform.getStateKeySelector(), keySerializer);
+			TypeInformation<?> stateKeyType = transform.getStateKeyType();
+			TypeSerializer<?> keySerializer = stateKeyType.createSerializer(executionConfig);
+			TypeComparator<?> keyComparator = getTypeComparator(executionConfig, stateKeyType);
+			streamGraph.setOneInputStateKey(
+				transform.getId(),
+				transform.getStateKeySelector(),
+				keySerializer,
+				keyComparator);
 		}
 
 		int parallelism = transform.getParallelism() != ExecutionConfig.PARALLELISM_DEFAULT ?
@@ -700,6 +714,22 @@ public class StreamGraphGenerator {
 		}
 
 		return Collections.singleton(transform.getId());
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> TypeComparator<T> getTypeComparator(ExecutionConfig executionConfig, TypeInformation<T> keyType) {
+		if (keyType instanceof CompositeType) {
+			CompositeType<T> compositeType = (CompositeType<T>) keyType;
+			int[] inputKeys = new int[compositeType.getTotalFields()];
+			boolean[] sortOrder = new boolean[compositeType.getTotalFields()];
+			Arrays.fill(inputKeys, 1);
+			Arrays.fill(sortOrder, true);
+			return compositeType.createComparator(inputKeys, sortOrder, 0, executionConfig);
+		} else if (keyType instanceof AtomicType) {
+			return ((AtomicType<T>) keyType).createComparator(true, executionConfig);
+		}
+
+		throw new InvalidProgramException("Input type of coGroup must be one of composite types or atomic types.");
 	}
 
 	/**
@@ -797,7 +827,7 @@ public class StreamGraphGenerator {
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
 
 		if (transform instanceof KeyedMultipleInputTransformation) {
-			KeyedMultipleInputTransformation keyedTransform = (KeyedMultipleInputTransformation) transform;
+			KeyedMultipleInputTransformation<?> keyedTransform = (KeyedMultipleInputTransformation<?>) transform;
 			TypeSerializer<?> keySerializer = keyedTransform.getStateKeyType().createSerializer(executionConfig);
 			streamGraph.setMultipleInputStateKey(transform.getId(), keyedTransform.getStateKeySelectors(), keySerializer);
 		}
