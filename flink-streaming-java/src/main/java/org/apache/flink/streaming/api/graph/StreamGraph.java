@@ -658,10 +658,16 @@ public class StreamGraph implements Pipeline {
 		node.setStateKeyComparator(keyComparator);
 	}
 
-	public void setTwoInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector1, KeySelector<?, ?> keySelector2, TypeSerializer<?> keySerializer) {
+	public void setTwoInputStateKey(
+			Integer vertexID,
+			KeySelector<?, ?> keySelector1,
+			KeySelector<?, ?> keySelector2,
+			TypeSerializer<?> keySerializer,
+			TypeComparator<?> typeComparator) {
 		StreamNode node = getStreamNode(vertexID);
 		node.setStatePartitioners(keySelector1, keySelector2);
 		node.setStateKeySerializer(keySerializer);
+		node.setStateKeyComparator(typeComparator);
 	}
 
 	public void setMultipleInputStateKey(Integer vertexID, List<KeySelector<?, ?>> keySelectors, TypeSerializer<?> keySerializer) {

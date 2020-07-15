@@ -27,7 +27,6 @@ import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.memory.MemoryAllocationException;
-import org.apache.flink.runtime.operators.sort.Sorter;
 import org.apache.flink.runtime.operators.sort.v2.ExternalSorter;
 import org.apache.flink.runtime.operators.sort.v2.PushSorter;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -79,6 +78,7 @@ public class MultipleInputSortingDataOutput<K> {
 						containingTask,
 						streamElementSerializer,
 						elementComparator)
+						.memoryFraction(0.7 / chained.length)
 						.enableSpilling(environment.getIOManager())
 						.build();
 				} catch (MemoryAllocationException e) {
@@ -86,6 +86,10 @@ public class MultipleInputSortingDataOutput<K> {
 				}
 			})
 			.collect(Collectors.toList());
+	}
+
+	public <T> PushingAsyncDataInput.DataOutput<T> getSingleInputOutput(int inputIndex) {
+		return new SingleInputDataOutput<>(inputIndex);
 	}
 
 	@SuppressWarnings("unchecked")

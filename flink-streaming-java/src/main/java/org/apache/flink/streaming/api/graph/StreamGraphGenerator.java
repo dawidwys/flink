@@ -765,8 +765,15 @@ public class StreamGraphGenerator {
 				transform.getName());
 
 		if (transform.getStateKeySelector1() != null || transform.getStateKeySelector2() != null) {
+			TypeInformation<?> stateKeyType = transform.getStateKeyType();
+			TypeComparator<?> keyComparator = getTypeComparator(executionConfig, stateKeyType);
 			TypeSerializer<?> keySerializer = transform.getStateKeyType().createSerializer(executionConfig);
-			streamGraph.setTwoInputStateKey(transform.getId(), transform.getStateKeySelector1(), transform.getStateKeySelector2(), keySerializer);
+			streamGraph.setTwoInputStateKey(
+				transform.getId(),
+				transform.getStateKeySelector1(),
+				transform.getStateKeySelector2(),
+				keySerializer,
+				keyComparator);
 		}
 
 		int parallelism = transform.getParallelism() != ExecutionConfig.PARALLELISM_DEFAULT ?

@@ -19,14 +19,21 @@
 package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
+import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.InputSelection;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
@@ -41,6 +48,7 @@ import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.function.ThrowingConsumer;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -70,8 +78,9 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 	public StreamTwoInputProcessor(
 			CheckpointedInputGate[] checkpointedInputGates,
-			TypeSerializer<IN1> inputSerializer1,
-			TypeSerializer<IN2> inputSerializer2,
+			Environment runtimeEnvironment,
+			StreamConfig configuration,
+			AbstractInvokable containingTask,
 			IOManager ioManager,
 			StreamStatusMaintainer streamStatusMaintainer,
 			TwoInputStreamOperator<IN1, IN2, ?> streamOperator,
@@ -84,20 +93,45 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		this.inputSelectionHandler = checkNotNull(inputSelectionHandler);
 
 		MultipleInputStatusMaintainer streamStatus = new MultipleInputStatusMaintainer(2, streamStatusMaintainer);
-		StreamTaskNetworkOutput<IN1> dataOutput1 = createDataOutput(
+		DataOutput<IN1> dataOutput1 = createDataOutput(
 			streamStatus.getMaintainerForInput(0),
 			streamOperator,
 			input1WatermarkGauge,
 			record -> processRecord1(record, streamOperator, numRecordsIn),
 			0
 		);
-		StreamTaskNetworkOutput<IN2> dataOutput2 = createDataOutput(
+		DataOutput<IN2> dataOutput2 = createDataOutput(
 			streamStatus.getMaintainerForInput(1),
 			streamOperator,
 			input2WatermarkGauge,
 			record -> processRecord2(record, streamOperator, numRecordsIn),
 			1
 		);
+
+		ClassLoader userClassLoader = runtimeEnvironment.getUserClassLoader();
+		TypeSerializer<IN1> inputSerializer1 = configuration.getTypeSerializerIn1(userClassLoader);
+		TypeSerializer<IN2> inputSerializer2 = configuration.getTypeSerializerIn2(userClassLoader);
+		StreamEdge streamEdge1 = configuration.getInPhysicalEdges(userClassLoader).get(0);
+		StreamEdge streamEdge2 = configuration.getInPhysicalEdges(userClassLoader).get(1);
+		KeySelector<?, Serializable> keySelector1 = configuration.getStatePartitioner(0, userClassLoader);
+		KeySelector<?, Serializable> keySelector2 = configuration.getStatePartitioner(1, userClassLoader);
+		TypeComparator<Object> keyComparator = configuration.getStateKeyComparator(userClassLoader);
+		boolean sortInput1 =
+			keyComparator != null && keySelector1 != null && streamEdge1.getShuffleMode() == ShuffleMode.BATCH;
+		boolean sortInput2 =
+			keyComparator != null && keySelector2 != null && streamEdge2.getShuffleMode() == ShuffleMode.BATCH;
+		if (sortInput1 && sortInput2) {
+			MultipleInputSortingDataOutput<Object> combinedOutput = new MultipleInputSortingDataOutput<Object>(
+				new DataOutput[]{dataOutput1, dataOutput2},
+				runtimeEnvironment,
+				new TypeSerializer[]{inputSerializer1, inputSerializer2},
+				new KeySelector[]{keySelector1, keySelector2},
+				keyComparator,
+				containingTask
+			);
+			dataOutput1 = combinedOutput.getSingleInputOutput(0);
+			dataOutput2 = combinedOutput.getSingleInputOutput(1);
+		}
 
 		this.input1Binding =
 			new InputOutputBinding<>(
@@ -357,7 +391,11 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		}
 
 		public InputStatus processInput() throws Exception {
-			return input.emitNext(output);
+			InputStatus inputStatus = input.emitNext(output);
+			if (inputStatus == InputStatus.END_OF_INPUT) {
+				output.endOutput();
+			}
+			return inputStatus;
 		}
 
 		public int getInputIndex() {

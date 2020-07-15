@@ -21,30 +21,36 @@ package org.apache.flink.streaming.api;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.base.CharSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
-import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.runtime.jobgraph.ScheduleMode;
-import org.apache.flink.runtime.minicluster.MiniCluster;
-import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
+import org.apache.flink.runtime.testutils.MiniClusterResource;
+import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.RemoteStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
+import org.apache.flink.streaming.api.functions.co.KeyedCoProcessFunction;
 import org.apache.flink.streaming.api.graph.StreamGraph;
-import org.apache.flink.streaming.api.graph.StreamingJobGraphGenerator;
 import org.apache.flink.util.Collector;
 
+import org.junit.ClassRule;
 import org.junit.Test;
 
-public class BatchExecutionITCase {
-	@Test
-	public void testBlockingShuffleScheduling() throws Exception {
-		final JobGraph jobGraph = getJobGraphUnderTest();
-		runHandleJobsWhenNotEnoughSlots(jobGraph);
-	}
+import java.net.URI;
 
-	private JobGraph getJobGraphUnderTest() {
+public class BatchExecutionITCase {
+	@ClassRule
+	public static MiniClusterResource cluster = new MiniClusterResource(
+		getClusterConfiguration()
+	);
+
+	@Test
+	public void singleInputTest() throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.disableOperatorChaining();
 		env.setParallelism(2);
@@ -56,57 +62,94 @@ public class BatchExecutionITCase {
 			)
 			.slotSharingGroup("group1")
 			.keyBy(value -> ((int) value) % 2 + 1)
-			.process(new TestStatefulKeyedProcessFunction())
+			.process(new TestKeyedProcessFunction())
 			.print()//.addSink(new DiscardingSink<>())
 			.slotSharingGroup("group2");
-		final StreamGraph streamGraph = env.getStreamGraph();
-		streamGraph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
-		final JobGraph jobGraph = StreamingJobGraphGenerator.createJobGraph(streamGraph);
-//		for (JobVertex jobVertex : jobGraph.getVerticesSortedTopologicallyFromSources()) {
-//			for (IntermediateDataSet interm : jobVertex.getProducedDataSets()) {
-//				assertEquals(ResultPartitionType.BLOCKING, interm.getResultType());
-//			}
-//		}
-		return jobGraph;
+
+		execute(env);
 	}
 
-	private static class TestStatefulKeyedProcessFunction extends KeyedProcessFunction<Integer, Character, String> {
-		private ValueState<Character> state;
+	@Test
+	public void multipleInputTest() throws Exception {
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		env.disableOperatorChaining();
+		env.setParallelism(2);
+		env.setMaxParallelism(2);
+		SingleOutputStreamOperator<Character> input1 = env.fromElements(
+			'd',
+			'u',
+			'f',
+			'c',
+			'a',
+			'b')
+			.assignTimestampsAndWatermarks(
+				WatermarkStrategy.<Character>noWatermarks()
+					.withTimestampAssigner((element, recordTimestamp) -> (long) element)
+			);
 
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			state = getRuntimeContext().getState(new ValueStateDescriptor<>("test-state", CharSerializer.INSTANCE));
-		}
+		SingleOutputStreamOperator<Character> input2 = env.fromElements(
+			'd',
+			'u',
+			'f',
+			'c',
+			'a',
+			'b')
+			.assignTimestampsAndWatermarks(
+				WatermarkStrategy.<Character>noWatermarks()
+					.withTimestampAssigner((element, recordTimestamp) -> (long) element - 1)
+			);
 
+			input1.connect(input2)
+				.keyBy(
+					value -> ((int) value) % 2 + 1,
+					value -> ((int) value) % 2 + 1,
+					TypeInformation.of(Integer.class))
+			.process(new TestKeyedCoProcessFunction())
+			.print()//.addSink(new DiscardingSink<>())
+			.slotSharingGroup("group2");
+
+		execute(env);
+	}
+
+	private void execute(StreamExecutionEnvironment env) throws JobExecutionException, InterruptedException {
+		StreamGraph streamGraph = env.getStreamGraph();
+		streamGraph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
+		cluster.getMiniCluster().executeJobBlocking(streamGraph.getJobGraph());
+	}
+
+	private static class TestKeyedProcessFunction extends KeyedProcessFunction<Integer, Character, String> {
 		@Override
 		public void processElement(Character value, Context ctx, Collector<String> out) throws Exception {
-//			if (value % 2 == 0) {
-//				Character stored = state.value();
-//				state.update(value);
-//				out.collect("" + stored + value);
-//			} else {
-				out.collect("" + value);
-//			}
+			out.collect("" + value);
 		}
 	}
 
-	private void runHandleJobsWhenNotEnoughSlots(final JobGraph jobGraph) throws Exception {
-		final Configuration configuration = getDefaultConfiguration();
-		configuration.setLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT, 100L);
-		final MiniClusterConfiguration cfg = new MiniClusterConfiguration.Builder()
-			.setNumTaskManagers(1)
-			.setNumSlotsPerTaskManager(1)
-			.setConfiguration(configuration)
-			.build();
-		try (final MiniCluster miniCluster = new MiniCluster(cfg)) {
-			miniCluster.start();
-			miniCluster.executeJobBlocking(jobGraph);
+	private static class TestKeyedCoProcessFunction extends KeyedCoProcessFunction<Integer, Character, Character, String> {
+		@Override
+		public void processElement1(
+				Character value,
+				Context ctx,
+				Collector<String> out) throws Exception {
+			out.collect("1>" + value);
+		}
+
+		@Override
+		public void processElement2(
+				Character value,
+				Context ctx,
+				Collector<String> out) throws Exception {
+			out.collect("2>" + value);
 		}
 	}
 
-	private Configuration getDefaultConfiguration() {
+	private static MiniClusterResourceConfiguration getClusterConfiguration() {
 		final Configuration configuration = new Configuration();
 		configuration.setString(RestOptions.BIND_PORT, "0");
-		return configuration;
+		configuration.setLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT, 100L);
+		return new MiniClusterResourceConfiguration.Builder()
+			.setNumberTaskManagers(1)
+			.setNumberSlotsPerTaskManager(8)
+			.setConfiguration(configuration)
+			.build();
 	}
 }

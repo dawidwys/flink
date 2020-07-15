@@ -66,8 +66,9 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends AbstractTwoInputStreamTas
 
 		inputProcessor = new StreamTwoInputProcessor<>(
 			checkpointedInputGates,
-			inputDeserializer1,
-			inputDeserializer2,
+			getEnvironment(),
+			getConfiguration(),
+			this,
 			getEnvironment().getIOManager(),
 			getStreamStatusMaintainer(),
 			headOperator,
