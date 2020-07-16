@@ -24,6 +24,7 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.InputSelection;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -34,7 +35,6 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
-import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.streaming.runtime.tasks.TwoInputStreamTask;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.function.ThrowingConsumer;
@@ -57,9 +57,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 	private final StreamTaskInput<IN1> input1;
 	private final StreamTaskInput<IN2> input2;
-
-	private final OperatorChain<?, ?> operatorChain;
-
 	private final DataOutput<IN1> output1;
 	private final DataOutput<IN2> output2;
 
@@ -89,7 +86,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 			TwoInputSelectionHandler inputSelectionHandler,
 			WatermarkGauge input1WatermarkGauge,
 			WatermarkGauge input2WatermarkGauge,
-			OperatorChain<?, ?> operatorChain,
 			Counter numRecordsIn) {
 
 		this.inputSelectionHandler = checkNotNull(inputSelectionHandler);
@@ -119,8 +115,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 			ioManager,
 			new StatusWatermarkValve(checkpointedInputGates[1].getNumberOfInputChannels(), output2),
 			1);
-
-		this.operatorChain = checkNotNull(operatorChain);
 	}
 
 	private void processRecord1(
@@ -177,10 +171,10 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 		if (readingInputIndex == 0) {
 			firstInputStatus = input1.emitNext(output1);
-			checkFinished(firstInputStatus, lastReadInputIndex);
+			checkFinished(firstInputStatus, output1);
 		} else {
 			secondInputStatus = input2.emitNext(output2);
-			checkFinished(secondInputStatus, lastReadInputIndex);
+			checkFinished(secondInputStatus, output2);
 		}
 
 		return getInputStatus();
@@ -206,10 +200,10 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		return selectNextReadingInputIndex();
 	}
 
-	private void checkFinished(InputStatus status, int inputIndex) throws Exception {
+	private void checkFinished(InputStatus status, DataOutput<?> output) throws Exception {
 		if (status == InputStatus.END_OF_INPUT) {
-			operatorChain.endMainOperatorInput(getInputId(inputIndex));
 			inputSelectionHandler.nextSelection();
+			output.endOutput();
 		}
 	}
 
@@ -325,10 +319,6 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		return inputIndex == 0 ? input1 : input2;
 	}
 
-	private int getInputId(int inputIndex) {
-		return inputIndex + 1;
-	}
-
 	/**
 	 * The network data output implementation used for processing stream elements
 	 * from {@link StreamTaskNetworkInput} in two input selective processor.
@@ -403,6 +393,13 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 				operator.processLatencyMarker1(latencyMarker);
 			} else {
 				operator.processLatencyMarker2(latencyMarker);
+			}
+		}
+
+		@Override
+		public void endOutput() throws Exception {
+			if (operator instanceof BoundedMultiInput) {
+				((BoundedMultiInput) operator).endInput(inputIndex);
 			}
 		}
 	}
