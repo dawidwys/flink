@@ -51,4 +51,6 @@ public interface Input<IN> {
 	void processLatencyMarker(LatencyMarker latencyMarker) throws Exception;
 
 	void setKeyContextElement(StreamRecord<IN> record) throws Exception;
+
+	void endInput() throws Exception;
 }

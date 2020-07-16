@@ -1457,8 +1457,7 @@ public class StreamTaskTest extends TestLogger {
 		@Override
 		public void run(Object lockingObject,
 						StreamStatusMaintainer streamStatusMaintainer,
-						Output<StreamRecord<Long>> collector,
-						OperatorChain<?, ?> operatorChain) throws Exception {
+						Output<StreamRecord<Long>> collector) throws Exception {
 			while (!canceled) {
 				try {
 					Thread.sleep(500);

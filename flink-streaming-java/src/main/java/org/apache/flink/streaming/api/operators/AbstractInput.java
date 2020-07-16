@@ -68,4 +68,13 @@ public abstract class AbstractInput<IN, OUT> implements Input<IN> {
 	public void setKeyContextElement(StreamRecord record) throws Exception {
 		owner.internalSetKeyContextElement(record, stateKeySelector);
 	}
+
+	@Override
+	public void endInput() throws Exception {
+		if (owner instanceof BoundedOneInput && inputId == 1) {
+			((BoundedOneInput) owner).endInput();
+		} else if (owner instanceof BoundedMultiInput) {
+			((BoundedMultiInput) owner).endInput(inputId);
+		}
+	}
 }

@@ -107,7 +107,6 @@ public class MultipleInputStreamTask<OUT> extends StreamTask<OUT, MultipleInputS
 			headOperator,
 			selectionHandler,
 			inputWatermarkGauges,
-			operatorChain,
-			setupNumRecordsInCounter(headOperator));
+				setupNumRecordsInCounter(headOperator));
 	}
 }

@@ -34,7 +34,6 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
-import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.util.ExceptionUtils;
 
 import java.io.Closeable;
@@ -53,9 +52,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 	private final MultipleInputSelectionHandler inputSelectionHandler;
 
 	private final InputProcessor<?>[] inputProcessors;
-
-	private final OperatorChain<?, ?> operatorChain;
-
 	/**
 	 * Stream status for the two inputs. We need to keep track for determining when
 	 * to forward stream status changes downstream.
@@ -77,7 +73,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 			MultipleInputStreamOperator<?> streamOperator,
 			MultipleInputSelectionHandler inputSelectionHandler,
 			WatermarkGauge[] inputWatermarkGauges,
-			OperatorChain<?, ?> operatorChain,
 			Counter numRecordsIn) {
 
 		this.inputSelectionHandler = checkNotNull(inputSelectionHandler);
@@ -106,8 +101,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 					new StatusWatermarkValve(checkpointedInputGates[i].getNumberOfInputChannels(), dataOutput),
 					i));
 		}
-
-		this.operatorChain = checkNotNull(operatorChain);
 	}
 
 	@Override
@@ -140,7 +133,7 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 		lastReadInputIndex = readingInputIndex;
 		InputStatus inputStatus = inputProcessors[readingInputIndex].processInput();
-		checkFinished(inputStatus, readingInputIndex);
+		checkFinished(inputStatus);
 		return inputSelectionHandler.updateStatus(inputStatus, readingInputIndex);
 	}
 
@@ -155,9 +148,8 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		return selectNextReadingInputIndex();
 	}
 
-	private void checkFinished(InputStatus status, int inputIndex) throws Exception {
+	private void checkFinished(InputStatus status) {
 		if (status == InputStatus.END_OF_INPUT) {
-			operatorChain.endHeadOperatorInput(getInputId(inputIndex));
 			inputSelectionHandler.nextSelection();
 		}
 	}
@@ -218,10 +210,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 				inputSelectionHandler.setAvailableInput(i);
 			}
 		}
-	}
-
-	private int getInputId(int inputIndex) {
-		return inputIndex + 1;
 	}
 
 	private boolean allStreamStatusesAreIdle() {
@@ -299,8 +287,6 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 		@Override
 		public void emitStreamStatus(StreamStatus streamStatus) {
-			final StreamStatus anotherStreamStatus;
-
 			streamStatuses[inputIndex] = streamStatus;
 
 			// check if we need to toggle the task's stream status
@@ -317,6 +303,11 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		@Override
 		public void emitLatencyMarker(LatencyMarker latencyMarker) throws Exception {
 			input.processLatencyMarker(latencyMarker);
+		}
+
+		@Override
+		public void endOutput() throws Exception {
+			input.endInput();
 		}
 	}
 }
