@@ -85,8 +85,9 @@ public class SinkTransformation<T> extends PhysicalTransformation<Object> {
 	}
 
 	@VisibleForTesting
+	@SuppressWarnings("unchecked")
 	public StreamSink<T> getOperator() {
-		return (StreamSink<T>) ((SimpleOperatorFactory) operatorFactory).getOperator();
+		return (StreamSink<T>) ((SimpleOperatorFactory<?>) operatorFactory).getOperator();
 	}
 
 	/**
