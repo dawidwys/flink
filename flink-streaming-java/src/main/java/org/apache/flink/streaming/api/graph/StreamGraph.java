@@ -88,7 +88,7 @@ public class StreamGraph implements Pipeline {
 
 	private final ExecutionConfig executionConfig;
 	private final CheckpointConfig checkpointConfig;
-	private SavepointRestoreSettings savepointRestoreSettings = SavepointRestoreSettings.none();
+	private SavepointRestoreSettings savepointRestoreSettings;
 
 	private ScheduleMode scheduleMode;
 
@@ -107,7 +107,7 @@ public class StreamGraph implements Pipeline {
 	private Set<Integer> sources;
 	private Set<Integer> sinks;
 	private Map<Integer, Tuple2<Integer, List<String>>> virtualSelectNodes;
-	private Map<Integer, Tuple2<Integer, OutputTag>> virtualSideOutputNodes;
+	private Map<Integer, Tuple2<Integer, OutputTag<?>>> virtualSideOutputNodes;
 	private Map<Integer, Tuple3<Integer, StreamPartitioner<?>, ShuffleMode>> virtualPartitionNodes;
 
 	protected Map<Integer, String> vertexIDtoBrokerID;
@@ -115,7 +115,10 @@ public class StreamGraph implements Pipeline {
 	private StateBackend stateBackend;
 	private Set<Tuple2<StreamNode, StreamNode>> iterationSourceSinkPairs;
 
-	public StreamGraph(ExecutionConfig executionConfig, CheckpointConfig checkpointConfig, SavepointRestoreSettings savepointRestoreSettings) {
+	public StreamGraph(
+			ExecutionConfig executionConfig,
+			CheckpointConfig checkpointConfig,
+			SavepointRestoreSettings savepointRestoreSettings) {
 		this.executionConfig = checkNotNull(executionConfig);
 		this.checkpointConfig = checkNotNull(checkpointConfig);
 		this.savepointRestoreSettings = checkNotNull(savepointRestoreSettings);
@@ -392,7 +395,7 @@ public class StreamGraph implements Pipeline {
 				coLocationGroup,
 				operatorFactory,
 				operatorName,
-				new ArrayList<OutputSelector<?>>(),
+				new ArrayList<>(),
 				vertexClass);
 
 		streamNodes.put(vertexID, vertex);
@@ -418,7 +421,7 @@ public class StreamGraph implements Pipeline {
 		}
 
 		virtualSelectNodes.put(virtualId,
-				new Tuple2<Integer, List<String>>(originalId, selectedNames));
+			new Tuple2<>(originalId, selectedNames));
 	}
 
 	/**
@@ -429,7 +432,7 @@ public class StreamGraph implements Pipeline {
 	 * @param virtualId ID of the virtual node.
 	 * @param outputTag The selected side-output {@code OutputTag}.
 	 */
-	public void addVirtualSideOutputNode(Integer originalId, Integer virtualId, OutputTag outputTag) {
+	public void addVirtualSideOutputNode(Integer originalId, Integer virtualId, OutputTag<?> outputTag) {
 
 		if (virtualSideOutputNodes.containsKey(virtualId)) {
 			throw new IllegalStateException("Already has virtual output node with id " + virtualId);
@@ -440,7 +443,7 @@ public class StreamGraph implements Pipeline {
 		// to read a side output from an operation with a different type for the same side output
 		// id.
 
-		for (Tuple2<Integer, OutputTag> tag : virtualSideOutputNodes.values()) {
+		for (Tuple2<Integer, OutputTag<?>> tag : virtualSideOutputNodes.values()) {
 			if (!tag.f0.equals(originalId)) {
 				// different source operator
 				continue;
@@ -454,7 +457,7 @@ public class StreamGraph implements Pipeline {
 			}
 		}
 
-		virtualSideOutputNodes.put(virtualId, new Tuple2<>(originalId, outputTag));
+		virtualSideOutputNodes.put(virtualId, Tuple2.of(originalId, outputTag));
 	}
 
 	/**
@@ -505,7 +508,7 @@ public class StreamGraph implements Pipeline {
 				downStreamVertexID,
 				typeNumber,
 				null,
-				new ArrayList<String>(),
+				new ArrayList<>(),
 				null,
 				null);
 
@@ -516,7 +519,7 @@ public class StreamGraph implements Pipeline {
 			int typeNumber,
 			StreamPartitioner<?> partitioner,
 			List<String> outputNames,
-			OutputTag outputTag,
+			OutputTag<?> outputTag,
 			ShuffleMode shuffleMode) {
 
 		if (virtualSideOutputNodes.containsKey(upStreamVertexID)) {
@@ -549,9 +552,9 @@ public class StreamGraph implements Pipeline {
 			// If no partitioner was specified and the parallelism of upstream and downstream
 			// operator matches use forward partitioning, use rebalance otherwise.
 			if (partitioner == null && upstreamNode.getParallelism() == downstreamNode.getParallelism()) {
-				partitioner = new ForwardPartitioner<Object>();
+				partitioner = new ForwardPartitioner<>();
 			} else if (partitioner == null) {
-				partitioner = new RebalancePartitioner<Object>();
+				partitioner = new RebalancePartitioner<>();
 			}
 
 			if (partitioner instanceof ForwardPartitioner) {
@@ -586,7 +589,6 @@ public class StreamGraph implements Pipeline {
 				LOG.debug("Outputselector set for {}", vertexID);
 			}
 		}
-
 	}
 
 	public void setParallelism(Integer vertexID, int parallelism) {
@@ -627,7 +629,7 @@ public class StreamGraph implements Pipeline {
 
 	public void setMultipleInputStateKey(Integer vertexID, List<KeySelector<?, ?>> keySelectors, TypeSerializer<?> keySerializer) {
 		StreamNode node = getStreamNode(vertexID);
-		node.setStatePartitioners(keySelectors.stream().toArray(KeySelector[]::new));
+		node.setStatePartitioners(keySelectors.toArray(new KeySelector[0]));
 		node.setStateKeySerializer(keySerializer);
 	}
 
@@ -655,18 +657,6 @@ public class StreamGraph implements Pipeline {
 				.map(typeInfo -> typeInfo.createSerializer(executionConfig))
 				.toArray(TypeSerializer[]::new));
 		vertex.setSerializerOut(out);
-	}
-
-	public void setSerializersFrom(Integer from, Integer to) {
-		StreamNode fromVertex = getStreamNode(from);
-		StreamNode toVertex = getStreamNode(to);
-
-		toVertex.setSerializersIn(fromVertex.getTypeSerializerOut());
-		toVertex.setSerializerOut(fromVertex.getTypeSerializerIn(0));
-	}
-
-	public <OUT> void setOutType(Integer vertexID, TypeInformation<OUT> outType) {
-		getStreamNode(vertexID).setSerializerOut(outType.createSerializer(executionConfig));
 	}
 
 	public void setInputFormat(Integer vertexID, InputFormat<?, ?> inputFormat) {
@@ -736,14 +726,6 @@ public class StreamGraph implements Pipeline {
 
 	public Collection<StreamNode> getStreamNodes() {
 		return streamNodes.values();
-	}
-
-	public Set<Tuple2<Integer, StreamOperatorFactory<?>>> getAllOperatorFactory() {
-		Set<Tuple2<Integer, StreamOperatorFactory<?>>> operatorSet = new HashSet<>();
-		for (StreamNode vertex : streamNodes.values()) {
-			operatorSet.add(new Tuple2<>(vertex.getId(), vertex.getOperatorFactory()));
-		}
-		return operatorSet;
 	}
 
 	public String getBrokerID(Integer vertexID) {
@@ -817,23 +799,6 @@ public class StreamGraph implements Pipeline {
 
 	public StreamNode getTargetVertex(StreamEdge edge) {
 		return streamNodes.get(edge.getTargetId());
-	}
-
-	private void removeEdge(StreamEdge edge) {
-		getSourceVertex(edge).getOutEdges().remove(edge);
-		getTargetVertex(edge).getInEdges().remove(edge);
-	}
-
-	private void removeVertex(StreamNode toRemove) {
-		Set<StreamEdge> edgesToRemove = new HashSet<>();
-
-		edgesToRemove.addAll(toRemove.getInEdges());
-		edgesToRemove.addAll(toRemove.getOutEdges());
-
-		for (StreamEdge edge : edgesToRemove) {
-			removeEdge(edge);
-		}
-		streamNodes.remove(toRemove.getId());
 	}
 
 	/**
