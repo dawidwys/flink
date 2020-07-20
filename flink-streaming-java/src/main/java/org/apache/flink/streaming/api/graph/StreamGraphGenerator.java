@@ -203,7 +203,7 @@ public class StreamGraphGenerator {
 
 		alreadyTransformed = new HashMap<>();
 
-		for (Transformation<?> transformation: transformations) {
+		for (Transformation<?> transformation : transformations) {
 			transform(transformation);
 		}
 
@@ -389,11 +389,10 @@ public class StreamGraphGenerator {
 		}
 
 		Transformation<T> input = iterate.getInput();
-		List<Integer> resultIds = new ArrayList<>();
 
 		// first transform the input stream(s) and store the result IDs
 		Collection<Integer> inputIds = transform(input);
-		resultIds.addAll(inputIds);
+		List<Integer> resultIds = new ArrayList<>(inputIds);
 
 		// the recursive transform might have already transformed this
 		if (alreadyTransformed.containsKey(iterate)) {
@@ -576,9 +575,9 @@ public class StreamGraphGenerator {
 				null,
 				"Sink: " + sink.getName());
 
-		StreamOperatorFactory operatorFactory = sink.getOperatorFactory();
+		StreamOperatorFactory<?> operatorFactory = sink.getOperatorFactory();
 		if (operatorFactory instanceof OutputFormatOperatorFactory) {
-			streamGraph.setOutputFormat(sink.getId(), ((OutputFormatOperatorFactory) operatorFactory).getOutputFormat());
+			streamGraph.setOutputFormat(sink.getId(), ((OutputFormatOperatorFactory<?>) operatorFactory).getOutputFormat());
 		}
 
 		int parallelism = sink.getParallelism() != ExecutionConfig.PARALLELISM_DEFAULT ?
@@ -738,7 +737,7 @@ public class StreamGraphGenerator {
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
 
 		if (transform instanceof KeyedMultipleInputTransformation) {
-			KeyedMultipleInputTransformation keyedTransform = (KeyedMultipleInputTransformation) transform;
+			KeyedMultipleInputTransformation<?> keyedTransform = (KeyedMultipleInputTransformation<?>) transform;
 			TypeSerializer<?> keySerializer = keyedTransform.getStateKeyType().createSerializer(executionConfig);
 			streamGraph.setMultipleInputStateKey(transform.getId(), keyedTransform.getStateKeySelectors(), keySerializer);
 		}
