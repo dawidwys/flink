@@ -29,6 +29,7 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 
 import java.util.Collections;
@@ -131,7 +132,8 @@ public class StreamConfigChainer<OWNER> {
 				0,
 				Collections.<String>emptyList(),
 				null,
-				null)));
+				null,
+				ShuffleMode.PIPELINED)));
 		tailConfig = new StreamConfig(new Configuration());
 		tailConfig.setStreamOperatorFactory(checkNotNull(operatorFactory));
 		tailConfig.setOperatorID(checkNotNull(operatorID));
@@ -158,7 +160,8 @@ public class StreamConfigChainer<OWNER> {
 				0,
 				Collections.<String>emptyList(),
 				new BroadcastPartitioner<Object>(),
-				null));
+				null,
+				ShuffleMode.PIPELINED));
 
 		tailConfig.setChainEnd();
 		tailConfig.setOutputSelectors(Collections.emptyList());

@@ -563,8 +563,8 @@ public class StreamingJobGraphGenerator {
 				resultPartitionType = ResultPartitionType.BLOCKING;
 				break;
 			case UNDEFINED:
-				resultPartitionType = determineResultPartitionType(partitioner);
-				break;
+				throw new IllegalStateException(
+					"Undefined shuffle mode should've been resolved when constructing StreamGraph.");
 			default:
 				throw new UnsupportedOperationException("Data exchange mode " +
 					edge.getShuffleMode() + " is not supported yet.");
@@ -593,29 +593,6 @@ public class StreamingJobGraphGenerator {
 
 	private static boolean isPointwisePartitioner(StreamPartitioner<?> partitioner) {
 		return partitioner instanceof ForwardPartitioner || partitioner instanceof RescalePartitioner;
-	}
-
-	private ResultPartitionType determineResultPartitionType(StreamPartitioner<?> partitioner) {
-		switch (streamGraph.getGlobalDataExchangeMode()) {
-			case ALL_EDGES_BLOCKING:
-				return ResultPartitionType.BLOCKING;
-			case FORWARD_EDGES_PIPELINED:
-				if (partitioner instanceof ForwardPartitioner) {
-					return ResultPartitionType.PIPELINED_BOUNDED;
-				} else {
-					return ResultPartitionType.BLOCKING;
-				}
-			case POINTWISE_EDGES_PIPELINED:
-				if (isPointwisePartitioner(partitioner)) {
-					return ResultPartitionType.PIPELINED_BOUNDED;
-				} else {
-					return ResultPartitionType.BLOCKING;
-				}
-			case ALL_EDGES_PIPELINED:
-				return ResultPartitionType.PIPELINED_BOUNDED;
-			default:
-				throw new RuntimeException("Unrecognized global data exchange mode " + streamGraph.getGlobalDataExchangeMode());
-		}
 	}
 
 	public static boolean isChainable(StreamEdge edge, StreamGraph streamGraph) {

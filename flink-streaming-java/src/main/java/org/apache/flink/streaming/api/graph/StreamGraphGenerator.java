@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
@@ -98,8 +99,6 @@ public class StreamGraphGenerator {
 
 	public static final int DEFAULT_LOWER_BOUND_MAX_PARALLELISM = KeyGroupRangeAssignment.DEFAULT_LOWER_BOUND_MAX_PARALLELISM;
 
-	public static final ScheduleMode DEFAULT_SCHEDULE_MODE = ScheduleMode.EAGER;
-
 	public static final TimeCharacteristic DEFAULT_TIME_CHARACTERISTIC = TimeCharacteristic.ProcessingTime;
 
 	public static final String DEFAULT_JOB_NAME = "Flink Streaming Job";
@@ -121,7 +120,7 @@ public class StreamGraphGenerator {
 
 	private boolean chaining = true;
 
-	private ScheduleMode scheduleMode = DEFAULT_SCHEDULE_MODE;
+	private ScheduleMode scheduleMode = null;
 
 	private Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts;
 
@@ -131,7 +130,7 @@ public class StreamGraphGenerator {
 
 	private String jobName = DEFAULT_JOB_NAME;
 
-	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
+	private GlobalDataExchangeMode globalDataExchangeMode = null;
 
 	private boolean allVerticesInSameSlotSharingGroup = true;
 
@@ -194,7 +193,7 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraphGenerator setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
-		this.globalDataExchangeMode = globalDataExchangeMode;
+		this.globalDataExchangeMode = checkNotNull(globalDataExchangeMode);
 		return this;
 	}
 
@@ -209,14 +208,19 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraph generate() {
-		streamGraph = new StreamGraph(executionConfig, checkpointConfig, savepointRestoreSettings);
+		GlobalDataExchangeMode finalDataExchangeMode = determineGlobalDataExchangeMode();
+		ScheduleMode finalScheduleMode = determineScheduleMode(finalDataExchangeMode);
+		streamGraph = new StreamGraph(
+			executionConfig,
+			checkpointConfig,
+			savepointRestoreSettings,
+			finalDataExchangeMode);
 		streamGraph.setStateBackend(stateBackend);
 		streamGraph.setChaining(chaining);
-		streamGraph.setScheduleMode(scheduleMode);
+		streamGraph.setScheduleMode(finalScheduleMode);
 		streamGraph.setUserArtifacts(userArtifacts);
 		streamGraph.setTimeCharacteristic(timeCharacteristic);
 		streamGraph.setJobName(jobName);
-		streamGraph.setGlobalDataExchangeMode(globalDataExchangeMode);
 		streamGraph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
 
 		alreadyTransformed = new HashMap<>();
@@ -232,6 +236,42 @@ public class StreamGraphGenerator {
 		streamGraph = null;
 
 		return builtStreamGraph;
+	}
+
+	private ScheduleMode determineScheduleMode(GlobalDataExchangeMode exchangeMode) {
+		if (scheduleMode != null) {
+			return scheduleMode;
+		}
+
+		if (exchangeMode == GlobalDataExchangeMode.ALL_EDGES_PIPELINED) {
+			return ScheduleMode.EAGER;
+		} else {
+			return ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST;
+		}
+	}
+
+	private GlobalDataExchangeMode determineGlobalDataExchangeMode() {
+		if (globalDataExchangeMode != null) {
+			return globalDataExchangeMode;
+		}
+
+		boolean continousSourceExists = transformations.stream()
+			.anyMatch(transformation -> isContinuousSource(transformation) ||
+				transformation.getTransitivePredecessors().stream().anyMatch(this::isContinuousSource));
+
+		if (continousSourceExists) {
+			return GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
+		} else {
+			return GlobalDataExchangeMode.POINTWISE_EDGES_PIPELINED;
+		}
+	}
+
+	private boolean isContinuousSource(Transformation<?> transformation) {
+		boolean isLegacy = transformation instanceof LegacySourceTransformation;
+		boolean isContinous = transformation instanceof SourceTransformation &&
+			((SourceTransformation<?>) transformation).getOperatorFactory().getBoundedness() ==
+				Boundedness.CONTINUOUS_UNBOUNDED;
+		return isLegacy || isContinous;
 	}
 
 	/**

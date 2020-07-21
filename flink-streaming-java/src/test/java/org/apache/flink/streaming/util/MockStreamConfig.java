@@ -25,6 +25,7 @@ import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.graph.StreamNode;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.streaming.runtime.tasks.SourceStreamTask;
 
@@ -58,7 +59,14 @@ public class MockStreamConfig extends StreamConfig {
 		List<StreamEdge> outEdgesInOrder = new ArrayList<>(numberOfOutputs);
 		for (int i = 0; i < numberOfOutputs; i++) {
 			outEdgesInOrder.add(
-				new StreamEdge(sourceVertex, targetVertex, numberOfOutputs, new ArrayList<>(), new BroadcastPartitioner<>(), null));
+				new StreamEdge(
+					sourceVertex,
+					targetVertex,
+					numberOfOutputs,
+					new ArrayList<>(),
+					new BroadcastPartitioner<>(),
+					null,
+					ShuffleMode.PIPELINED));
 		}
 		setOutEdgesInOrder(outEdgesInOrder);
 		setNonChainedOutputs(outEdgesInOrder);

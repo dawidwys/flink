@@ -26,7 +26,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
+import static org.apache.flink.util.Preconditions.checkArgument;
 
 /**
  * An edge in the streaming topology. One edge like this does not necessarily
@@ -76,19 +76,13 @@ public class StreamEdge implements Serializable {
 
 	private final ShuffleMode shuffleMode;
 
-	public StreamEdge(StreamNode sourceVertex, StreamNode targetVertex, int typeNumber,
-			List<String> selectedNames, StreamPartitioner<?> outputPartitioner, OutputTag<?> outputTag) {
-		this(sourceVertex,
-				targetVertex,
-				typeNumber,
-				selectedNames,
-				outputPartitioner,
-				outputTag,
-				ShuffleMode.UNDEFINED);
-	}
-
-	public StreamEdge(StreamNode sourceVertex, StreamNode targetVertex, int typeNumber,
-			List<String> selectedNames, StreamPartitioner<?> outputPartitioner, OutputTag<?> outputTag,
+	public StreamEdge(
+			StreamNode sourceVertex,
+			StreamNode targetVertex,
+			int typeNumber,
+			List<String> selectedNames,
+			StreamPartitioner<?> outputPartitioner,
+			OutputTag<?> outputTag,
 			ShuffleMode shuffleMode) {
 		this.sourceId = sourceVertex.getId();
 		this.targetId = targetVertex.getId();
@@ -98,10 +92,11 @@ public class StreamEdge implements Serializable {
 		this.outputTag = outputTag;
 		this.sourceOperatorName = sourceVertex.getOperatorName();
 		this.targetOperatorName = targetVertex.getOperatorName();
-		this.shuffleMode = checkNotNull(shuffleMode);
+		checkArgument(shuffleMode != null && shuffleMode != ShuffleMode.UNDEFINED);
+		this.shuffleMode = shuffleMode;
 
 		this.edgeId = sourceVertex + "_" + targetVertex + "_" + typeNumber + "_" + selectedNames
-				+ "_" + outputPartitioner;
+			+ "_" + outputPartitioner;
 	}
 
 	public int getSourceId() {

@@ -57,6 +57,7 @@ import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamMap;
 import org.apache.flink.streaming.api.operators.StreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
@@ -870,8 +871,8 @@ public class OneInputStreamTaskTest extends TestLogger {
 				0,
 				Collections.emptyList(),
 				null,
-				null
-			);
+				null,
+				ShuffleMode.PIPELINED);
 
 			outputEdges.add(outputEdge);
 		}

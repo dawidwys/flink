@@ -27,6 +27,7 @@ import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.graph.StreamNode;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.util.function.FunctionWithException;
 
@@ -94,7 +95,8 @@ public class MultipleInputStreamTaskTestHarnessBuilder<OUT> extends StreamTaskMa
 				i + 1,
 				new LinkedList<>(),
 				new BroadcastPartitioner<>(),
-				null);
+				null,
+				ShuffleMode.PIPELINED);
 
 			inPhysicalEdges.add(streamEdge);
 			streamMockEnvironment.addInputGate(inputGates[i].getInputGate());

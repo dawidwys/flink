@@ -229,7 +229,8 @@ public class StreamingJobGraphGeneratorTest extends TestLogger {
 		StreamGraph streamGraph = new StreamGraph(
 				new ExecutionConfig(),
 				new CheckpointConfig(),
-				SavepointRestoreSettings.forPath("hello"));
+				SavepointRestoreSettings.forPath("hello"),
+				GlobalDataExchangeMode.ALL_EDGES_PIPELINED);
 
 		JobGraph jobGraph = StreamingJobGraphGenerator.createJobGraph(streamGraph);
 
@@ -660,12 +661,12 @@ public class StreamingJobGraphGeneratorTest extends TestLogger {
 	public void testDefaultScheduleMode() {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		// use eager schedule mode by default
+		// use eager schedule mode if there are no unbounded sources
 		StreamGraph streamGraph = new StreamGraphGenerator(Collections.emptyList(),
 			env.getConfig(), env.getCheckpointConfig())
 			.generate();
 		JobGraph jobGraph = StreamingJobGraphGenerator.createJobGraph(streamGraph);
-		assertEquals(ScheduleMode.EAGER, jobGraph.getScheduleMode());
+		assertEquals(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST, jobGraph.getScheduleMode());
 	}
 
 	/**

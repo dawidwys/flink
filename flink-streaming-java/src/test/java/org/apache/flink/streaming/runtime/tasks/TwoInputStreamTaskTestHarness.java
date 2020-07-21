@@ -26,6 +26,7 @@ import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.graph.StreamNode;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.StreamOperator;
+import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.BroadcastPartitioner;
 import org.apache.flink.util.function.FunctionWithException;
 
@@ -123,12 +124,14 @@ public class TwoInputStreamTaskTestHarness<IN1, IN2, OUT> extends StreamTaskTest
 						inputSerializer1,
 						bufferSize);
 
-					StreamEdge streamEdge = new StreamEdge(sourceVertexDummy,
-							targetVertexDummy,
-							1,
-							new LinkedList<>(),
-							new BroadcastPartitioner<>(),
-							null /* output tag */);
+					StreamEdge streamEdge = new StreamEdge(
+						sourceVertexDummy,
+						targetVertexDummy,
+						1,
+						new LinkedList<>(),
+						new BroadcastPartitioner<>(),
+						null,
+						ShuffleMode.PIPELINED);
 
 					inPhysicalEdges.add(streamEdge);
 					break;
@@ -140,12 +143,14 @@ public class TwoInputStreamTaskTestHarness<IN1, IN2, OUT> extends StreamTaskTest
 						inputSerializer2,
 						bufferSize);
 
-					StreamEdge streamEdge = new StreamEdge(sourceVertexDummy,
-							targetVertexDummy,
-							2,
-							new LinkedList<>(),
-							new BroadcastPartitioner<>(),
-							null /* output tag */);
+					StreamEdge streamEdge = new StreamEdge(
+						sourceVertexDummy,
+						targetVertexDummy,
+						2,
+						new LinkedList<>(),
+						new BroadcastPartitioner<>(),
+						null,
+									ShuffleMode.PIPELINED);
 
 					inPhysicalEdges.add(streamEdge);
 					break;

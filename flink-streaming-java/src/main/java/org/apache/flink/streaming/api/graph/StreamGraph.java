@@ -45,6 +45,7 @@ import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.transformations.ShuffleMode;
 import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.RebalancePartitioner;
+import org.apache.flink.streaming.runtime.partitioner.RescalePartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.tasks.MultipleInputStreamTask;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
@@ -88,6 +89,7 @@ public final class StreamGraph implements Pipeline {
 	private final ExecutionConfig executionConfig;
 	private final CheckpointConfig checkpointConfig;
 	private final SavepointRestoreSettings savepointRestoreSettings;
+	private final GlobalDataExchangeMode globalDataExchangeMode;
 
 	private final Map<Integer, StreamNode> streamNodes;
 	private final Set<Integer> sources;
@@ -110,7 +112,6 @@ public final class StreamGraph implements Pipeline {
 
 	private TimeCharacteristic timeCharacteristic;
 
-	private GlobalDataExchangeMode globalDataExchangeMode;
 
 	/** Flag to indicate whether to put all vertices into the same slot sharing group by default. */
 	private boolean allVerticesInSameSlotSharingGroupByDefault;
@@ -120,10 +121,12 @@ public final class StreamGraph implements Pipeline {
 	StreamGraph(
 			ExecutionConfig executionConfig,
 			CheckpointConfig checkpointConfig,
-			SavepointRestoreSettings savepointRestoreSettings) {
+			SavepointRestoreSettings savepointRestoreSettings,
+			GlobalDataExchangeMode globalDataExchangeMode) {
 		this.executionConfig = checkNotNull(executionConfig);
 		this.checkpointConfig = checkNotNull(checkpointConfig);
 		this.savepointRestoreSettings = checkNotNull(savepointRestoreSettings);
+		this.globalDataExchangeMode = checkNotNull(globalDataExchangeMode);
 
 		// create an empty new stream graph.
 		streamNodes = new HashMap<>();
@@ -167,10 +170,6 @@ public final class StreamGraph implements Pipeline {
 
 	public TimeCharacteristic getTimeCharacteristic() {
 		return timeCharacteristic;
-	}
-
-	public GlobalDataExchangeMode getGlobalDataExchangeMode() {
-		return globalDataExchangeMode;
 	}
 
 	// Checkpointing
@@ -277,10 +276,6 @@ public final class StreamGraph implements Pipeline {
 
 	void setTimeCharacteristic(TimeCharacteristic timeCharacteristic) {
 		this.timeCharacteristic = timeCharacteristic;
-	}
-
-	void setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
-		this.globalDataExchangeMode = globalDataExchangeMode;
 	}
 
 	/**
@@ -616,15 +611,50 @@ public final class StreamGraph implements Pipeline {
 				}
 			}
 
-			if (shuffleMode == null) {
-				shuffleMode = ShuffleMode.UNDEFINED;
+			if (shuffleMode == null || shuffleMode == ShuffleMode.UNDEFINED) {
+				shuffleMode = determineShuffleMode(partitioner);
 			}
 
-			StreamEdge edge = new StreamEdge(upstreamNode, downstreamNode, typeNumber, outputNames, partitioner, outputTag, shuffleMode);
+			StreamEdge edge = new StreamEdge(
+				upstreamNode,
+				downstreamNode,
+				typeNumber,
+				outputNames,
+				partitioner,
+				outputTag,
+				shuffleMode);
 
 			getStreamNode(edge.getSourceId()).addOutEdge(edge);
 			getStreamNode(edge.getTargetId()).addInEdge(edge);
 		}
+	}
+
+	private ShuffleMode determineShuffleMode(StreamPartitioner<?> partitioner) {
+		switch (globalDataExchangeMode) {
+			case ALL_EDGES_BLOCKING:
+				return ShuffleMode.BATCH;
+			case FORWARD_EDGES_PIPELINED:
+				if (partitioner instanceof ForwardPartitioner) {
+					return ShuffleMode.PIPELINED;
+				} else {
+					return ShuffleMode.BATCH;
+				}
+			case POINTWISE_EDGES_PIPELINED:
+				if (isPointwisePartitioner(partitioner)) {
+					return ShuffleMode.PIPELINED;
+				} else {
+					return ShuffleMode.BATCH;
+				}
+			case ALL_EDGES_PIPELINED:
+				return ShuffleMode.PIPELINED;
+			default:
+				throw new RuntimeException(
+					"Unrecognized global data exchange mode " + globalDataExchangeMode);
+		}
+	}
+
+	private static boolean isPointwisePartitioner(StreamPartitioner<?> partitioner) {
+		return partitioner instanceof ForwardPartitioner || partitioner instanceof RescalePartitioner;
 	}
 
 	<T> void addOutputSelector(Integer vertexID, OutputSelector<T> outputSelector) {
