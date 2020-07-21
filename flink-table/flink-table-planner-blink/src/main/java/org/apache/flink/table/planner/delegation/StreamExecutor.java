@@ -23,7 +23,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.graph.StreamGraph;
+import org.apache.flink.streaming.api.graph.StreamGraphGenerator;
 import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.delegation.Executor;
 import org.apache.flink.table.planner.utils.ExecutorUtils;
@@ -44,8 +44,11 @@ public class StreamExecutor extends ExecutorBase {
 
 	@Override
 	public Pipeline createPipeline(List<Transformation<?>> transformations, TableConfig tableConfig, String jobName) {
-		StreamGraph streamGraph = ExecutorUtils.generateStreamGraph(getExecutionEnvironment(), transformations);
-		streamGraph.setJobName(getNonEmptyJobName(jobName));
-		return streamGraph;
+		StreamGraphGenerator streamGraphGenerator = ExecutorUtils.initializeGenerator(
+			getExecutionEnvironment(),
+			transformations,
+			false);
+		streamGraphGenerator.setJobName(getNonEmptyJobName(jobName));
+		return streamGraphGenerator.generate();
 	}
 }
