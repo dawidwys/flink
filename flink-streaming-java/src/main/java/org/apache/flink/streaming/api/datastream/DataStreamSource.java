@@ -21,8 +21,10 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.operators.util.OperatorValidationUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
 import org.apache.flink.streaming.api.operators.SourceOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.api.transformations.LegacySourceTransformation;
@@ -47,7 +49,26 @@ public class DataStreamSource<T> extends SingleOutputStreamOperator<T> {
 			StreamSource<T, ?> operator,
 			boolean isParallel,
 			String sourceName) {
-		super(environment, new LegacySourceTransformation<>(sourceName, operator, outTypeInfo, environment.getParallelism()));
+		this(environment, outTypeInfo, operator, isParallel, sourceName, Boundedness.CONTINUOUS_UNBOUNDED);
+	}
+
+	/**
+	 * The constructor used to create legacy sources.
+	 */
+	public DataStreamSource(
+			StreamExecutionEnvironment environment,
+			TypeInformation<T> outTypeInfo,
+			StreamSource<T, ?> operator,
+			boolean isParallel,
+			String sourceName,
+			Boundedness boundedness) {
+		super(
+			environment,
+			new LegacySourceTransformation<>(sourceName,
+				SimpleOperatorFactory.of(operator),
+				outTypeInfo,
+				environment.getParallelism(),
+				boundedness));
 
 		this.isParallel = isParallel;
 		if (!isParallel) {

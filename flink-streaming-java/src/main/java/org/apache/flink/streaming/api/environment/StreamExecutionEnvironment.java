@@ -34,6 +34,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -95,6 +96,8 @@ import org.apache.flink.util.StringUtils;
 import org.apache.flink.util.WrappingRuntimeException;
 
 import com.esotericsoftware.kryo.Serializer;
+
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -974,7 +977,7 @@ public class StreamExecutionEnvironment {
 		catch (IOException e) {
 			throw new RuntimeException(e.getMessage(), e);
 		}
-		return addSource(function, "Collection Source", typeInfo).setParallelism(1);
+		return addSource(function, "Collection Source", typeInfo, Boundedness.BOUNDED).setParallelism(1);
 	}
 
 	/**
@@ -1605,8 +1608,19 @@ public class StreamExecutionEnvironment {
 	 * 		the user defined type information for the stream
 	 * @return the data stream constructed
 	 */
-	public <OUT> DataStreamSource<OUT> addSource(SourceFunction<OUT> function, String sourceName, TypeInformation<OUT> typeInfo) {
+	public <OUT> DataStreamSource<OUT> addSource(
+			SourceFunction<OUT> function,
+			String sourceName,
+			TypeInformation<OUT> typeInfo) {
+		return addSource(function, sourceName, typeInfo, Boundedness.CONTINUOUS_UNBOUNDED);
+	}
 
+	@Nonnull
+	private <OUT> DataStreamSource<OUT> addSource(
+			SourceFunction<OUT> function,
+			String sourceName,
+			TypeInformation<OUT> typeInfo,
+			Boundedness boundedness) {
 		TypeInformation<OUT> resolvedTypeInfo = getTypeInfo(function, sourceName, SourceFunction.class, typeInfo);
 
 		boolean isParallel = function instanceof ParallelSourceFunction;
@@ -1614,7 +1628,7 @@ public class StreamExecutionEnvironment {
 		clean(function);
 
 		final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
-		return new DataStreamSource<>(this, resolvedTypeInfo, sourceOperator, isParallel, sourceName);
+		return new DataStreamSource<>(this, resolvedTypeInfo, sourceOperator, isParallel, sourceName, boundedness);
 	}
 
 	/**

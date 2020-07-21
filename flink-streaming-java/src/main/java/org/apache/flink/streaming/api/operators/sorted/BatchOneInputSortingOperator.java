@@ -41,8 +41,8 @@ import org.apache.flink.util.MutableObjectIterator;
 /**
  * An operator for sorting elements based on their key and timestamp in a BATCH style execution.
  */
-public class BatchOneInputSortingOperator<IN, OUT, K> extends AbstractStreamOperator<OUT>
-		implements OneInputStreamOperator<IN, OUT>, BoundedOneInput {
+public class BatchOneInputSortingOperator<IN, K> extends AbstractStreamOperator<IN>
+		implements OneInputStreamOperator<IN, IN>, BoundedOneInput {
 
 	protected transient PushSorter<StreamElement> sorter;
 	private final TypeComparator<K> keyComparator;
@@ -58,7 +58,7 @@ public class BatchOneInputSortingOperator<IN, OUT, K> extends AbstractStreamOper
 	public void setup(
 				StreamTask<?, ?> containingTask,
 				StreamConfig config,
-				Output<StreamRecord<OUT>> output) {
+				Output<StreamRecord<IN>> output) {
 			super.setup(containingTask, config, output);
 		try {
 			ClassLoader userCodeClassloader = getUserCodeClassloader();

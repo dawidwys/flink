@@ -20,9 +20,16 @@ package org.apache.flink.streaming.api.graph;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.common.cache.DistributedCache;
+import org.apache.flink.api.common.typeinfo.AtomicType;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.jobgraph.ScheduleMode;
@@ -32,7 +39,10 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.operators.InputFormatOperatorFactory;
 import org.apache.flink.streaming.api.operators.OutputFormatOperatorFactory;
+import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
+import org.apache.flink.streaming.api.operators.sorted.BatchOneInputSortingOperator;
+import org.apache.flink.streaming.api.operators.sorted.SingleKeyStateBackend;
 import org.apache.flink.streaming.api.transformations.AbstractMultipleInputTransformation;
 import org.apache.flink.streaming.api.transformations.CoFeedbackTransformation;
 import org.apache.flink.streaming.api.transformations.FeedbackTransformation;
@@ -53,13 +63,17 @@ import org.apache.flink.streaming.runtime.io.MultipleInputSelectionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -98,8 +112,6 @@ public class StreamGraphGenerator {
 
 	public static final int DEFAULT_LOWER_BOUND_MAX_PARALLELISM = KeyGroupRangeAssignment.DEFAULT_LOWER_BOUND_MAX_PARALLELISM;
 
-	public static final ScheduleMode DEFAULT_SCHEDULE_MODE = ScheduleMode.EAGER;
-
 	public static final TimeCharacteristic DEFAULT_TIME_CHARACTERISTIC = TimeCharacteristic.ProcessingTime;
 
 	public static final String DEFAULT_JOB_NAME = "Flink Streaming Job";
@@ -121,7 +133,7 @@ public class StreamGraphGenerator {
 
 	private boolean chaining = true;
 
-	private ScheduleMode scheduleMode = DEFAULT_SCHEDULE_MODE;
+	private ScheduleMode scheduleMode = null;
 
 	private Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts;
 
@@ -131,7 +143,9 @@ public class StreamGraphGenerator {
 
 	private String jobName = DEFAULT_JOB_NAME;
 
-	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
+	private GlobalDataExchangeMode globalDataExchangeMode = null;
+
+	private RuntimeExecutionMode runtimeExecutionMode = null;
 
 	private boolean allVerticesInSameSlotSharingGroup = true;
 
@@ -194,7 +208,7 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraphGenerator setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
-		this.globalDataExchangeMode = globalDataExchangeMode;
+		this.globalDataExchangeMode = checkNotNull(globalDataExchangeMode);
 		return this;
 	}
 
@@ -209,15 +223,12 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraph generate() {
-		streamGraph = new StreamGraph(executionConfig, checkpointConfig, savepointRestoreSettings);
-		streamGraph.setStateBackend(stateBackend);
-		streamGraph.setChaining(chaining);
-		streamGraph.setScheduleMode(scheduleMode);
-		streamGraph.setUserArtifacts(userArtifacts);
-		streamGraph.setTimeCharacteristic(timeCharacteristic);
-		streamGraph.setJobName(jobName);
-		streamGraph.setGlobalDataExchangeMode(globalDataExchangeMode);
-		streamGraph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
+		this.runtimeExecutionMode = determineExecutionMode(RuntimeExecutionMode.AUTOMATIC);
+		streamGraph = new StreamGraph(
+			executionConfig,
+			checkpointConfig,
+			savepointRestoreSettings);
+		configureStreamGraph(streamGraph, runtimeExecutionMode);
 
 		alreadyTransformed = new HashMap<>();
 
@@ -232,6 +243,62 @@ public class StreamGraphGenerator {
 		streamGraph = null;
 
 		return builtStreamGraph;
+	}
+
+	private void configureStreamGraph(StreamGraph graph, RuntimeExecutionMode executionMode) {
+		graph.setStateBackend(stateBackend);
+		graph.setChaining(chaining);
+		graph.setUserArtifacts(userArtifacts);
+		graph.setTimeCharacteristic(timeCharacteristic);
+		graph.setJobName(jobName);
+		graph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
+		switch (executionMode) {
+			case STREAM:
+				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.ALL_EDGES_PIPELINED);
+				graph.setScheduleMode(ScheduleMode.EAGER);
+				break;
+			case BATCH:
+				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.POINTWISE_EDGES_PIPELINED);
+				graph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
+				graph.setStateBackend(new SingleKeyStateBackend());
+				setDefaultBufferTimeout(-1);
+				break;
+			case AUTOMATIC:
+				throw new IllegalStateException("Runtime execution mode should've been derived by now.");
+			default:
+				throw new IllegalArgumentException("Unknown execution mode");
+		}
+	}
+
+	private RuntimeExecutionMode determineExecutionMode(RuntimeExecutionMode chosenMode) {
+		if (chosenMode != RuntimeExecutionMode.AUTOMATIC) {
+			return chosenMode;
+		}
+
+		boolean continousSourceExists = transformations.stream()
+			.anyMatch(transformation -> isContinuousSource(transformation) ||
+				transformation.getTransitivePredecessors().stream().anyMatch(this::isContinuousSource));
+		if (continousSourceExists) {
+			return RuntimeExecutionMode.STREAM;
+		} else {
+			return RuntimeExecutionMode.BATCH;
+		}
+	}
+
+	private boolean isContinuousSource(Transformation<?> transformation) {
+		boolean isLegacy = transformation instanceof LegacySourceTransformation;
+		boolean isNewSource = transformation instanceof SourceTransformation;
+
+		final Boundedness boundedness;
+		if (isLegacy) {
+			boundedness = ((LegacySourceTransformation<?>) transformation).getBoundedness();
+		} else if (isNewSource) {
+			boundedness = ((SourceTransformation<?>) transformation).getOperatorFactory().getBoundedness();
+		} else {
+			boundedness = Boundedness.BOUNDED;
+		}
+
+		return boundedness != Boundedness.BOUNDED;
 	}
 
 	/**
@@ -365,6 +432,20 @@ public class StreamGraphGenerator {
 		}
 
 		return resultIds;
+	}
+
+	private TypeComparator<?> createComparator(TypeInformation<?> info) {
+		if (info instanceof AtomicType) {
+			return ((AtomicType<?>) info).createComparator(true, executionConfig);
+		} else if (info instanceof CompositeType) {
+			CompositeType<?> compositeType = (CompositeType<?>) info;
+			int arity = compositeType.getArity();
+			int[] indices = IntStream.range(0, arity).toArray();
+			boolean[] orders = new boolean[arity];
+			Arrays.fill(orders, true);
+			return compositeType.createComparator(indices, orders, 0, executionConfig);
+		}
+		throw new IllegalArgumentException();
 	}
 
 	/**
@@ -654,11 +735,26 @@ public class StreamGraphGenerator {
 		streamGraph.setParallelism(sink.getId(), parallelism);
 		streamGraph.setMaxParallelism(sink.getId(), sink.getMaxParallelism());
 
-		for (Integer inputId: inputIds) {
-			streamGraph.addEdge(inputId,
-					sink.getId(),
-					0
-			);
+		final Integer sortingId;
+		if (runtimeExecutionMode == RuntimeExecutionMode.BATCH && sink.getStateKeySelector() != null) {
+			sortingId = addSortingNode(
+				sink,
+				slotSharingGroup,
+				parallelism,
+				sink.getInput().getOutputType(),
+				sink.getStateKeySelector(),
+				sink.getStateKeyType());
+		} else {
+			sortingId = null;
+		}
+
+		for (Integer inputId : inputIds) {
+			if (sortingId != null) {
+				streamGraph.addEdge(inputId, sortingId, 0);
+				streamGraph.addEdge(sortingId, sink.getId(), 0);
+			} else {
+				streamGraph.addEdge(inputId, sink.getId(), 0);
+			}
 		}
 
 		if (sink.getStateKeySelector() != null) {
@@ -704,11 +800,57 @@ public class StreamGraphGenerator {
 		streamGraph.setParallelism(transform.getId(), parallelism);
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
 
+		final Integer sortingId;
+		if (runtimeExecutionMode == RuntimeExecutionMode.BATCH && transform.getStateKeySelector() != null) {
+			sortingId = addSortingNode(
+				transform,
+				slotSharingGroup,
+				parallelism,
+				transform.getInputType(),
+				transform.getStateKeySelector(),
+				transform.getStateKeyType());
+		} else {
+			sortingId = null;
+		}
+
 		for (Integer inputId: inputIds) {
-			streamGraph.addEdge(inputId, transform.getId(), 0);
+			if (sortingId != null) {
+				streamGraph.addEdge(inputId, sortingId, 0);
+				streamGraph.addEdge(sortingId, transform.getId(), 0);
+			} else {
+				streamGraph.addEdge(inputId, transform.getId(), 0);
+			}
 		}
 
 		return Collections.singleton(transform.getId());
+	}
+
+	@Nonnull
+	private <IN, OUT> Integer addSortingNode(
+			Transformation<OUT> transform,
+			String slotSharingGroup,
+			int parallelism,
+			TypeInformation<IN> inputType,
+			KeySelector<IN, ?> keySelector,
+			TypeInformation<?> stateKeyType) {
+		final Integer sortingId;
+		sortingId = Transformation.getNewNodeId();
+		streamGraph.addOperator(
+			sortingId,
+			slotSharingGroup,
+			transform.getCoLocationGroupKey(),
+			SimpleOperatorFactory.of(new BatchOneInputSortingOperator<>(createComparator(stateKeyType))),
+			inputType,
+			inputType,
+			transform.getName() + "-sorting"
+		);
+		streamGraph.setParallelism(sortingId, parallelism);
+		streamGraph.setMaxParallelism(sortingId, transform.getMaxParallelism());
+		streamGraph.setOneInputStateKey(
+			sortingId,
+			keySelector,
+			stateKeyType.createSerializer(executionConfig));
+		return sortingId;
 	}
 
 	/**

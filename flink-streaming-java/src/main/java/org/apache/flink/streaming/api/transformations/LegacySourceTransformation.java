@@ -21,6 +21,7 @@ package org.apache.flink.streaming.api.transformations;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
@@ -40,6 +41,7 @@ import java.util.Collections;
 public class LegacySourceTransformation<T> extends PhysicalTransformation<T> {
 
 	private final StreamOperatorFactory<T> operatorFactory;
+	private final Boundedness boundedness;
 
 	/**
 	 * Creates a new {@code LegacySourceTransformation} from the given operator.
@@ -62,8 +64,18 @@ public class LegacySourceTransformation<T> extends PhysicalTransformation<T> {
 			StreamOperatorFactory<T> operatorFactory,
 			TypeInformation<T> outputType,
 			int parallelism) {
+		this(name, operatorFactory, outputType, parallelism, Boundedness.CONTINUOUS_UNBOUNDED);
+	}
+
+	public LegacySourceTransformation(
+			String name,
+			StreamOperatorFactory<T> operatorFactory,
+			TypeInformation<T> outputType,
+			int parallelism,
+			Boundedness boundedness) {
 		super(name, outputType, parallelism);
 		this.operatorFactory = operatorFactory;
+		this.boundedness = boundedness;
 	}
 
 	@VisibleForTesting
@@ -76,6 +88,10 @@ public class LegacySourceTransformation<T> extends PhysicalTransformation<T> {
 	 */
 	public StreamOperatorFactory<T> getOperatorFactory() {
 		return operatorFactory;
+	}
+
+	public Boundedness getBoundedness() {
+		return boundedness;
 	}
 
 	@Override
