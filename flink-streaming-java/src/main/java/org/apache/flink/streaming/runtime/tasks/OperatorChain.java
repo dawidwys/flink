@@ -497,7 +497,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				userCodeClassloader,
 				streamOutputs,
 				allOperatorWrappers,
-				outputEdge.getOutputTag(),
+				getTypedOutputTag(outputEdge),
 				mailboxExecutorFactory);
 			allOutputs.add(new Tuple2<>(output, outputEdge));
 		}
@@ -522,6 +522,11 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				return new BroadcastingOutputCollector<>(asArray, this);
 			}
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> OutputTag<T> getTypedOutputTag(StreamEdge outputEdge) {
+		return (OutputTag<T>) outputEdge.getOutputTag();
 	}
 
 	/**
@@ -616,10 +621,9 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			StreamEdge edge,
 			StreamConfig upStreamConfig,
 			Environment taskEnvironment) {
-		OutputTag sideOutputTag = edge.getOutputTag(); // OutputTag, return null if not sideOutput
+		OutputTag<OUT> sideOutputTag = getTypedOutputTag(edge); // OutputTag, return null if not sideOutput
 
-		TypeSerializer outSerializer = null;
-
+		final TypeSerializer<OUT> outSerializer;
 		if (edge.getOutputTag() != null) {
 			// side output
 			outSerializer = upStreamConfig.getTypeSerializerSideOut(

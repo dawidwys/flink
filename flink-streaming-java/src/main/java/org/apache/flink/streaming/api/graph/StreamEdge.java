@@ -52,7 +52,7 @@ public class StreamEdge implements Serializable {
 	/**
 	 * The side-output tag (if any) of this {@link StreamEdge}.
 	 */
-	private final OutputTag outputTag;
+	private final OutputTag<?> outputTag;
 
 	/**
 	 * The {@link StreamPartitioner} on this {@link StreamEdge}.
@@ -78,7 +78,7 @@ public class StreamEdge implements Serializable {
 		StreamNode targetVertex,
 		int typeNumber,
 		StreamPartitioner<?> outputPartitioner,
-		OutputTag outputTag) {
+		OutputTag<?> outputTag) {
 
 		this(
 			sourceVertex,
@@ -95,7 +95,7 @@ public class StreamEdge implements Serializable {
 		StreamNode targetVertex,
 		int typeNumber,
 		StreamPartitioner<?> outputPartitioner,
-		OutputTag outputTag,
+		OutputTag<?> outputTag,
 		ShuffleMode shuffleMode) {
 
 		this(
@@ -114,7 +114,7 @@ public class StreamEdge implements Serializable {
 		int typeNumber,
 		long bufferTimeout,
 		StreamPartitioner<?> outputPartitioner,
-		OutputTag outputTag,
+		OutputTag<?> outputTag,
 		ShuffleMode shuffleMode) {
 
 		this.sourceId = sourceVertex.getId();
@@ -141,7 +141,7 @@ public class StreamEdge implements Serializable {
 		return typeNumber;
 	}
 
-	public OutputTag getOutputTag() {
+	public OutputTag<?> getOutputTag() {
 		return this.outputTag;
 	}
 
