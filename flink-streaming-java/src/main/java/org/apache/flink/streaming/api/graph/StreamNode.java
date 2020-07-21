@@ -68,13 +68,13 @@ public class StreamNode implements Serializable {
 	private KeySelector<?, ?>[] statePartitioners = new KeySelector[0];
 	private TypeSerializer<?> stateKeySerializer;
 
-	private transient StreamOperatorFactory<?> operatorFactory;
-	private List<OutputSelector<?>> outputSelectors;
+	private final transient StreamOperatorFactory<?> operatorFactory;
+	private final List<OutputSelector<?>> outputSelectors;
 	private TypeSerializer<?>[] typeSerializersIn = new TypeSerializer[0];
 	private TypeSerializer<?> typeSerializerOut;
 
-	private List<StreamEdge> inEdges = new ArrayList<StreamEdge>();
-	private List<StreamEdge> outEdges = new ArrayList<StreamEdge>();
+	private final List<StreamEdge> inEdges = new ArrayList<>();
+	private final List<StreamEdge> outEdges = new ArrayList<>();
 
 	private final Class<? extends AbstractInvokable> jobVertexClass;
 
@@ -138,26 +138,6 @@ public class StreamNode implements Serializable {
 		return inEdges;
 	}
 
-	public List<Integer> getOutEdgeIndices() {
-		List<Integer> outEdgeIndices = new ArrayList<Integer>();
-
-		for (StreamEdge edge : outEdges) {
-			outEdgeIndices.add(edge.getTargetId());
-		}
-
-		return outEdgeIndices;
-	}
-
-	public List<Integer> getInEdgeIndices() {
-		List<Integer> inEdgeIndices = new ArrayList<Integer>();
-
-		for (StreamEdge edge : inEdges) {
-			inEdgeIndices.add(edge.getSourceId());
-		}
-
-		return inEdgeIndices;
-	}
-
 	public int getId() {
 		return id;
 	}
@@ -219,7 +199,7 @@ public class StreamNode implements Serializable {
 
 	@VisibleForTesting
 	public StreamOperator<?> getOperator() {
-		return (StreamOperator<?>) ((SimpleOperatorFactory) operatorFactory).getOperator();
+		return ((SimpleOperatorFactory<?>) operatorFactory).getOperator();
 	}
 
 	public StreamOperatorFactory<?> getOperatorFactory() {
@@ -310,7 +290,7 @@ public class StreamNode implements Serializable {
 		return statePartitioners;
 	}
 
-	public void setStatePartitioners(KeySelector<?, ?> ...statePartitioners) {
+	public void setStatePartitioners(KeySelector<?, ?>... statePartitioners) {
 		checkArgument(statePartitioners.length > 0);
 		this.statePartitioners = statePartitioners;
 	}
@@ -343,7 +323,7 @@ public class StreamNode implements Serializable {
 			String operatorName,
 			OperatorID operatorID) {
 		if (operatorFactory instanceof CoordinatedOperatorFactory) {
-			return Optional.of(((CoordinatedOperatorFactory) operatorFactory)
+			return Optional.of(((CoordinatedOperatorFactory<?>) operatorFactory)
 					.getCoordinatorProvider(operatorName, operatorID));
 		} else {
 			return Optional.empty();
