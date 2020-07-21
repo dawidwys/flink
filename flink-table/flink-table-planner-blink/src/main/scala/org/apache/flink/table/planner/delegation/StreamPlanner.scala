@@ -101,8 +101,8 @@ class StreamPlanner(
     val execNodes = translateToExecNodePlan(optimizedRelNodes)
 
     val transformations = translateToPlan(execNodes)
-    val streamGraph = ExecutorUtils.generateStreamGraph(getExecEnv, transformations)
-    val executionPlan = PlanUtil.explainStreamGraph(streamGraph)
+    val streamGraphGenerator = ExecutorUtils.initializeGenerator(getExecEnv, transformations, false)
+    val executionPlan = PlanUtil.explainStreamGraph(streamGraphGenerator.generate())
 
     val sb = new StringBuilder
     sb.append("== Abstract Syntax Tree ==")

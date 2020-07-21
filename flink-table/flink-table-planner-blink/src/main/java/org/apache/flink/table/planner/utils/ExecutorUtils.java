@@ -40,20 +40,25 @@ public class ExecutorUtils {
 	/**
 	 * Generate {@link StreamGraph} by {@link StreamGraphGenerator}.
 	 */
-	public static StreamGraph generateStreamGraph(
+	public static StreamGraphGenerator initializeGenerator(
 			StreamExecutionEnvironment execEnv,
-			List<Transformation<?>> transformations) {
+			List<Transformation<?>> transformations,
+			boolean applyBatchResources) {
 		if (transformations.size() <= 0) {
 			throw new IllegalStateException("No operators defined in streaming topology. Cannot generate StreamGraph.");
 		}
-		StreamGraphGenerator generator =
-				new StreamGraphGenerator(transformations, execEnv.getConfig(), execEnv.getCheckpointConfig())
-						.setStateBackend(execEnv.getStateBackend())
-						.setChaining(execEnv.isChainingEnabled())
-						.setUserArtifacts(execEnv.getCachedFiles())
-						.setTimeCharacteristic(execEnv.getStreamTimeCharacteristic())
-						.setDefaultBufferTimeout(execEnv.getBufferTimeout());
-		return generator.generate();
+		if (applyBatchResources) {
+			transformations.forEach(transformation -> transformation.setResources(
+				ResourceSpec.UNKNOWN,
+				ResourceSpec.UNKNOWN));
+		}
+
+		return new StreamGraphGenerator(transformations, execEnv.getConfig(), execEnv.getCheckpointConfig())
+				.setStateBackend(execEnv.getStateBackend())
+				.setChaining(execEnv.isChainingEnabled())
+				.setUserArtifacts(execEnv.getCachedFiles())
+				.setTimeCharacteristic(execEnv.getStreamTimeCharacteristic())
+				.setDefaultBufferTimeout(execEnv.getBufferTimeout());
 	}
 
 	/**
@@ -73,17 +78,13 @@ public class ExecutorUtils {
 	/**
 	 * Sets batch properties for {@link StreamGraph}.
 	 */
-	public static void setBatchProperties(StreamGraph streamGraph, TableConfig tableConfig) {
-		streamGraph.getStreamNodes().forEach(
-				sn -> sn.setResources(ResourceSpec.UNKNOWN, ResourceSpec.UNKNOWN));
-		streamGraph.setChaining(true);
-		streamGraph.setAllVerticesInSameSlotSharingGroupByDefault(false);
-		streamGraph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
-		streamGraph.setStateBackend(null);
-		if (streamGraph.getCheckpointConfig().isCheckpointingEnabled()) {
-			throw new IllegalArgumentException("Checkpoint is not supported for batch jobs.");
-		}
-		streamGraph.setGlobalDataExchangeMode(getGlobalDataExchangeMode(tableConfig));
+	public static void setBatchProperties(StreamGraphGenerator streamGraphGenerator, TableConfig tableConfig) {
+		streamGraphGenerator
+			.setChaining(true)
+			.setAllVerticesInSameSlotSharingGroupByDefault(false)
+			.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST)
+			.setStateBackend(null)
+			.setGlobalDataExchangeMode(getGlobalDataExchangeMode(tableConfig));
 	}
 
 	private static boolean isShuffleModeAllBlocking(TableConfig tableConfig) {
