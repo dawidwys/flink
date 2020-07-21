@@ -46,7 +46,7 @@ public class JSONGenerator {
 	public static final String CONTENTS = "contents";
 	public static final String PARALLELISM = "parallelism";
 
-	private StreamGraph streamGraph;
+	private final StreamGraph streamGraph;
 	private final ObjectMapper mapper = new ObjectMapper();
 
 	public JSONGenerator(StreamGraph streamGraph) {
@@ -100,7 +100,7 @@ public class JSONGenerator {
 			for (StreamEdge inEdge : vertex.getInEdges()) {
 				int operator = inEdge.getSourceId();
 
-				if (streamGraph.vertexIDtoLoopTimeout.containsKey(operator)) {
+				if (streamGraph.getVertexIDtoLoopTimeout().containsKey(operator)) {
 					iterationHead = operator;
 				}
 			}
@@ -132,7 +132,7 @@ public class JSONGenerator {
 		toVisit.remove(vertexID);
 
 		// Ignoring head and tail to avoid redundancy
-		if (!streamGraph.vertexIDtoLoopTimeout.containsKey(vertexID)) {
+		if (!streamGraph.getVertexIDtoLoopTimeout().containsKey(vertexID)) {
 			ObjectNode obj = mapper.createObjectNode();
 			jsonArray.add(obj);
 			decorateNode(vertexID, obj);
@@ -144,7 +144,7 @@ public class JSONGenerator {
 
 				if (edgeRemapings.keySet().contains(inputID)) {
 					decorateEdge(inEdges, inEdge, inputID);
-				} else if (!streamGraph.vertexIDtoLoopTimeout.containsKey(inputID)) {
+				} else if (!streamGraph.getVertexIDtoLoopTimeout().containsKey(inputID)) {
 					decorateEdge(iterationInEdges, inEdge, inputID);
 				}
 			}

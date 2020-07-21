@@ -61,6 +61,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,7 +76,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  */
 @Internal
-public class StreamGraph implements Pipeline {
+public final class StreamGraph implements Pipeline {
 
 	private static final Logger LOG = LoggerFactory.getLogger(StreamGraph.class);
 
@@ -83,11 +84,21 @@ public class StreamGraph implements Pipeline {
 
 	public static final String ITERATION_SINK_NAME_PREFIX = "IterationSink";
 
-	private String jobName;
-
 	private final ExecutionConfig executionConfig;
 	private final CheckpointConfig checkpointConfig;
-	private SavepointRestoreSettings savepointRestoreSettings;
+	private final SavepointRestoreSettings savepointRestoreSettings;
+
+	private final Map<Integer, StreamNode> streamNodes;
+	private final Set<Integer> sources;
+	private final Set<Integer> sinks;
+	private final Map<Integer, Tuple2<Integer, OutputTag<?>>> virtualSideOutputNodes;
+	private final Map<Integer, Tuple3<Integer, StreamPartitioner<?>, ShuffleMode>> virtualPartitionNodes;
+
+	private final Map<Integer, String> vertexIDtoBrokerID;
+	private final Map<Integer, Long> vertexIDtoLoopTimeout;
+	private final Set<Tuple2<StreamNode, StreamNode>> iterationSourceSinkPairs;
+
+	private String jobName;
 
 	private ScheduleMode scheduleMode;
 
@@ -100,20 +111,11 @@ public class StreamGraph implements Pipeline {
 	private GlobalDataExchangeMode globalDataExchangeMode;
 
 	/** Flag to indicate whether to put all vertices into the same slot sharing group by default. */
-	private boolean allVerticesInSameSlotSharingGroupByDefault = true;
+	private boolean allVerticesInSameSlotSharingGroupByDefault;
 
-	private Map<Integer, StreamNode> streamNodes;
-	private Set<Integer> sources;
-	private Set<Integer> sinks;
-	private Map<Integer, Tuple2<Integer, OutputTag<?>>> virtualSideOutputNodes;
-	private Map<Integer, Tuple3<Integer, StreamPartitioner<?>, ShuffleMode>> virtualPartitionNodes;
-
-	protected Map<Integer, String> vertexIDtoBrokerID;
-	protected Map<Integer, Long> vertexIDtoLoopTimeout;
 	private StateBackend stateBackend;
-	private Set<Tuple2<StreamNode, StreamNode>> iterationSourceSinkPairs;
 
-	public StreamGraph(
+	StreamGraph(
 			ExecutionConfig executionConfig,
 			CheckpointConfig checkpointConfig,
 			SavepointRestoreSettings savepointRestoreSettings) {
@@ -122,13 +124,6 @@ public class StreamGraph implements Pipeline {
 		this.savepointRestoreSettings = checkNotNull(savepointRestoreSettings);
 
 		// create an empty new stream graph.
-		clear();
-	}
-
-	/**
-	 * Remove all registered nodes etc.
-	 */
-	public void clear() {
 		streamNodes = new HashMap<>();
 		virtualSideOutputNodes = new HashMap<>();
 		virtualPartitionNodes = new HashMap<>();
@@ -147,28 +142,12 @@ public class StreamGraph implements Pipeline {
 		return checkpointConfig;
 	}
 
-	public void setSavepointRestoreSettings(SavepointRestoreSettings savepointRestoreSettings) {
-		this.savepointRestoreSettings = savepointRestoreSettings;
-	}
-
 	public SavepointRestoreSettings getSavepointRestoreSettings() {
 		return savepointRestoreSettings;
 	}
 
 	public String getJobName() {
 		return jobName;
-	}
-
-	public void setJobName(String jobName) {
-		this.jobName = jobName;
-	}
-
-	public void setChaining(boolean chaining) {
-		this.chaining = chaining;
-	}
-
-	public void setStateBackend(StateBackend backend) {
-		this.stateBackend = backend;
 	}
 
 	public StateBackend getStateBackend() {
@@ -179,51 +158,16 @@ public class StreamGraph implements Pipeline {
 		return scheduleMode;
 	}
 
-	public void setScheduleMode(ScheduleMode scheduleMode) {
-		this.scheduleMode = scheduleMode;
-	}
-
 	public Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> getUserArtifacts() {
 		return userArtifacts;
-	}
-
-	public void setUserArtifacts(Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts) {
-		this.userArtifacts = userArtifacts;
 	}
 
 	public TimeCharacteristic getTimeCharacteristic() {
 		return timeCharacteristic;
 	}
 
-	public void setTimeCharacteristic(TimeCharacteristic timeCharacteristic) {
-		this.timeCharacteristic = timeCharacteristic;
-	}
-
 	public GlobalDataExchangeMode getGlobalDataExchangeMode() {
 		return globalDataExchangeMode;
-	}
-
-	public void setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
-		this.globalDataExchangeMode = globalDataExchangeMode;
-	}
-
-	/**
-	 * Set whether to put all vertices into the same slot sharing group by default.
-	 *
-	 * @param allVerticesInSameSlotSharingGroupByDefault indicates whether to put all vertices
-	 *                                                   into the same slot sharing group by default.
-	 */
-	public void setAllVerticesInSameSlotSharingGroupByDefault(boolean allVerticesInSameSlotSharingGroupByDefault) {
-		this.allVerticesInSameSlotSharingGroupByDefault = allVerticesInSameSlotSharingGroupByDefault;
-	}
-
-	/**
-	 * Gets whether to put all vertices into the same slot sharing group by default.
-	 *
-	 * @return whether to put all vertices into the same slot sharing group by default.
-	 */
-	public boolean isAllVerticesInSameSlotSharingGroupByDefault() {
-		return allVerticesInSameSlotSharingGroupByDefault;
 	}
 
 	// Checkpointing
@@ -236,51 +180,158 @@ public class StreamGraph implements Pipeline {
 		return !vertexIDtoLoopTimeout.isEmpty();
 	}
 
-	public <IN, OUT> void addSource(
+	/**
+	 * Gets whether to put all vertices into the same slot sharing group by default.
+	 *
+	 * @return whether to put all vertices into the same slot sharing group by default.
+	 */
+	public boolean isAllVerticesInSameSlotSharingGroupByDefault() {
+		return allVerticesInSameSlotSharingGroupByDefault;
+	}
+
+	public StreamNode getStreamNode(Integer vertexID) {
+		return streamNodes.get(vertexID);
+	}
+
+	public Collection<Integer> getSourceIDs() {
+		return sources;
+	}
+
+	public Collection<Integer> getSinkIDs() {
+		return sinks;
+	}
+
+	public Collection<StreamNode> getStreamNodes() {
+		return streamNodes.values();
+	}
+
+	public String getBrokerID(Integer vertexID) {
+		return vertexIDtoBrokerID.get(vertexID);
+	}
+
+	public long getLoopTimeout(Integer vertexID) {
+		return vertexIDtoLoopTimeout.get(vertexID);
+	}
+
+	public StreamNode getSourceVertex(StreamEdge edge) {
+		return streamNodes.get(edge.getSourceId());
+	}
+
+	public StreamNode getTargetVertex(StreamEdge edge) {
+		return streamNodes.get(edge.getTargetId());
+	}
+
+	//-----------------------------------------------------------------------------------------
+	//  UTILITY CONVERSION: StreamGraph <> JobGraph
+	//-----------------------------------------------------------------------------------------
+
+	/**
+	 * Gets the assembled {@link JobGraph} with a random {@link JobID}.
+	 */
+	public JobGraph getJobGraph() {
+		return getJobGraph(null);
+	}
+
+	/**
+	 * Gets the assembled {@link JobGraph} with a specified {@link JobID}.
+	 */
+	public JobGraph getJobGraph(@Nullable JobID jobID) {
+		return StreamingJobGraphGenerator.createJobGraph(this, jobID);
+	}
+
+	public String getStreamingPlanAsJSON() {
+		try {
+			return new JSONGenerator(this).getJSON();
+		}
+		catch (Exception e) {
+			throw new RuntimeException("JSON plan creation failed", e);
+		}
+	}
+
+	//-----------------------------------------------------------------------------------------
+	//  MUTATOR METHODS - used exclusively from the StreamGraphGenerator
+	//-----------------------------------------------------------------------------------------
+
+	void setJobName(String jobName) {
+		this.jobName = jobName;
+	}
+
+	void setChaining(boolean chaining) {
+		this.chaining = chaining;
+	}
+
+	void setStateBackend(StateBackend backend) {
+		this.stateBackend = backend;
+	}
+
+	void setScheduleMode(ScheduleMode scheduleMode) {
+		this.scheduleMode = scheduleMode;
+	}
+
+	void setUserArtifacts(Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts) {
+		this.userArtifacts = userArtifacts;
+	}
+
+	void setTimeCharacteristic(TimeCharacteristic timeCharacteristic) {
+		this.timeCharacteristic = timeCharacteristic;
+	}
+
+	void setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
+		this.globalDataExchangeMode = globalDataExchangeMode;
+	}
+
+	/**
+	 * Set whether to put all vertices into the same slot sharing group by default.
+	 *
+	 * @param allVerticesInSameSlotSharingGroupByDefault indicates whether to put all vertices
+	 *                                                   into the same slot sharing group by default.
+	 */
+	void setAllVerticesInSameSlotSharingGroupByDefault(boolean allVerticesInSameSlotSharingGroupByDefault) {
+		this.allVerticesInSameSlotSharingGroupByDefault = allVerticesInSameSlotSharingGroupByDefault;
+	}
+
+	<OUT> void addSource(
 			Integer vertexID,
 			@Nullable String slotSharingGroup,
 			@Nullable String coLocationGroup,
 			SourceOperatorFactory<OUT> operatorFactory,
-			TypeInformation<IN> inTypeInfo,
 			TypeInformation<OUT> outTypeInfo,
 			String operatorName) {
 		addOperator(
-				vertexID,
-				slotSharingGroup,
-				coLocationGroup,
-				operatorFactory,
-				inTypeInfo,
-				outTypeInfo,
-				operatorName,
-				SourceOperatorStreamTask.class);
+			vertexID,
+			slotSharingGroup,
+			coLocationGroup,
+			operatorFactory,
+			null,
+			outTypeInfo,
+			operatorName,
+			SourceOperatorStreamTask.class);
 		sources.add(vertexID);
 	}
 
-	public <IN, OUT> void addLegacySource(
+	<OUT> void addLegacySource(
 			Integer vertexID,
 			@Nullable String slotSharingGroup,
 			@Nullable String coLocationGroup,
 			StreamOperatorFactory<OUT> operatorFactory,
-			TypeInformation<IN> inTypeInfo,
 			TypeInformation<OUT> outTypeInfo,
 			String operatorName) {
-		addOperator(vertexID, slotSharingGroup, coLocationGroup, operatorFactory, inTypeInfo, outTypeInfo, operatorName);
+		addOperator(vertexID, slotSharingGroup, coLocationGroup, operatorFactory, null, outTypeInfo, operatorName);
 		sources.add(vertexID);
 	}
 
-	public <IN, OUT> void addSink(
+	<IN> void addSink(
 			Integer vertexID,
 			@Nullable String slotSharingGroup,
 			@Nullable String coLocationGroup,
-			StreamOperatorFactory<OUT> operatorFactory,
+			StreamOperatorFactory<?> operatorFactory,
 			TypeInformation<IN> inTypeInfo,
-			TypeInformation<OUT> outTypeInfo,
 			String operatorName) {
-		addOperator(vertexID, slotSharingGroup, coLocationGroup, operatorFactory, inTypeInfo, outTypeInfo, operatorName);
+		addOperator(vertexID, slotSharingGroup, coLocationGroup, operatorFactory, inTypeInfo, null, operatorName);
 		sinks.add(vertexID);
 	}
 
-	public <IN, OUT> void addOperator(
+	<IN, OUT> void addOperator(
 			Integer vertexID,
 			@Nullable String slotSharingGroup,
 			@Nullable String coLocationGroup,
@@ -321,7 +372,7 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public <IN1, IN2, OUT> void addCoOperator(
+	<IN1, IN2, OUT> void addCoOperator(
 			Integer vertexID,
 			String slotSharingGroup,
 			@Nullable String coLocationGroup,
@@ -349,7 +400,7 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public <OUT> void addMultipleInputOperator(
+	<OUT> void addMultipleInputOperator(
 			Integer vertexID,
 			String slotSharingGroup,
 			@Nullable String coLocationGroup,
@@ -374,7 +425,7 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	protected StreamNode addNode(
+	private StreamNode addNode(
 			Integer vertexID,
 			@Nullable String slotSharingGroup,
 			@Nullable String coLocationGroup,
@@ -407,7 +458,7 @@ public class StreamGraph implements Pipeline {
 	 * @param virtualId ID of the virtual node.
 	 * @param outputTag The selected side-output {@code OutputTag}.
 	 */
-	public void addVirtualSideOutputNode(Integer originalId, Integer virtualId, OutputTag<?> outputTag) {
+	void addVirtualSideOutputNode(Integer originalId, Integer virtualId, OutputTag<?> outputTag) {
 
 		if (virtualSideOutputNodes.containsKey(virtualId)) {
 			throw new IllegalStateException("Already has virtual output node with id " + virtualId);
@@ -446,7 +497,7 @@ public class StreamGraph implements Pipeline {
 	 * @param virtualId ID of the virtual node.
 	 * @param partitioner The partitioner
 	 */
-	public void addVirtualPartitionNode(
+	void addVirtualPartitionNode(
 			Integer originalId,
 			Integer virtualId,
 			StreamPartitioner<?> partitioner,
@@ -462,7 +513,7 @@ public class StreamGraph implements Pipeline {
 	/**
 	 * Determines the slot sharing group of an operation across virtual nodes.
 	 */
-	public String getSlotSharingGroup(Integer id) {
+	String getSlotSharingGroup(Integer id) {
 		if (virtualSideOutputNodes.containsKey(id)) {
 			Integer mappedId = virtualSideOutputNodes.get(id).f0;
 			return getSlotSharingGroup(mappedId);
@@ -475,7 +526,7 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public void addEdge(Integer upStreamVertexID, Integer downStreamVertexID, int typeNumber) {
+	void addEdge(Integer upStreamVertexID, Integer downStreamVertexID, int typeNumber) {
 		addEdgeInternal(upStreamVertexID,
 				downStreamVertexID,
 				typeNumber,
@@ -483,7 +534,6 @@ public class StreamGraph implements Pipeline {
 				new ArrayList<>(),
 				null,
 				null);
-
 	}
 
 	private void addEdgeInternal(Integer upStreamVertexID,
@@ -542,55 +592,55 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public void setParallelism(Integer vertexID, int parallelism) {
+	void setParallelism(Integer vertexID, int parallelism) {
 		if (getStreamNode(vertexID) != null) {
 			getStreamNode(vertexID).setParallelism(parallelism);
 		}
 	}
 
-	public void setMaxParallelism(int vertexID, int maxParallelism) {
+	void setMaxParallelism(int vertexID, int maxParallelism) {
 		if (getStreamNode(vertexID) != null) {
 			getStreamNode(vertexID).setMaxParallelism(maxParallelism);
 		}
 	}
 
-	public void setResources(int vertexID, ResourceSpec minResources, ResourceSpec preferredResources) {
+	void setResources(int vertexID, ResourceSpec minResources, ResourceSpec preferredResources) {
 		if (getStreamNode(vertexID) != null) {
 			getStreamNode(vertexID).setResources(minResources, preferredResources);
 		}
 	}
 
-	public void setManagedMemoryWeight(int vertexID, int managedMemoryWeight) {
+	void setManagedMemoryWeight(int vertexID, int managedMemoryWeight) {
 		if (getStreamNode(vertexID) != null) {
 			getStreamNode(vertexID).setManagedMemoryWeight(managedMemoryWeight);
 		}
 	}
 
-	public void setOneInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector, TypeSerializer<?> keySerializer) {
+	void setOneInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector, TypeSerializer<?> keySerializer) {
 		StreamNode node = getStreamNode(vertexID);
 		node.setStatePartitioners(keySelector);
 		node.setStateKeySerializer(keySerializer);
 	}
 
-	public void setTwoInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector1, KeySelector<?, ?> keySelector2, TypeSerializer<?> keySerializer) {
+	void setTwoInputStateKey(Integer vertexID, KeySelector<?, ?> keySelector1, KeySelector<?, ?> keySelector2, TypeSerializer<?> keySerializer) {
 		StreamNode node = getStreamNode(vertexID);
 		node.setStatePartitioners(keySelector1, keySelector2);
 		node.setStateKeySerializer(keySerializer);
 	}
 
-	public void setMultipleInputStateKey(Integer vertexID, List<KeySelector<?, ?>> keySelectors, TypeSerializer<?> keySerializer) {
+	void setMultipleInputStateKey(Integer vertexID, List<KeySelector<?, ?>> keySelectors, TypeSerializer<?> keySerializer) {
 		StreamNode node = getStreamNode(vertexID);
 		node.setStatePartitioners(keySelectors.toArray(new KeySelector[0]));
 		node.setStateKeySerializer(keySerializer);
 	}
 
-	public void setBufferTimeout(Integer vertexID, long bufferTimeout) {
+	void setBufferTimeout(Integer vertexID, long bufferTimeout) {
 		if (getStreamNode(vertexID) != null) {
 			getStreamNode(vertexID).setBufferTimeout(bufferTimeout);
 		}
 	}
 
-	public void setSerializers(Integer vertexID, TypeSerializer<?> in1, TypeSerializer<?> in2, TypeSerializer<?> out) {
+	void setSerializers(Integer vertexID, TypeSerializer<?> in1, TypeSerializer<?> in2, TypeSerializer<?> out) {
 		StreamNode vertex = getStreamNode(vertexID);
 		vertex.setSerializersIn(in1, in2);
 		vertex.setSerializerOut(out);
@@ -610,11 +660,11 @@ public class StreamGraph implements Pipeline {
 		vertex.setSerializerOut(out);
 	}
 
-	public void setInputFormat(Integer vertexID, InputFormat<?, ?> inputFormat) {
+	void setInputFormat(Integer vertexID, InputFormat<?, ?> inputFormat) {
 		getStreamNode(vertexID).setInputFormat(inputFormat);
 	}
 
-	public void setOutputFormat(Integer vertexID, OutputFormat<?> outputFormat) {
+	void setOutputFormat(Integer vertexID, OutputFormat<?> outputFormat) {
 		getStreamNode(vertexID).setOutputFormat(outputFormat);
 	}
 
@@ -633,61 +683,15 @@ public class StreamGraph implements Pipeline {
 		}
 	}
 
-	public StreamNode getStreamNode(Integer vertexID) {
-		return streamNodes.get(vertexID);
-	}
-
-	protected Collection<? extends Integer> getVertexIDs() {
+	Collection<? extends Integer> getVertexIDs() {
 		return streamNodes.keySet();
 	}
 
-	@VisibleForTesting
-	public List<StreamEdge> getStreamEdges(int sourceId) {
-		return getStreamNode(sourceId).getOutEdges();
+	Map<Integer, Long> getVertexIDtoLoopTimeout() {
+		return Collections.unmodifiableMap(vertexIDtoLoopTimeout);
 	}
 
-	@VisibleForTesting
-	public List<StreamEdge> getStreamEdges(int sourceId, int targetId) {
-		List<StreamEdge> result = new ArrayList<>();
-		for (StreamEdge edge : getStreamNode(sourceId).getOutEdges()) {
-			if (edge.getTargetId() == targetId) {
-				result.add(edge);
-			}
-		}
-		return result;
-	}
-
-	@VisibleForTesting
-	@Deprecated
-	public List<StreamEdge> getStreamEdgesOrThrow(int sourceId, int targetId) {
-		List<StreamEdge> result = getStreamEdges(sourceId, targetId);
-		if (result.isEmpty()) {
-			throw new RuntimeException("No such edge in stream graph: " + sourceId + " -> " + targetId);
-		}
-		return result;
-	}
-
-	public Collection<Integer> getSourceIDs() {
-		return sources;
-	}
-
-	public Collection<Integer> getSinkIDs() {
-		return sinks;
-	}
-
-	public Collection<StreamNode> getStreamNodes() {
-		return streamNodes.values();
-	}
-
-	public String getBrokerID(Integer vertexID) {
-		return vertexIDtoBrokerID.get(vertexID);
-	}
-
-	public long getLoopTimeout(Integer vertexID) {
-		return vertexIDtoLoopTimeout.get(vertexID);
-	}
-
-	public Tuple2<StreamNode, StreamNode> createIterationSourceAndSink(
+	Tuple2<StreamNode, StreamNode> createIterationSourceAndSink(
 		int loopId,
 		int sourceId,
 		int sinkId,
@@ -740,39 +744,35 @@ public class StreamGraph implements Pipeline {
 		return new Tuple2<>(source, sink);
 	}
 
+	@VisibleForTesting
+	public List<StreamEdge> getStreamEdges(int sourceId) {
+		return getStreamNode(sourceId).getOutEdges();
+	}
+
+	@VisibleForTesting
+	public List<StreamEdge> getStreamEdges(int sourceId, int targetId) {
+		List<StreamEdge> result = new ArrayList<>();
+		for (StreamEdge edge : getStreamNode(sourceId).getOutEdges()) {
+			if (edge.getTargetId() == targetId) {
+				result.add(edge);
+			}
+		}
+		return result;
+	}
+
+	@VisibleForTesting
+	@Deprecated
+	public List<StreamEdge> getStreamEdgesOrThrow(int sourceId, int targetId) {
+		List<StreamEdge> result = getStreamEdges(sourceId, targetId);
+		if (result.isEmpty()) {
+			throw new RuntimeException("No such edge in stream graph: " + sourceId + " -> " + targetId);
+		}
+		return result;
+	}
+
+	@VisibleForTesting
 	public Set<Tuple2<StreamNode, StreamNode>> getIterationSourceSinkPairs() {
 		return iterationSourceSinkPairs;
-	}
-
-	public StreamNode getSourceVertex(StreamEdge edge) {
-		return streamNodes.get(edge.getSourceId());
-	}
-
-	public StreamNode getTargetVertex(StreamEdge edge) {
-		return streamNodes.get(edge.getTargetId());
-	}
-
-	/**
-	 * Gets the assembled {@link JobGraph} with a random {@link JobID}.
-	 */
-	public JobGraph getJobGraph() {
-		return getJobGraph(null);
-	}
-
-	/**
-	 * Gets the assembled {@link JobGraph} with a specified {@link JobID}.
-	 */
-	public JobGraph getJobGraph(@Nullable JobID jobID) {
-		return StreamingJobGraphGenerator.createJobGraph(this, jobID);
-	}
-
-	public String getStreamingPlanAsJSON() {
-		try {
-			return new JSONGenerator(this).getJSON();
-		}
-		catch (Exception e) {
-			throw new RuntimeException("JSON plan creation failed", e);
-		}
 	}
 
 	private <T> TypeSerializer<T> createSerializer(TypeInformation<T> typeInfo) {

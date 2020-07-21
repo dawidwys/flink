@@ -113,9 +113,9 @@ class BatchPlanner(
 
     val execEnv = getExecEnv
     ExecutorUtils.setBatchProperties(execEnv, getTableConfig)
-    val streamGraph = ExecutorUtils.generateStreamGraph(execEnv, transformations)
-    ExecutorUtils.setBatchProperties(streamGraph, getTableConfig)
-    val executionPlan = PlanUtil.explainStreamGraph(streamGraph)
+    val streamGraphGenerator = ExecutorUtils.initializeGenerator(execEnv, transformations, true)
+    ExecutorUtils.setBatchProperties(streamGraphGenerator, getTableConfig)
+    val executionPlan = PlanUtil.explainStreamGraph(streamGraphGenerator.generate())
 
     val sb = new StringBuilder
     sb.append("== Abstract Syntax Tree ==")

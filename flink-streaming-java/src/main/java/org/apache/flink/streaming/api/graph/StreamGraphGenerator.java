@@ -128,9 +128,12 @@ public class StreamGraphGenerator {
 
 	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
 
+	private boolean allVerticesInSameSlotSharingGroup = true;
+
 	// This is used to assign a unique ID to iteration source/sink
-	protected static Integer iterationIdCounter = 0;
-	public static int getNewIterationNodeId() {
+	private static Integer iterationIdCounter = 0;
+
+	private static int getNewIterationNodeId() {
 		iterationIdCounter--;
 		return iterationIdCounter;
 	}
@@ -141,7 +144,10 @@ public class StreamGraphGenerator {
 	// we have loops, i.e. feedback edges.
 	private Map<Transformation<?>, Collection<Integer>> alreadyTransformed;
 
-	public StreamGraphGenerator(List<Transformation<?>> transformations, ExecutionConfig executionConfig, CheckpointConfig checkpointConfig) {
+	public StreamGraphGenerator(
+			List<Transformation<?>> transformations,
+			ExecutionConfig executionConfig,
+			CheckpointConfig checkpointConfig) {
 		this.transformations = checkNotNull(transformations);
 		this.executionConfig = checkNotNull(executionConfig);
 		this.checkpointConfig = checkNotNull(checkpointConfig);
@@ -187,8 +193,14 @@ public class StreamGraphGenerator {
 		return this;
 	}
 
-	public void setSavepointRestoreSettings(SavepointRestoreSettings savepointRestoreSettings) {
+	public StreamGraphGenerator setSavepointRestoreSettings(SavepointRestoreSettings savepointRestoreSettings) {
 		this.savepointRestoreSettings = savepointRestoreSettings;
+		return this;
+	}
+
+	public StreamGraphGenerator setAllVerticesInSameSlotSharingGroupByDefault(boolean allVerticesInSameSlotSharingGroup) {
+		this.allVerticesInSameSlotSharingGroup = allVerticesInSameSlotSharingGroup;
+		return this;
 	}
 
 	public StreamGraph generate() {
@@ -200,6 +212,7 @@ public class StreamGraphGenerator {
 		streamGraph.setTimeCharacteristic(timeCharacteristic);
 		streamGraph.setJobName(jobName);
 		streamGraph.setGlobalDataExchangeMode(globalDataExchangeMode);
+		streamGraph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
 
 		alreadyTransformed = new HashMap<>();
 
@@ -524,7 +537,6 @@ public class StreamGraphGenerator {
 				slotSharingGroup,
 				source.getCoLocationGroupKey(),
 				source.getOperatorFactory(),
-				null,
 				source.getOutputType(),
 				"Source: " + source.getName());
 		int parallelism = source.getParallelism() != ExecutionConfig.PARALLELISM_DEFAULT ?
@@ -544,7 +556,6 @@ public class StreamGraphGenerator {
 				slotSharingGroup,
 				source.getCoLocationGroupKey(),
 				source.getOperatorFactory(),
-				null,
 				source.getOutputType(),
 				"Source: " + source.getName());
 		if (source.getOperatorFactory() instanceof InputFormatOperatorFactory) {
@@ -572,7 +583,6 @@ public class StreamGraphGenerator {
 				sink.getCoLocationGroupKey(),
 				sink.getOperatorFactory(),
 				sink.getInput().getOutputType(),
-				null,
 				"Sink: " + sink.getName());
 
 		StreamOperatorFactory<?> operatorFactory = sink.getOperatorFactory();
