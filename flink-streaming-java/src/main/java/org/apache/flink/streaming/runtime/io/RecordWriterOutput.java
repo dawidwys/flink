@@ -45,13 +45,13 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExposingOutput<StreamRecord<OUT>> {
 
-	private RecordWriter<SerializationDelegate<StreamElement>> recordWriter;
+	private final RecordWriter<SerializationDelegate<StreamElement>> recordWriter;
 
 	private SerializationDelegate<StreamElement> serializationDelegate;
 
 	private final StreamStatusProvider streamStatusProvider;
 
-	private final OutputTag outputTag;
+	private final OutputTag<OUT> outputTag;
 
 	private final WatermarkGauge watermarkGauge = new WatermarkGauge();
 
@@ -59,7 +59,7 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 	public RecordWriterOutput(
 			RecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
 			TypeSerializer<OUT> outSerializer,
-			OutputTag outputTag,
+			OutputTag<OUT> outputTag,
 			StreamStatusProvider streamStatusProvider) {
 
 		checkNotNull(recordWriter);
@@ -73,7 +73,7 @@ public class RecordWriterOutput<OUT> implements OperatorChain.WatermarkGaugeExpo
 				new StreamElementSerializer<>(outSerializer);
 
 		if (outSerializer != null) {
-			serializationDelegate = new SerializationDelegate<StreamElement>(outRecordSerializer);
+			serializationDelegate = new SerializationDelegate<>(outRecordSerializer);
 		}
 
 		this.streamStatusProvider = checkNotNull(streamStatusProvider);

@@ -397,7 +397,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				userCodeClassloader,
 				streamOutputs,
 				allOperatorWrappers,
-				outputEdge.getOutputTag(),
+				getTypedOutputTag(outputEdge),
 				mailboxExecutorFactory);
 			allOutputs.add(new Tuple2<>(output, outputEdge));
 		}
@@ -415,7 +415,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			else {
 				// send to N outputs. Note that this includes the special case
 				// of sending to zero outputs
-				@SuppressWarnings({"unchecked", "rawtypes"})
+				@SuppressWarnings({"unchecked"})
 				Output<StreamRecord<T>>[] asArray = new Output[allOutputs.size()];
 				for (int i = 0; i < allOutputs.size(); i++) {
 					asArray[i] = allOutputs.get(i).f0;
@@ -444,6 +444,11 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			}
 
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> OutputTag<T> getTypedOutputTag(StreamEdge outputEdge) {
+		return (OutputTag<T>) outputEdge.getOutputTag();
 	}
 
 	private <IN, OUT> WatermarkGaugeExposingOutput<StreamRecord<IN>> createChainedOperator(
@@ -498,10 +503,9 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			StreamEdge edge,
 			StreamConfig upStreamConfig,
 			Environment taskEnvironment) {
-		OutputTag sideOutputTag = edge.getOutputTag(); // OutputTag, return null if not sideOutput
+		OutputTag<OUT> sideOutputTag = getTypedOutputTag(edge); // OutputTag, return null if not sideOutput
 
-		TypeSerializer outSerializer = null;
-
+		final TypeSerializer<OUT> outSerializer;
 		if (edge.getOutputTag() != null) {
 			// side output
 			outSerializer = upStreamConfig.getTypeSerializerSideOut(
