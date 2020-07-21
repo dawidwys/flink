@@ -546,7 +546,8 @@ public final class StreamGraph implements Pipeline {
 				null);
 	}
 
-	private void addEdgeInternal(Integer upStreamVertexID,
+	private void addEdgeInternal(
+			Integer upStreamVertexID,
 			Integer downStreamVertexID,
 			int typeNumber,
 			StreamPartitioner<?> partitioner,

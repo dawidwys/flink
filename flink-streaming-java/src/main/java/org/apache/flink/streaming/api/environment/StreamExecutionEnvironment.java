@@ -97,6 +97,8 @@ import org.apache.flink.util.WrappingRuntimeException;
 
 import com.esotericsoftware.kryo.Serializer;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -962,7 +964,7 @@ public class StreamExecutionEnvironment {
 		catch (IOException e) {
 			throw new RuntimeException(e.getMessage(), e);
 		}
-		return addSource(function, "Collection Source", typeInfo).setParallelism(1);
+		return addSource(function, "Collection Source", typeInfo, Boundedness.BOUNDED).setParallelism(1);
 	}
 
 	/**
@@ -1593,12 +1595,15 @@ public class StreamExecutionEnvironment {
 	 * 		the user defined type information for the stream
 	 * @return the data stream constructed
 	 */
-	public <OUT> DataStreamSource<OUT> addSource(SourceFunction<OUT> function, String sourceName, TypeInformation<OUT> typeInfo) {
+	public <OUT> DataStreamSource<OUT> addSource(
+			SourceFunction<OUT> function,
+			String sourceName,
+			TypeInformation<OUT> typeInfo) {
 		return addSource(function, sourceName, typeInfo, Boundedness.CONTINUOUS_UNBOUNDED);
 	}
 
-	@Internal
-	public <OUT> DataStreamSource<OUT> addSource(
+	@Nonnull
+	private <OUT> DataStreamSource<OUT> addSource(
 			SourceFunction<OUT> function,
 			String sourceName,
 			TypeInformation<OUT> typeInfo,
@@ -1610,7 +1615,7 @@ public class StreamExecutionEnvironment {
 		clean(function);
 
 		final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
-		return new DataStreamSource<>(this, resolvedTypeInfo, sourceOperator, isParallel, sourceName);
+		return new DataStreamSource<>(this, resolvedTypeInfo, sourceOperator, isParallel, sourceName, boundedness);
 	}
 
 	/**

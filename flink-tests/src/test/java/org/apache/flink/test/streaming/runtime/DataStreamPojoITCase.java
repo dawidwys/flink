@@ -52,7 +52,7 @@ public class DataStreamPojoITCase extends AbstractTestBase {
 	public void testCompositeKeyOnNestedPojo() throws Exception {
 		StreamExecutionEnvironment see = StreamExecutionEnvironment.getExecutionEnvironment();
 		see.getConfig().disableObjectReuse();
-		see.setParallelism(3);
+		see.setParallelism(1);
 
 		DataStream<Data> dataStream = see.fromCollection(elements);
 

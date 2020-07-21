@@ -20,8 +20,10 @@ package org.apache.flink.streaming.api.graph;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
@@ -33,6 +35,8 @@ import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.operators.InputFormatOperatorFactory;
 import org.apache.flink.streaming.api.operators.OutputFormatOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
+import org.apache.flink.streaming.api.operators.sorted.SingleKeyInternalTimeServiceManager;
+import org.apache.flink.streaming.api.operators.sorted.SingleKeyStateBackend;
 import org.apache.flink.streaming.api.transformations.AbstractMultipleInputTransformation;
 import org.apache.flink.streaming.api.transformations.CoFeedbackTransformation;
 import org.apache.flink.streaming.api.transformations.FeedbackTransformation;
@@ -96,8 +100,6 @@ public class StreamGraphGenerator {
 
 	public static final int DEFAULT_LOWER_BOUND_MAX_PARALLELISM = KeyGroupRangeAssignment.DEFAULT_LOWER_BOUND_MAX_PARALLELISM;
 
-	public static final ScheduleMode DEFAULT_SCHEDULE_MODE = ScheduleMode.EAGER;
-
 	public static final TimeCharacteristic DEFAULT_TIME_CHARACTERISTIC = TimeCharacteristic.ProcessingTime;
 
 	public static final String DEFAULT_JOB_NAME = "Flink Streaming Job";
@@ -116,7 +118,7 @@ public class StreamGraphGenerator {
 
 	private boolean chaining = true;
 
-	private ScheduleMode scheduleMode = DEFAULT_SCHEDULE_MODE;
+	private ScheduleMode scheduleMode = null;
 
 	private Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts;
 
@@ -126,7 +128,7 @@ public class StreamGraphGenerator {
 
 	private String jobName = DEFAULT_JOB_NAME;
 
-	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
+	private GlobalDataExchangeMode globalDataExchangeMode = null;
 
 	private boolean allVerticesInSameSlotSharingGroup = true;
 
@@ -139,6 +141,8 @@ public class StreamGraphGenerator {
 	}
 
 	private StreamGraph streamGraph;
+
+	private RuntimeExecutionMode runtimeExecutionMode = RuntimeExecutionMode.STREAM;
 
 	// Keep track of which Transforms we have already transformed, this is necessary because
 	// we have loops, i.e. feedback edges.
@@ -189,7 +193,7 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraphGenerator setGlobalDataExchangeMode(GlobalDataExchangeMode globalDataExchangeMode) {
-		this.globalDataExchangeMode = globalDataExchangeMode;
+		this.globalDataExchangeMode = checkNotNull(globalDataExchangeMode);
 		return this;
 	}
 
@@ -204,15 +208,12 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraph generate() {
-		streamGraph = new StreamGraph(executionConfig, checkpointConfig, savepointRestoreSettings);
-		streamGraph.setStateBackend(stateBackend);
-		streamGraph.setChaining(chaining);
-		streamGraph.setScheduleMode(scheduleMode);
-		streamGraph.setUserArtifacts(userArtifacts);
-		streamGraph.setTimeCharacteristic(timeCharacteristic);
-		streamGraph.setJobName(jobName);
-		streamGraph.setGlobalDataExchangeMode(globalDataExchangeMode);
-		streamGraph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
+		this.runtimeExecutionMode = determineExecutionMode(runtimeExecutionMode);
+		streamGraph = new StreamGraph(
+			executionConfig,
+			checkpointConfig,
+			savepointRestoreSettings);
+		configureStreamGraph(streamGraph, runtimeExecutionMode);
 
 		alreadyTransformed = new HashMap<>();
 
@@ -227,6 +228,63 @@ public class StreamGraphGenerator {
 		streamGraph = null;
 
 		return builtStreamGraph;
+	}
+
+	private void configureStreamGraph(StreamGraph graph, RuntimeExecutionMode executionMode) {
+		graph.setStateBackend(stateBackend);
+		graph.setChaining(chaining);
+		graph.setUserArtifacts(userArtifacts);
+		graph.setTimeCharacteristic(timeCharacteristic);
+		graph.setJobName(jobName);
+		graph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
+		switch (executionMode) {
+			case STREAM:
+				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.ALL_EDGES_PIPELINED);
+				graph.setScheduleMode(ScheduleMode.EAGER);
+				break;
+			case BATCH:
+				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.POINTWISE_EDGES_PIPELINED);
+				graph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
+				graph.setStateBackend(new SingleKeyStateBackend());
+				graph.setTimeServiceProvider(SingleKeyInternalTimeServiceManager::create);
+				setDefaultBufferTimeout(-1);
+				break;
+			case AUTOMATIC:
+				throw new IllegalStateException("Runtime execution mode should've been derived by now.");
+			default:
+				throw new IllegalArgumentException("Unknown execution mode");
+		}
+	}
+
+	private RuntimeExecutionMode determineExecutionMode(RuntimeExecutionMode chosenMode) {
+		if (chosenMode != RuntimeExecutionMode.AUTOMATIC) {
+			return chosenMode;
+		}
+
+		boolean continousSourceExists = transformations.stream()
+			.anyMatch(transformation -> isContinuousSource(transformation) ||
+				transformation.getTransitivePredecessors().stream().anyMatch(this::isContinuousSource));
+		if (continousSourceExists) {
+			return RuntimeExecutionMode.STREAM;
+		} else {
+			return RuntimeExecutionMode.BATCH;
+		}
+	}
+
+	private boolean isContinuousSource(Transformation<?> transformation) {
+		boolean isLegacy = transformation instanceof LegacySourceTransformation;
+		boolean isNewSource = transformation instanceof SourceTransformation;
+
+		final Boundedness boundedness;
+		if (isLegacy) {
+			boundedness = ((LegacySourceTransformation<?>) transformation).getBoundedness();
+		} else if (isNewSource) {
+			boundedness = ((SourceTransformation<?>) transformation).getOperatorFactory().getBoundedness();
+		} else {
+			boundedness = Boundedness.BOUNDED;
+		}
+
+		return boundedness != Boundedness.BOUNDED;
 	}
 
 	/**
@@ -597,8 +655,8 @@ public class StreamGraphGenerator {
 
 		for (Integer inputId: inputIds) {
 			streamGraph.addEdge(inputId,
-					sink.getId(),
-					0
+				sink.getId(),
+				0
 			);
 		}
 
@@ -645,7 +703,7 @@ public class StreamGraphGenerator {
 		streamGraph.setParallelism(transform.getId(), parallelism);
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
 
-		for (Integer inputId: inputIds) {
+		for (Integer inputId : inputIds) {
 			streamGraph.addEdge(inputId, transform.getId(), 0);
 		}
 
