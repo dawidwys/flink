@@ -180,12 +180,6 @@ public class DummyStreamExecutionEnvironment extends StreamExecutionEnvironment 
 	}
 
 	@Override
-	public StreamExecutionEnvironment setStateBackend(AbstractStateBackend backend) {
-		throw new UnsupportedOperationException(
-				"This is a dummy StreamExecutionEnvironment, setStateBackend method is unsupported.");
-	}
-
-	@Override
 	public StateBackend getStateBackend() {
 		return realExecEnv.getStateBackend();
 	}
