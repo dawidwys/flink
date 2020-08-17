@@ -191,6 +191,9 @@ under the License.
 							<exclude>org.apache.flink.api.common.ExecutionConfig#setNumberOfExecutionRetries(int)</exclude>
 							<exclude>org.apache.flink.api.common.functions.FoldFunction</exclude>
 							<exclude>org.apache.flink.api.common.functions.RichFoldFunction</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#disableSysoutLogging()</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#enableSysoutLogging()</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#isSysoutLoggingEnabled()</exclude>
 						</excludes>
 					</parameter>
 				</configuration>
