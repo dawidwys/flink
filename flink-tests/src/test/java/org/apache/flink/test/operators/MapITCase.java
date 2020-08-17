@@ -79,7 +79,6 @@ public class MapITCase extends MultipleProgramsTestBase {
 		 */
 
 		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-		env.getConfig().setNumberOfExecutionRetries(1000);
 		env.getConfig().setTaskCancellationInterval(50000);
 
 		DataSet<String> ds = CollectionDataSets.getStringDataSet(env);
@@ -87,7 +86,6 @@ public class MapITCase extends MultipleProgramsTestBase {
 			map(new RichMapFunction<String, String>() {
 				@Override
 				public String map(String value) throws Exception {
-					Assert.assertTrue(1000 == getRuntimeContext().getExecutionConfig().getNumberOfExecutionRetries());
 					Assert.assertTrue(50000 == getRuntimeContext().getExecutionConfig().getTaskCancellationInterval());
 					return value;
 				}

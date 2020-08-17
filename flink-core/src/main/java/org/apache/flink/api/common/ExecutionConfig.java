@@ -90,8 +90,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	 */
 	public static final int PARALLELISM_UNKNOWN = -2;
 
-	private static final long DEFAULT_RESTART_DELAY = 10000L;
-
 	// --------------------------------------------------------------------------------------------
 
 	/** Defines how data exchange happens - batch or pipelined */
@@ -107,13 +105,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	 * number of key groups used for partitioned state.
 	 */
 	private int maxParallelism = -1;
-
-	/**
-	 * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
-	 */
-	@Deprecated
-	private int numberOfExecutionRetries = -1;
-
 	private boolean forceKryo = false;
 
 	/** Flag to indicate whether generic types (through Kryo) are supported */
@@ -137,13 +128,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	private long latencyTrackingInterval = MetricOptions.LATENCY_INTERVAL.defaultValue();
 
 	private boolean isLatencyTrackingConfigured = false;
-
-	/**
-	 * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
-	 */
-	@Deprecated
-	private long executionRetryDelay = DEFAULT_RESTART_DELAY;
-
 	private RestartStrategies.RestartStrategyConfiguration restartStrategyConfiguration =
 		new RestartStrategies.FallbackRestartStrategyConfiguration();
 	
@@ -433,90 +417,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	 * @return The specified restart configuration
 	 */
 	@PublicEvolving
-	@SuppressWarnings("deprecation")
 	public RestartStrategies.RestartStrategyConfiguration getRestartStrategy() {
-		if (restartStrategyConfiguration instanceof RestartStrategies.FallbackRestartStrategyConfiguration) {
-			// support the old API calls by creating a restart strategy from them
-			if (getNumberOfExecutionRetries() > 0 && getExecutionRetryDelay() >= 0) {
-				return RestartStrategies.fixedDelayRestart(getNumberOfExecutionRetries(), getExecutionRetryDelay());
-			} else if (getNumberOfExecutionRetries() == 0) {
-				return RestartStrategies.noRestart();
-			} else {
-				return restartStrategyConfiguration;
-			}
-		} else {
-			return restartStrategyConfiguration;
-		}
-	}
-
-	/**
-	 * Gets the number of times the system will try to re-execute failed tasks. A value
-	 * of {@code -1} indicates that the system default value (as defined in the configuration)
-	 * should be used.
-	 *
-	 * @return The number of times the system will try to re-execute failed tasks.
-	 *
-	 * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
-	 */
-	@Deprecated
-	public int getNumberOfExecutionRetries() {
-		return numberOfExecutionRetries;
-	}
-
-	/**
-	 * Returns the delay between execution retries.
-	 *
-	 * @return The delay between successive execution retries in milliseconds.
-	 *
-	 * @deprecated Should no longer be used because it is subsumed by RestartStrategyConfiguration
-	 */
-	@Deprecated
-	public long getExecutionRetryDelay() {
-		return executionRetryDelay;
-	}
-
-	/**
-	 * Sets the number of times that failed tasks are re-executed. A value of zero
-	 * effectively disables fault tolerance. A value of {@code -1} indicates that the system
-	 * default value (as defined in the configuration) should be used.
-	 *
-	 * @param numberOfExecutionRetries The number of times the system will try to re-execute failed tasks.
-	 *
-	 * @return The current execution configuration
-	 *
-	 * @deprecated This method will be replaced by {@link #setRestartStrategy}. The
-	 * {@link RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-	 * execution retries.
-	 */
-	@Deprecated
-	public ExecutionConfig setNumberOfExecutionRetries(int numberOfExecutionRetries) {
-		if (numberOfExecutionRetries < -1) {
-			throw new IllegalArgumentException(
-				"The number of execution retries must be non-negative, or -1 (use system default)");
-		}
-		this.numberOfExecutionRetries = numberOfExecutionRetries;
-		return this;
-	}
-
-	/**
-	 * Sets the delay between executions.
-	 *
-	 * @param executionRetryDelay The number of milliseconds the system will wait to retry.
-	 *
-	 * @return The current execution configuration
-	 *
-	 * @deprecated This method will be replaced by {@link #setRestartStrategy}. The
-	 * {@link RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the delay between
-	 * successive execution attempts.
-	 */
-	@Deprecated
-	public ExecutionConfig setExecutionRetryDelay(long executionRetryDelay) {
-		if (executionRetryDelay < 0 ) {
-			throw new IllegalArgumentException(
-				"The delay between retries must be non-negative.");
-		}
-		this.executionRetryDelay = executionRetryDelay;
-		return this;
+		return restartStrategyConfiguration;
 	}
 
 	/**
@@ -1041,7 +943,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 			", closureCleanerLevel=" + closureCleanerLevel +
 			", parallelism=" + parallelism +
 			", maxParallelism=" + maxParallelism +
-			", numberOfExecutionRetries=" + numberOfExecutionRetries +
 			", forceKryo=" + forceKryo +
 			", disableGenericTypes=" + disableGenericTypes +
 			", enableAutoGeneratedUids=" + enableAutoGeneratedUids +
@@ -1052,7 +953,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 			", autoWatermarkInterval=" + autoWatermarkInterval +
 			", latencyTrackingInterval=" + latencyTrackingInterval +
 			", isLatencyTrackingConfigured=" + isLatencyTrackingConfigured +
-			", executionRetryDelay=" + executionRetryDelay +
 			", restartStrategyConfiguration=" + restartStrategyConfiguration +
 			", taskCancellationIntervalMillis=" + taskCancellationIntervalMillis +
 			", taskCancellationTimeoutMillis=" + taskCancellationTimeoutMillis +

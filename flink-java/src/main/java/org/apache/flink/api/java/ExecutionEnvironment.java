@@ -283,40 +283,6 @@ public class ExecutionEnvironment {
 	}
 
 	/**
-	 * Sets the number of times that failed tasks are re-executed. A value of zero
-	 * effectively disables fault tolerance. A value of {@code -1} indicates that the system
-	 * default value (as defined in the configuration) should be used.
-	 *
-	 * @param numberOfExecutionRetries The number of times the system will try to re-execute failed tasks.
-	 *
-	 * @deprecated This method will be replaced by {@link #setRestartStrategy}. The
-	 * {@link RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-	 * execution retries.
-	 */
-	@Deprecated
-	@PublicEvolving
-	public void setNumberOfExecutionRetries(int numberOfExecutionRetries) {
-		config.setNumberOfExecutionRetries(numberOfExecutionRetries);
-	}
-
-	/**
-	 * Gets the number of times the system will try to re-execute failed tasks. A value
-	 * of {@code -1} indicates that the system default value (as defined in the configuration)
-	 * should be used.
-	 *
-	 * @return The number of times the system will try to re-execute failed tasks.
-	 *
-	 * @deprecated This method will be replaced by {@link #getRestartStrategy}. The
-	 * {@link RestartStrategies.FixedDelayRestartStrategyConfiguration} contains the number of
-	 * execution retries.
-	 */
-	@Deprecated
-	@PublicEvolving
-	public int getNumberOfExecutionRetries() {
-		return config.getNumberOfExecutionRetries();
-	}
-
-	/**
 	 * Returns the {@link org.apache.flink.api.common.JobExecutionResult} of the last executed job.
 	 *
 	 * @return The execution result from the latest job execution.

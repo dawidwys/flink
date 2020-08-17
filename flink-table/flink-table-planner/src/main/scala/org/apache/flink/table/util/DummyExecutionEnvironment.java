@@ -111,17 +111,6 @@ public class DummyExecutionEnvironment extends ExecutionEnvironment {
 	}
 
 	@Override
-	public void setNumberOfExecutionRetries(int numberOfExecutionRetries) {
-		throw new UnsupportedOperationException(
-			"This is a dummy ExecutionEnvironment, setNumberOfExecutionRetries method is unsupported.");
-	}
-
-	@Override
-	public int getNumberOfExecutionRetries() {
-		return realExecEnv.getNumberOfExecutionRetries();
-	}
-
-	@Override
 	public JobExecutionResult getLastJobExecutionResult() {
 		return realExecEnv.getLastJobExecutionResult();
 	}

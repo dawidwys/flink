@@ -24,7 +24,6 @@ import org.apache.flink.api.common.cache.DistributedCache;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -193,17 +192,6 @@ public class DummyStreamExecutionEnvironment extends StreamExecutionEnvironment 
 	@Override
 	public RestartStrategies.RestartStrategyConfiguration getRestartStrategy() {
 		return realExecEnv.getRestartStrategy();
-	}
-
-	@Override
-	public void setNumberOfExecutionRetries(int numberOfExecutionRetries) {
-		throw new UnsupportedOperationException(
-			"This is a dummy StreamExecutionEnvironment, setNumberOfExecutionRetries method is unsupported.");
-	}
-
-	@Override
-	public int getNumberOfExecutionRetries() {
-		return realExecEnv.getNumberOfExecutionRetries();
 	}
 
 	@Override

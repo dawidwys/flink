@@ -184,6 +184,11 @@ under the License.
 							<!-- leaked constructor in TypeHint -->
 							<exclude>org.apache.flink.api.common.typeinfo.TypeHint</exclude>
 							<exclude>org.apache.flink.api.java.typeutils.TypeInfoParser</exclude>
+
+							<exclude>org.apache.flink.api.common.ExecutionConfig#getExecutionRetryDelay()</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#getNumberOfExecutionRetries()</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#setExecutionRetryDelay(long)</exclude>
+							<exclude>org.apache.flink.api.common.ExecutionConfig#setNumberOfExecutionRetries(int)</exclude>
 							<exclude>org.apache.flink.api.common.functions.FoldFunction</exclude>
 							<exclude>org.apache.flink.api.common.functions.RichFoldFunction</exclude>
 						</excludes>
