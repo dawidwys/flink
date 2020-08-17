@@ -117,9 +117,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	private boolean autoTypeRegistrationEnabled = true;
 
 	private boolean forceAvro = false;
-
-	private CodeAnalysisMode codeAnalysisMode = CodeAnalysisMode.DISABLE;
-
 	private long autoWatermarkInterval = 0;
 
 	/**
@@ -625,23 +622,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 	public boolean isObjectReuseEnabled() {
 		return objectReuse;
 	}
-	
-	/**
-	 * @deprecated The code analysis code has been removed and this method has no effect.
-	 */
-	@PublicEvolving
-	@Deprecated
-	public void setCodeAnalysisMode(CodeAnalysisMode codeAnalysisMode) {
-	}
-	
-	/**
-	 * @deprecated The code analysis code has been removed and this method does not return anything interesting.
-	 */
-	@PublicEvolving
-	@Deprecated
-	public CodeAnalysisMode getCodeAnalysisMode() {
-		return codeAnalysisMode;
-	}
 
 	/**
 	 * @deprecated Ineffective. Will be removed at 2.0.
@@ -896,7 +876,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 				objectReuse == other.objectReuse &&
 				autoTypeRegistrationEnabled == other.autoTypeRegistrationEnabled &&
 				forceAvro == other.forceAvro &&
-				Objects.equals(codeAnalysisMode, other.codeAnalysisMode) &&
 				Objects.equals(globalJobParameters, other.globalJobParameters) &&
 				autoWatermarkInterval == other.autoWatermarkInterval &&
 				registeredTypesWithKryoSerializerClasses.equals(other.registeredTypesWithKryoSerializerClasses) &&
@@ -924,7 +903,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 			objectReuse,
 			autoTypeRegistrationEnabled,
 			forceAvro,
-			codeAnalysisMode,
 			globalJobParameters,
 			autoWatermarkInterval,
 			registeredTypesWithKryoSerializerClasses,
@@ -949,7 +927,6 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 			", objectReuse=" + objectReuse +
 			", autoTypeRegistrationEnabled=" + autoTypeRegistrationEnabled +
 			", forceAvro=" + forceAvro +
-			", codeAnalysisMode=" + codeAnalysisMode +
 			", autoWatermarkInterval=" + autoWatermarkInterval +
 			", latencyTrackingInterval=" + latencyTrackingInterval +
 			", isLatencyTrackingConfigured=" + isLatencyTrackingConfigured +
