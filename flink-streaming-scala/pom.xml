@@ -278,6 +278,10 @@ under the License.
 
 							<exclude>org.apache.flink.streaming.api.scala.AllWindowedStream#fold(java.lang.Object,org.apache.flink.api.common.functions.FoldFunction,org.apache.flink.api.common.typeinfo.TypeInformation)</exclude>
 							<exclude>org.apache.flink.streaming.api.scala.WindowedStream#fold(java.lang.Object,org.apache.flink.api.common.functions.FoldFunction,org.apache.flink.api.common.typeinfo.TypeInformation)</exclude>
+
+							<exclude>org.apache.flink.streaming.api.scala.StreamExecutionEnvironment#readFileStream(java.lang.String,long,org.apache.flink.streaming.api.functions.source.FileMonitoringFunction$WatchType)</exclude>
+							<exclude>org.apache.flink.streaming.api.scala.StreamExecutionEnvironment#readFileStream$default$2()</exclude>
+							<exclude>org.apache.flink.streaming.api.scala.StreamExecutionEnvironment#readFileStream$default$3()</exclude>
 						</excludes>
 					</parameter>
 				</configuration>

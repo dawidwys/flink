@@ -39,7 +39,6 @@ import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.Utils;
 import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.typeutils.MissingTypeInfo;
 import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
@@ -68,9 +67,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.functions.source.ContinuousFileMonitoringFunction;
 import org.apache.flink.streaming.api.functions.source.ContinuousFileReaderOperatorFactory;
-import org.apache.flink.streaming.api.functions.source.FileMonitoringFunction;
 import org.apache.flink.streaming.api.functions.source.FileProcessingMode;
-import org.apache.flink.streaming.api.functions.source.FileReadFunction;
 import org.apache.flink.streaming.api.functions.source.FromElementsFunction;
 import org.apache.flink.streaming.api.functions.source.FromIteratorFunction;
 import org.apache.flink.streaming.api.functions.source.FromSplittableIteratorFunction;
@@ -1109,50 +1106,6 @@ public class StreamExecutionEnvironment {
 
 	/**
 	 * Reads the contents of the user-specified {@code filePath} based on the given {@link FileInputFormat}. Depending
-	 * on the provided {@link FileProcessingMode}.
-	 *
-	 * <p>See {@link #readFile(FileInputFormat, String, FileProcessingMode, long)}
-	 *
-	 * @param inputFormat
-	 * 		The input format used to create the data stream
-	 * @param filePath
-	 * 		The path of the file, as a URI (e.g., "file:///some/local/file" or "hdfs://host:port/file/path")
-	 * @param watchType
-	 * 		The mode in which the source should operate, i.e. monitor path and react to new data, or process once and exit
-	 * @param interval
-	 * 		In the case of periodic path monitoring, this specifies the interval (in millis) between consecutive path scans
-	 * @param filter
-	 * 		The files to be excluded from the processing
-	 * @param <OUT>
-	 * 		The type of the returned data stream
-	 * @return The data stream that represents the data read from the given file
-	 *
-	 * @deprecated Use {@link FileInputFormat#setFilesFilter(FilePathFilter)} to set a filter and
-	 * 		{@link StreamExecutionEnvironment#readFile(FileInputFormat, String, FileProcessingMode, long)}
-	 *
-	 */
-	@PublicEvolving
-	@Deprecated
-	public <OUT> DataStreamSource<OUT> readFile(FileInputFormat<OUT> inputFormat,
-												String filePath,
-												FileProcessingMode watchType,
-												long interval,
-												FilePathFilter filter) {
-		inputFormat.setFilesFilter(filter);
-
-		TypeInformation<OUT> typeInformation;
-		try {
-			typeInformation = TypeExtractor.getInputFormatTypes(inputFormat);
-		} catch (Exception e) {
-			throw new InvalidProgramException("The type returned by the input format could not be " +
-					"automatically determined. Please specify the TypeInformation of the produced type " +
-					"explicitly by using the 'createInput(InputFormat, TypeInformation)' method instead.");
-		}
-		return readFile(inputFormat, filePath, watchType, interval, typeInformation);
-	}
-
-	/**
-	 * Reads the contents of the user-specified {@code filePath} based on the given {@link FileInputFormat}. Depending
 	 * on the provided {@link FileProcessingMode}, the source may periodically monitor (every {@code interval} ms) the path
 	 * for new data ({@link FileProcessingMode#PROCESS_CONTINUOUSLY}), or process once the data currently in the path and
 	 * exit ({@link FileProcessingMode#PROCESS_ONCE}). In addition, if the path contains files not to be processed, the user
@@ -1199,34 +1152,6 @@ public class StreamExecutionEnvironment {
 					"explicitly by using the 'createInput(InputFormat, TypeInformation)' method instead.");
 		}
 		return readFile(inputFormat, filePath, watchType, interval, typeInformation);
-	}
-
-	/**
-	 * Creates a data stream that contains the contents of file created while system watches the given path. The file
-	 * will be read with the system's default character set.
-	 *
-	 * @param filePath
-	 * 		The path of the file, as a URI (e.g., "file:///some/local/file" or "hdfs://host:port/file/path/")
-	 * @param intervalMillis
-	 * 		The interval of file watching in milliseconds
-	 * @param watchType
-	 * 		The watch type of file stream. When watchType is {@link org.apache.flink.streaming.api.functions.source.FileMonitoringFunction.WatchType#ONLY_NEW_FILES}, the system processes
-	 * 		only
-	 * 		new files. {@link org.apache.flink.streaming.api.functions.source.FileMonitoringFunction.WatchType#REPROCESS_WITH_APPENDED} means that the system re-processes all contents of
-	 * 		appended file. {@link org.apache.flink.streaming.api.functions.source.FileMonitoringFunction.WatchType#PROCESS_ONLY_APPENDED} means that the system processes only appended
-	 * 		contents
-	 * 		of files.
-	 * @return The DataStream containing the given directory.
-	 *
-	 * @deprecated Use {@link #readFile(FileInputFormat, String, FileProcessingMode, long)} instead.
-	 */
-	@Deprecated
-	@SuppressWarnings("deprecation")
-	public DataStream<String> readFileStream(String filePath, long intervalMillis, FileMonitoringFunction.WatchType watchType) {
-		DataStream<Tuple3<String, Long, Long>> source = addSource(new FileMonitoringFunction(
-				filePath, intervalMillis, watchType), "Read File Stream source");
-
-		return source.flatMap(new FileReadFunction());
 	}
 
 	/**
@@ -1285,35 +1210,6 @@ public class StreamExecutionEnvironment {
 	 * 		The port number which a server socket binds. A port number of 0 means that the port number is automatically
 	 * 		allocated.
 	 * @param delimiter
-	 * 		A character which splits received strings into records
-	 * @param maxRetry
-	 * 		The maximal retry interval in seconds while the program waits for a socket that is temporarily down.
-	 * 		Reconnection is initiated every second. A number of 0 means that the reader is immediately terminated,
-	 * 		while
-	 * 		a	negative value ensures retrying forever.
-	 * @return A data stream containing the strings received from the socket
-	 *
-	 * @deprecated Use {@link #socketTextStream(String, int, String, long)} instead.
-	 */
-	@Deprecated
-	public DataStreamSource<String> socketTextStream(String hostname, int port, char delimiter, long maxRetry) {
-		return socketTextStream(hostname, port, String.valueOf(delimiter), maxRetry);
-	}
-
-	/**
-	 * Creates a new data stream that contains the strings received infinitely from a socket. Received strings are
-	 * decoded by the system's default character set. On the termination of the socket server connection retries can be
-	 * initiated.
-	 *
-	 * <p>Let us note that the socket itself does not report on abort and as a consequence retries are only initiated when
-	 * the socket was gracefully terminated.
-	 *
-	 * @param hostname
-	 * 		The host name which a server socket binds
-	 * @param port
-	 * 		The port number which a server socket binds. A port number of 0 means that the port number is automatically
-	 * 		allocated.
-	 * @param delimiter
 	 * 		A string which splits received strings into records
 	 * @param maxRetry
 	 * 		The maximal retry interval in seconds while the program waits for a socket that is temporarily down.
@@ -1326,27 +1222,6 @@ public class StreamExecutionEnvironment {
 	public DataStreamSource<String> socketTextStream(String hostname, int port, String delimiter, long maxRetry) {
 		return addSource(new SocketTextStreamFunction(hostname, port, delimiter, maxRetry),
 				"Socket Stream");
-	}
-
-	/**
-	 * Creates a new data stream that contains the strings received infinitely from a socket. Received strings are
-	 * decoded by the system's default character set. The reader is terminated immediately when the socket is down.
-	 *
-	 * @param hostname
-	 * 		The host name which a server socket binds
-	 * @param port
-	 * 		The port number which a server socket binds. A port number of 0 means that the port number is automatically
-	 * 		allocated.
-	 * @param delimiter
-	 * 		A character which splits received strings into records
-	 * @return A data stream containing the strings received from the socket
-	 *
-	 * @deprecated Use {@link #socketTextStream(String, int, String)} instead.
-	 */
-	@Deprecated
-	@SuppressWarnings("deprecation")
-	public DataStreamSource<String> socketTextStream(String hostname, int port, char delimiter) {
-		return socketTextStream(hostname, port, delimiter, 0);
 	}
 
 	/**

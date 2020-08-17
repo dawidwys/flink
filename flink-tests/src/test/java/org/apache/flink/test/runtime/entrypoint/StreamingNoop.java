@@ -19,11 +19,13 @@
 package org.apache.flink.test.runtime.entrypoint;
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.apache.flink.streaming.api.functions.source.FileMonitoringFunction;
+import org.apache.flink.streaming.api.functions.source.FileProcessingMode;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -46,8 +48,13 @@ public class StreamingNoop {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setParallelism(2);
 		env.setRestartStrategy(RestartStrategies.fixedDelayRestart(10, 1000));
-		env.readFileStream("input/", 60000, FileMonitoringFunction.WatchType.ONLY_NEW_FILES)
-			.addSink(new DiscardingSink<String>());
+		String filePath = "input/";
+		env.readFile(
+			new TextInputFormat(new Path(filePath)),
+			filePath,
+			FileProcessingMode.PROCESS_CONTINUOUSLY,
+			60000
+		).addSink(new DiscardingSink<>());
 
 		// generate a job graph
 		final JobGraph jobGraph = env.getStreamGraph().getJobGraph();

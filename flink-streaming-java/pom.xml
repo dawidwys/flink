@@ -111,6 +111,9 @@ under the License.
 							<exclude>org.apache.flink.streaming.api.datastream.WindowedStream#fold(java.lang.Object,org.apache.flink.api.common.functions.FoldFunction)</exclude>
 							<exclude>org.apache.flink.streaming.api.datastream.WindowedStream#apply(java.lang.Object,org.apache.flink.api.common.functions.FoldFunction,org.apache.flink.streaming.api.functions.windowing.WindowFunction)</exclude>
 							<exclude>org.apache.flink.streaming.api.datastream.WindowedStream#apply(java.lang.Object,org.apache.flink.api.common.functions.FoldFunction,org.apache.flink.streaming.api.functions.windowing.WindowFunction,org.apache.flink.api.common.typeinfo.TypeInformation)</exclude>
+							<exclude>org.apache.flink.streaming.api.environment.StreamExecutionEnvironment#socketTextStream(java.lang.String,int,char,long)</exclude>
+							<exclude>org.apache.flink.streaming.api.environment.StreamExecutionEnvironment#socketTextStream(java.lang.String,int,char)</exclude>
+							<exclude>org.apache.flink.streaming.api.environment.StreamExecutionEnvironment#readFileStream(java.lang.String,long,org.apache.flink.streaming.api.functions.source.FileMonitoringFunction$WatchType)</exclude>
 						</excludes>
 					</parameter>
 				</configuration>

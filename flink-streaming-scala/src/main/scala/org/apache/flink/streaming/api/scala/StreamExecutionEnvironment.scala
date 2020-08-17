@@ -483,52 +483,6 @@ class StreamExecutionEnvironment(javaEnv: JavaEnv) {
     asScalaStream(javaEnv.readFile(inputFormat, filePath))
 
   /**
-    * Creates a DataStream that contains the contents of file created while
-    * system watches the given path. The file will be read with the system's
-    * default character set. The user can check the monitoring interval in milliseconds,
-    * and the way file modifications are handled. By default it checks for only new files
-    * every 100 milliseconds.
-    *
-    */
-  @Deprecated
-  def readFileStream(StreamPath: String, intervalMillis: Long = 100,
-                     watchType: FileMonitoringFunction.WatchType =
-                     FileMonitoringFunction.WatchType.ONLY_NEW_FILES): DataStream[String] =
-    asScalaStream(javaEnv.readFileStream(StreamPath, intervalMillis, watchType))
-
-  /**
-    * Reads the contents of the user-specified path based on the given [[FileInputFormat]].
-    * Depending on the provided [[FileProcessingMode]].
-    *
-    * @param inputFormat
-    *          The input format used to create the data stream
-    * @param filePath
-    *          The path of the file, as a URI (e.g., "file:///some/local/file" or
-    *          "hdfs://host:port/file/path")
-    * @param watchType
-    *          The mode in which the source should operate, i.e. monitor path and react
-    *          to new data, or process once and exit
-    * @param interval
-    *          In the case of periodic path monitoring, this specifies the interval (in millis)
-    *          between consecutive path scans
-    * @param filter
-    *          The files to be excluded from the processing
-    * @return The data stream that represents the data read from the given file
-   * @deprecated Use [[FileInputFormat#setFilesFilter(FilePathFilter)]] to set a filter and
-    * [[StreamExecutionEnvironment#readFile(FileInputFormat, String, FileProcessingMode, long)]]
-    */
-  @PublicEvolving
-  @Deprecated
-  def readFile[T: TypeInformation](
-                                    inputFormat: FileInputFormat[T],
-                                    filePath: String,
-                                    watchType: FileProcessingMode,
-                                    interval: Long,
-                                    filter: FilePathFilter): DataStream[T] = {
-    asScalaStream(javaEnv.readFile(inputFormat, filePath, watchType, interval, filter))
-  }
-
-  /**
     * Reads the contents of the user-specified path based on the given [[FileInputFormat]].
     * Depending on the provided [[FileProcessingMode]], the source
     * may periodically monitor (every `interval` ms) the path for new data
