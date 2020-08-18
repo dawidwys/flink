@@ -29,7 +29,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.CheckpointFailureReason;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
-import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
+import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.DefaultKeyedStateStore;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -41,6 +41,7 @@ import org.apache.flink.runtime.state.StateInitializationContextImpl;
 import org.apache.flink.runtime.state.StatePartitionStreamProvider;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.StateSnapshotContextSynchronousImpl;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.util.CloseableIterable;
 import org.apache.flink.util.IOUtils;
 
@@ -67,7 +68,7 @@ public class StreamOperatorStateHandler {
 
 	/** Backend for keyed state. This might be empty if we're not on a keyed stream. */
 	@Nullable
-	private final AbstractKeyedStateBackend<?> keyedStateBackend;
+	private final InternalKeyedStateBackend<?> keyedStateBackend;
 	private final CloseableRegistry closeableRegistry;
 	@Nullable
 	private final DefaultKeyedStateStore keyedStateStore;
@@ -217,14 +218,14 @@ public class StreamOperatorStateHandler {
 	}
 
 	public void notifyCheckpointComplete(long checkpointId) throws Exception {
-		if (keyedStateBackend != null) {
-			keyedStateBackend.notifyCheckpointComplete(checkpointId);
+		if (keyedStateBackend != null && keyedStateBackend instanceof CheckpointListener) {
+			((CheckpointListener) keyedStateBackend).notifyCheckpointComplete(checkpointId);
 		}
 	}
 
 	public void notifyCheckpointAborted(long checkpointId) throws Exception {
-		if (keyedStateBackend != null) {
-			keyedStateBackend.notifyCheckpointAborted(checkpointId);
+		if (keyedStateBackend != null && keyedStateBackend instanceof CheckpointListener) {
+			((CheckpointListener) keyedStateBackend).notifyCheckpointAborted(checkpointId);
 		}
 	}
 
@@ -282,8 +283,8 @@ public class StreamOperatorStateHandler {
 		if (keyedStateBackend != null) {
 			try {
 				// need to work around type restrictions
-				@SuppressWarnings("unchecked,rawtypes")
-				AbstractKeyedStateBackend rawBackend = (AbstractKeyedStateBackend) keyedStateBackend;
+				@SuppressWarnings("rawtypes")
+				InternalKeyedStateBackend rawBackend = keyedStateBackend;
 
 				rawBackend.setCurrentKey(key);
 			} catch (Exception e) {
@@ -292,7 +293,6 @@ public class StreamOperatorStateHandler {
 		}
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	public Object getCurrentKey() {
 		if (keyedStateBackend != null) {
 			return keyedStateBackend.getCurrentKey();

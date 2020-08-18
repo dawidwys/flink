@@ -48,6 +48,7 @@ import org.apache.flink.runtime.state.TaskLocalStateStore;
 import org.apache.flink.runtime.state.TaskStateManager;
 import org.apache.flink.runtime.state.TaskStateManagerImplTest;
 import org.apache.flink.runtime.state.TestTaskLocalStateStore;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.runtime.taskmanager.TestCheckpointResponder;
@@ -103,7 +104,7 @@ public class StreamTaskStateInitializerImplTest {
 			new UnregisteredMetricsGroup());
 
 		OperatorStateBackend operatorStateBackend = stateContext.operatorStateBackend();
-		AbstractKeyedStateBackend<?> keyedStateBackend = stateContext.keyedStateBackend();
+		InternalKeyedStateBackend<?> keyedStateBackend = stateContext.keyedStateBackend();
 		InternalTimeServiceManager<?> timeServiceManager = stateContext.internalTimerServiceManager();
 		CloseableIterable<KeyGroupStatePartitionStreamProvider> keyedStateInputs = stateContext.rawKeyedStateInputs();
 		CloseableIterable<StatePartitionStreamProvider> operatorStateInputs = stateContext.rawOperatorStateInputs();
@@ -214,7 +215,7 @@ public class StreamTaskStateInitializerImplTest {
 			new UnregisteredMetricsGroup());
 
 		OperatorStateBackend operatorStateBackend = stateContext.operatorStateBackend();
-		AbstractKeyedStateBackend<?> keyedStateBackend = stateContext.keyedStateBackend();
+		InternalKeyedStateBackend<?> keyedStateBackend = stateContext.keyedStateBackend();
 		InternalTimeServiceManager<?> timeServiceManager = stateContext.internalTimerServiceManager();
 		CloseableIterable<KeyGroupStatePartitionStreamProvider> keyedStateInputs = stateContext.rawKeyedStateInputs();
 		CloseableIterable<StatePartitionStreamProvider> operatorStateInputs = stateContext.rawOperatorStateInputs();
@@ -285,7 +286,7 @@ public class StreamTaskStateInitializerImplTest {
 				stateBackend) {
 				@Override
 				protected <K> InternalTimeServiceManager<K> internalTimeServiceManager(
-					AbstractKeyedStateBackend<K> keyedStatedBackend,
+					InternalKeyedStateBackend<K> keyedStatedBackend,
 					KeyContext keyContext,
 					ProcessingTimeService processingTimeService,
 					Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws Exception {

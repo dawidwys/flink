@@ -25,6 +25,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 
 import javax.annotation.Nonnull;
@@ -143,7 +144,7 @@ public interface StateBackend extends java.io.Serializable {
 	 *
 	 * @throws Exception This method may forward all exceptions that occur while instantiating the backend.
 	 */
-	<K> AbstractKeyedStateBackend<K> createKeyedStateBackend(
+	<K> InternalKeyedStateBackend<K> createKeyedStateBackend(
 		Environment env,
 		JobID jobID,
 		String operatorIdentifier,

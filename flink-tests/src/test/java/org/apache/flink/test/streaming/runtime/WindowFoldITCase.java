@@ -63,30 +63,17 @@ public class WindowFoldITCase extends AbstractTestBase {
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		env.setParallelism(1);
 
-		DataStream<Tuple2<String, Integer>> source1 = env.addSource(new SourceFunction<Tuple2<String, Integer>>() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void run(SourceContext<Tuple2<String, Integer>> ctx) throws Exception {
-				ctx.collect(Tuple2.of("a", 0));
-				ctx.collect(Tuple2.of("a", 1));
-				ctx.collect(Tuple2.of("a", 2));
-
-				ctx.collect(Tuple2.of("b", 3));
-				ctx.collect(Tuple2.of("b", 4));
-				ctx.collect(Tuple2.of("b", 5));
-
-				ctx.collect(Tuple2.of("a", 6));
-				ctx.collect(Tuple2.of("a", 7));
-				ctx.collect(Tuple2.of("a", 8));
-
-				// source is finite, so it will have an implicit MAX watermark when it finishes
-			}
-
-			@Override
-			public void cancel() {}
-
-		}).assignTimestampsAndWatermarks(new Tuple2TimestampExtractor());
+		DataStream<Tuple2<String, Integer>> source1 = env.fromElements(
+			Tuple2.of("a", 0),
+			Tuple2.of("a", 1),
+			Tuple2.of("a", 2),
+			Tuple2.of("b", 3),
+			Tuple2.of("b", 4),
+			Tuple2.of("b", 5),
+			Tuple2.of("a", 6),
+			Tuple2.of("a", 7),
+			Tuple2.of("a", 8)
+		).assignTimestampsAndWatermarks(new Tuple2TimestampExtractor());
 
 		source1
 				.keyBy(0)

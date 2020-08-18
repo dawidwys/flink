@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.tests;
+package org.apache.flink.streaming.api.operators.sorted;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -26,6 +26,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.DefaultOperatorStateBackendBuilder;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateBackend;
@@ -39,69 +40,48 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Collection;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
-
 /**
- * A stub implementation of the {@link StateBackend} that allows the use of
- * a custom {@link TtlTimeProvider}.
+ * A simple {@link StateBackend} which is used in a BATCH style execution.
  */
-final class StubStateBackend implements StateBackend {
-
-	private static final long serialVersionUID = 1L;
-
-	private final TtlTimeProvider ttlTimeProvider;
-
-	private final StateBackend backend;
-
-	StubStateBackend(final StateBackend wrappedBackend, final TtlTimeProvider ttlTimeProvider) {
-		this.backend = checkNotNull(wrappedBackend);
-		this.ttlTimeProvider = checkNotNull(ttlTimeProvider);
-	}
-
+public class SingleKeyStateBackend implements StateBackend {
 	@Override
 	public CompletedCheckpointStorageLocation resolveCheckpoint(String externalPointer) throws IOException {
-		return backend.resolveCheckpoint(externalPointer);
+		throw new UnsupportedOperationException("Checkpoints are not supported in a single key state backend");
 	}
 
 	@Override
 	public CheckpointStorage createCheckpointStorage(JobID jobId) throws IOException {
-		return backend.createCheckpointStorage(jobId);
+		return new NonCheckpointingStorage();
 	}
 
 	@Override
 	public <K> InternalKeyedStateBackend<K> createKeyedStateBackend(
-		Environment env,
-		JobID jobID,
-		String operatorIdentifier,
-		TypeSerializer<K> keySerializer,
-		int numberOfKeyGroups,
-		KeyGroupRange keyGroupRange,
-		TaskKvStateRegistry kvStateRegistry,
-		TtlTimeProvider ttlTimeProvider,
-		MetricGroup metricGroup,
-		@Nonnull Collection<KeyedStateHandle> stateHandles,
-		CloseableRegistry cancelStreamRegistry) throws Exception {
-
-		return backend.createKeyedStateBackend(
-			env,
-			jobID,
-			operatorIdentifier,
-			keySerializer,
-			numberOfKeyGroups,
-			keyGroupRange,
-			kvStateRegistry,
-			this.ttlTimeProvider,
-			metricGroup,
-			stateHandles,
-			cancelStreamRegistry);
+			Environment env,
+			JobID jobID,
+			String operatorIdentifier,
+			TypeSerializer<K> keySerializer,
+			int numberOfKeyGroups,
+			KeyGroupRange keyGroupRange,
+			TaskKvStateRegistry kvStateRegistry,
+			TtlTimeProvider ttlTimeProvider,
+			MetricGroup metricGroup,
+			@Nonnull Collection<KeyedStateHandle> stateHandles,
+			CloseableRegistry cancelStreamRegistry) throws Exception {
+		return new SingleKeyKeyedStateBackend<>(keySerializer, keyGroupRange);
 	}
 
 	@Override
 	public OperatorStateBackend createOperatorStateBackend(
-		Environment env,
-		String operatorIdentifier,
-		@Nonnull Collection<OperatorStateHandle> stateHandles,
-		CloseableRegistry cancelStreamRegistry) throws Exception {
-		return backend.createOperatorStateBackend(env, operatorIdentifier, stateHandles, cancelStreamRegistry);
+			Environment env,
+			String operatorIdentifier,
+			@Nonnull Collection<OperatorStateHandle> stateHandles,
+			CloseableRegistry cancelStreamRegistry) throws Exception {
+		return new DefaultOperatorStateBackendBuilder(
+			env.getUserClassLoader(),
+			env.getExecutionConfig(),
+			false,
+			stateHandles,
+			cancelStreamRegistry
+		).build();
 	}
 }

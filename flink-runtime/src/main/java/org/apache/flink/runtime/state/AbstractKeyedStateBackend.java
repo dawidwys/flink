@@ -27,13 +27,13 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.heap.InternalKeyContext;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.internal.InternalKvState;
 import org.apache.flink.runtime.state.ttl.TtlStateFactory;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.util.IOUtils;
 import org.apache.flink.util.Preconditions;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,11 +47,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * @param <K> Type of the key by which state is keyed.
  */
-public abstract class AbstractKeyedStateBackend<K> implements
-	KeyedStateBackend<K>,
-	SnapshotStrategy<SnapshotResult<KeyedStateHandle>>,
-	Closeable,
-	CheckpointListener {
+public abstract class AbstractKeyedStateBackend<K> implements InternalKeyedStateBackend<K> {
 
 	/** The key serializer. */
 	protected final TypeSerializer<K> keySerializer;
@@ -225,6 +221,7 @@ public abstract class AbstractKeyedStateBackend<K> implements
 	/**
 	 * @see KeyedStateBackend
 	 */
+	@Override
 	public KeyGroupRange getKeyGroupRange() {
 		return keyGroupRange;
 	}
@@ -362,6 +359,7 @@ public abstract class AbstractKeyedStateBackend<K> implements
 	}
 
 	// TODO remove this once heap-based timers are working with RocksDB incremental snapshots!
+	@Override
 	public boolean requiresLegacySynchronousTimerSnapshots() {
 		return false;
 	}

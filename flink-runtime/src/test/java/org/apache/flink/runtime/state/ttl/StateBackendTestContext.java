@@ -33,6 +33,7 @@ import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.SnapshotResult;
 import org.apache.flink.runtime.state.StateBackend;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.internal.InternalKvState;
 import org.apache.flink.util.Preconditions;
 
@@ -58,7 +59,7 @@ public abstract class StateBackendTestContext {
 
 	private MockEnvironment env;
 
-	private AbstractKeyedStateBackend<String> keyedStateBackend;
+	private InternalKeyedStateBackend<String> keyedStateBackend;
 
 	protected StateBackendTestContext(TtlTimeProvider timeProvider) {
 		this.timeProvider = Preconditions.checkNotNull(timeProvider);

@@ -25,6 +25,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.runtime.operators.testutils.DummyEnvironment;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.util.IOUtils;
@@ -68,7 +69,7 @@ public class HeapKeyedStateBackendAsyncByDefaultTest {
 
 	private void validateSupportForAsyncSnapshots(StateBackend backend) throws Exception {
 
-		AbstractKeyedStateBackend<Integer> keyedStateBackend = backend.createKeyedStateBackend(
+		InternalKeyedStateBackend<Integer> keyedStateBackend = backend.createKeyedStateBackend(
 			new DummyEnvironment("Test", 1, 0),
 			new JobID(),
 			"testOperator",

@@ -37,7 +37,6 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
 import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
-import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.KeyGroupStatePartitionStreamProvider;
 import org.apache.flink.runtime.state.KeyedStateCheckpointOutputStream;
 import org.apache.flink.runtime.state.LocalRecoveryConfig;
@@ -50,6 +49,7 @@ import org.apache.flink.runtime.state.StatePartitionStreamProvider;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.TestTaskStateManager;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.InternalTimeServiceManager;
@@ -239,7 +239,7 @@ public class StreamOperatorSnapshotRestoreTest extends TestLogger {
 				return new StreamTaskStateInitializerImpl(env, stateBackend) {
 					@Override
 					protected <K> InternalTimeServiceManager<K> internalTimeServiceManager(
-						AbstractKeyedStateBackend<K> keyedStatedBackend,
+						InternalKeyedStateBackend<K> keyedStatedBackend,
 						KeyContext keyContext,
 						ProcessingTimeService processingTimeService,
 						Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws Exception {

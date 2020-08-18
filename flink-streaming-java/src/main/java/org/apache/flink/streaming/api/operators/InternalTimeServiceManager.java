@@ -76,7 +76,8 @@ public class InternalTimeServiceManager<K> {
 
 	private final boolean useLegacySynchronousSnapshots;
 
-	InternalTimeServiceManager(
+	// TODO figure out if we can keep it in the default scope
+	public InternalTimeServiceManager(
 		KeyGroupRange localKeyGroupRange,
 		KeyContext keyContext,
 		PriorityQueueSetFactory priorityQueueSetFactory,
