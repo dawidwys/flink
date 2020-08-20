@@ -51,12 +51,15 @@ import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.runtime.state.CheckpointStorageWorkerView;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.state.StateBackendLoader;
+import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
 import org.apache.flink.runtime.util.ExecutorThreadFactory;
 import org.apache.flink.runtime.util.FatalExitExceptionHandler;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerImpl;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerProvider;
 import org.apache.flink.streaming.api.operators.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
@@ -438,9 +441,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	// ------------------------------------------------------------------------
 
 	public StreamTaskStateInitializer createStreamTaskStateInitializer() {
+		InternalTimeServiceManagerProvider timerServiceProvider = configuration.getTimerServiceProvider(
+			getUserCodeClassLoader());
 		return new StreamTaskStateInitializerImpl(
 			getEnvironment(),
-			stateBackend);
+			stateBackend,
+			timerServiceProvider != null ? timerServiceProvider : InternalTimeServiceManagerImpl::create,
+			TtlTimeProvider.DEFAULT
+		);
 	}
 
 	protected Counter setupNumRecordsInCounter(StreamOperator streamOperator) {

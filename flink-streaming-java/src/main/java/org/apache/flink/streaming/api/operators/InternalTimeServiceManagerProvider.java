@@ -23,9 +23,13 @@ import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 
 import java.io.IOException;
+import java.io.Serializable;
 
+/**
+ * A factory for {@link InternalTimeServiceManager}.
+ */
 @FunctionalInterface
-public interface InternalTimeServiceManagerProvider {
+public interface InternalTimeServiceManagerProvider extends Serializable {
 
 	<K> InternalTimeServiceManager<K> create(
 			ClassLoader userClassloader,

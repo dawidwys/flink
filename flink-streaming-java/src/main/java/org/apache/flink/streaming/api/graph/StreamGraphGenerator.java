@@ -42,6 +42,7 @@ import org.apache.flink.streaming.api.operators.OutputFormatOperatorFactory;
 import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.sorted.BatchOneInputSortingOperator;
+import org.apache.flink.streaming.api.operators.sorted.SingleKeyInternalTimeServiceManager;
 import org.apache.flink.streaming.api.operators.sorted.SingleKeyStateBackend;
 import org.apache.flink.streaming.api.transformations.AbstractMultipleInputTransformation;
 import org.apache.flink.streaming.api.transformations.CoFeedbackTransformation;
@@ -261,6 +262,7 @@ public class StreamGraphGenerator {
 				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.POINTWISE_EDGES_PIPELINED);
 				graph.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES_WITH_BATCH_SLOT_REQUEST);
 				graph.setStateBackend(new SingleKeyStateBackend());
+				graph.setTimeServiceProvider(SingleKeyInternalTimeServiceManager::create);
 				setDefaultBufferTimeout(-1);
 				break;
 			case AUTOMATIC:

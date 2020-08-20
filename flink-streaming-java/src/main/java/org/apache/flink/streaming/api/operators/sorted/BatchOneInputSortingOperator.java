@@ -116,5 +116,6 @@ public class BatchOneInputSortingOperator<IN, K> extends AbstractStreamOperator<
 		while ((next = iterator.next()) != null) {
 			output.collect(next.asRecord());
 		}
+		output.emitWatermark(Watermark.MAX_WATERMARK);
 	}
 }

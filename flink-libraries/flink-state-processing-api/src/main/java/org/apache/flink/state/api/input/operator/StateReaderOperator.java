@@ -32,7 +32,6 @@ import org.apache.flink.state.api.runtime.VoidTriggerable;
 import org.apache.flink.streaming.api.operators.InternalTimeServiceManager;
 import org.apache.flink.streaming.api.operators.InternalTimerService;
 import org.apache.flink.streaming.api.operators.KeyContext;
-import org.apache.flink.streaming.api.operators.TimerSerializer;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 

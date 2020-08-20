@@ -40,6 +40,7 @@ import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerProvider;
 import org.apache.flink.streaming.api.operators.SourceOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.transformations.ShuffleMode;
@@ -116,6 +117,7 @@ public final class StreamGraph implements Pipeline {
 	private boolean allVerticesInSameSlotSharingGroupByDefault;
 
 	private StateBackend stateBackend;
+	private InternalTimeServiceManagerProvider timerServiceProvider;
 
 	StreamGraph(
 			ExecutionConfig executionConfig,
@@ -155,6 +157,10 @@ public final class StreamGraph implements Pipeline {
 
 	public StateBackend getStateBackend() {
 		return this.stateBackend;
+	}
+
+	public InternalTimeServiceManagerProvider getTimerServiceProvider() {
+		return this.timerServiceProvider;
 	}
 
 	public ScheduleMode getScheduleMode() {
@@ -265,6 +271,10 @@ public final class StreamGraph implements Pipeline {
 
 	void setStateBackend(StateBackend backend) {
 		this.stateBackend = backend;
+	}
+
+	void setTimeServiceProvider(InternalTimeServiceManagerProvider provider) {
+		this.timerServiceProvider = provider;
 	}
 
 	void setScheduleMode(ScheduleMode scheduleMode) {

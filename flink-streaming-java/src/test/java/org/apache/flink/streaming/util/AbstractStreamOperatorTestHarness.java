@@ -50,6 +50,8 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperatorTest;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerImpl;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerProvider;
 import org.apache.flink.streaming.api.operators.OperatorSnapshotFinalizer;
 import org.apache.flink.streaming.api.operators.OperatorSnapshotFutures;
 import org.apache.flink.streaming.api.operators.Output;
@@ -121,6 +123,8 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 
 	// use this as default for tests
 	protected StateBackend stateBackend = new MemoryStateBackend();
+
+	private InternalTimeServiceManagerProvider timeServiceManagerProvider = InternalTimeServiceManagerImpl::create;
 
 	private CheckpointStorage checkpointStorage = stateBackend.createCheckpointStorage(new JobID());
 
@@ -248,7 +252,11 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 		ttlTimeProvider = new MockTtlTimeProvider();
 		ttlTimeProvider.setCurrentTimestamp(0);
 
-		this.streamTaskStateInitializer = createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider);
+		this.streamTaskStateInitializer = createStreamTaskStateManager(
+			environment,
+			stateBackend,
+			ttlTimeProvider,
+			timeServiceManagerProvider);
 
 		BiConsumer<String, Throwable> handleAsyncException = (message, t) -> {
 			wasFailedExternally = true;
@@ -268,14 +276,16 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 			.build();
 	}
 
-	protected StreamTaskStateInitializer createStreamTaskStateManager(
+	private StreamTaskStateInitializer createStreamTaskStateManager(
 		Environment env,
 		StateBackend stateBackend,
-		TtlTimeProvider ttlTimeProvider) {
+		TtlTimeProvider ttlTimeProvider,
+		InternalTimeServiceManagerProvider timeServiceManagerProvider) {
 		return new StreamTaskStateInitializerImpl(
 			env,
-			ttlTimeProvider,
-			stateBackend
+			stateBackend,
+			timeServiceManagerProvider,
+			ttlTimeProvider
 		);
 	}
 
@@ -360,7 +370,7 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 	public void setup(TypeSerializer<OUT> outputSerializer) {
 		if (!setupCalled) {
 			streamTaskStateInitializer =
-				createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider);
+				createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider, timeServiceManagerProvider);
 			mockTask.setStreamTaskStateInitializer(streamTaskStateInitializer);
 
 			if (operator == null) {
@@ -693,6 +703,10 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 	@VisibleForTesting
 	public TaskMailbox getTaskMailbox() {
 		return taskMailbox;
+	}
+
+	public void setTimeServiceManagerProvider(InternalTimeServiceManagerProvider timeServiceManagerProvider) {
+		this.timeServiceManagerProvider = timeServiceManagerProvider;
 	}
 
 	private class MockOutput implements Output<StreamRecord<OUT>> {

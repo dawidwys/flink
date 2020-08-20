@@ -504,6 +504,7 @@ public class StreamingJobGraphGenerator {
 		final CheckpointConfig checkpointCfg = streamGraph.getCheckpointConfig();
 
 		config.setStateBackend(streamGraph.getStateBackend());
+		config.setTimerServiceProvider(streamGraph.getTimerServiceProvider());
 		config.setCheckpointingEnabled(checkpointCfg.isCheckpointingEnabled());
 		config.setCheckpointMode(getCheckpointingMode(checkpointCfg));
 		config.setUnalignedCheckpointsEnabled(checkpointCfg.isUnalignedCheckpointsEnabled());

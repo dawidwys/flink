@@ -32,7 +32,6 @@ import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.apache.flink.runtime.checkpoint.OperatorSubtaskState;
-import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
@@ -50,15 +49,13 @@ import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.TestTaskStateManager;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
-import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.InternalTimeServiceManager;
+import org.apache.flink.streaming.api.operators.InternalTimeServiceManagerProvider;
 import org.apache.flink.streaming.api.operators.KeyContext;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.OperatorSnapshotFinalizer;
 import org.apache.flink.streaming.api.operators.StreamOperator;
-import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
-import org.apache.flink.streaming.api.operators.StreamTaskStateInitializerImpl;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
@@ -222,33 +219,26 @@ public class StreamOperatorSnapshotRestoreTest extends TestLogger {
 		//-------------------------------------------------------------------------- restore
 
 		op = new TestOneInputStreamOperator(true);
-		testHarness = new KeyedOneInputStreamOperatorTestHarness<Integer, Integer, Integer>(
+		testHarness = new KeyedOneInputStreamOperatorTestHarness<>(
 			op,
 			(KeySelector<Integer, Integer>) value -> value,
 			TypeInformation.of(Integer.class),
 			MAX_PARALLELISM,
 			1 /* num subtasks */,
-			0 /* subtask index */) {
-
-			@Override
-			protected StreamTaskStateInitializer createStreamTaskStateManager(
-				Environment env,
-				StateBackend stateBackend,
-				TtlTimeProvider ttlTimeProvider) {
-
-				return new StreamTaskStateInitializerImpl(env, stateBackend) {
-					@Override
-					protected <K> InternalTimeServiceManager<K> internalTimeServiceManager(
-						InternalKeyedStateBackend<K> keyedStatedBackend,
-						KeyContext keyContext,
-						ProcessingTimeService processingTimeService,
-						Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws Exception {
-
-						return null;
-					}
-				};
+			0 /* subtask index */);
+		testHarness.setTimeServiceManagerProvider(
+			new InternalTimeServiceManagerProvider() {
+				@Override
+				public <K> InternalTimeServiceManager<K> create(
+					ClassLoader userClassloader,
+					InternalKeyedStateBackend<K> keyedStatedBackend,
+					KeyContext keyContext,
+					ProcessingTimeService processingTimeService,
+					Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws IOException {
+					return null;
+				}
 			}
-		};
+		);
 
 		testHarness.setStateBackend(stateBackend);
 

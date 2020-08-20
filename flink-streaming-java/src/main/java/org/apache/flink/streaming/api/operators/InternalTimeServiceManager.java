@@ -24,6 +24,9 @@ import org.apache.flink.runtime.state.KeyedStateBackend;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
+/**
+ * A central entity for managing the lifecycle of {@link InternalTimerService InternalTimerServices}.
+ */
 public interface InternalTimeServiceManager<K> {
 	<N> InternalTimerService<N> getInternalTimerService(
 		String name,

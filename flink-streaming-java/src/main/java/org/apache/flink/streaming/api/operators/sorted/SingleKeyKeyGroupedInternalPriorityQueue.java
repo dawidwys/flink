@@ -24,19 +24,22 @@ import org.apache.flink.runtime.state.heap.HeapPriorityQueue;
 import org.apache.flink.runtime.state.heap.HeapPriorityQueueElement;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
+/**
+ * Very similar implementation to {@link org.apache.flink.runtime.state.heap.HeapPriorityQueueSet}. The only difference
+ * is it keeps track of elements for a single key at a time.
+ */
 public class SingleKeyKeyGroupedInternalPriorityQueue<T extends HeapPriorityQueueElement>
 		extends HeapPriorityQueue<T>
 		implements KeyGroupedInternalPriorityQueue<T> {
 
-	/**
-	 * Creates an empty {@link HeapPriorityQueue} with the requested initial capacity.
-	 *
-	 * @param elementPriorityComparator comparator for the priority of contained elements.
-	 * @param minimumCapacity the minimum and initial capacity of this priority queue.
-	 */
+	private final Map<T, T> dedupMap = new HashMap<>();
+
 	SingleKeyKeyGroupedInternalPriorityQueue(
 			@Nonnull PriorityComparator<T> elementPriorityComparator,
 			int minimumCapacity) {
@@ -47,5 +50,29 @@ public class SingleKeyKeyGroupedInternalPriorityQueue<T extends HeapPriorityQueu
 	@Override
 	public Set<T> getSubsetForKeyGroup(int keyGroupId) {
 		throw new UnsupportedOperationException("Getting subset for key group is not supported in BATCH runtime mode.");
+	}
+
+	@Override
+	@Nullable
+	public T poll() {
+		final T toRemove = super.poll();
+		return toRemove != null ? dedupMap.remove(toRemove) : null;
+	}
+
+	@Override
+	public boolean add(@Nonnull T element) {
+		return dedupMap.putIfAbsent(element, element) == null && super.add(element);
+	}
+
+	@Override
+	public boolean remove(@Nonnull T toRemove) {
+		T storedElement = dedupMap.remove(toRemove);
+		return storedElement != null && super.remove(storedElement);
+	}
+
+	@Override
+	public void clear() {
+		super.clear();
+		dedupMap.clear();
 	}
 }

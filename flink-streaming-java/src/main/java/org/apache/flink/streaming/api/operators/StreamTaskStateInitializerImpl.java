@@ -174,12 +174,13 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 			streamTaskCloseableRegistry.registerCloseable(rawOperatorStateInputs);
 
 			// -------------- Internal Timer Service Manager --------------
-			timeServiceManager = timeServiceManagerProvider.create(
-				environment.getUserClassLoader(),
-				keyedStatedBackend,
-				keyContext,
-				processingTimeService,
-				rawKeyedStateInputs);
+			timeServiceManager = keyedStatedBackend != null ?
+				timeServiceManagerProvider.create(
+					environment.getUserClassLoader(),
+					keyedStatedBackend,
+					keyContext,
+					processingTimeService,
+					rawKeyedStateInputs) : null;
 
 			// -------------- Preparing return value --------------
 
