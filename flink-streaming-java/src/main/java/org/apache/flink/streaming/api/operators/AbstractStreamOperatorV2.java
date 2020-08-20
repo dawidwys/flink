@@ -458,9 +458,9 @@ public abstract class AbstractStreamOperatorV2<OUT> implements StreamOperator<OU
 		InternalTimeServiceManager<K> keyedTimeServiceHandler = (InternalTimeServiceManager<K>) timeServiceManager;
 		return keyedTimeServiceHandler.getInternalTimerService(
 			name,
+			this.<K>getKeyedStateBackend().getKeySerializer(),
 			namespaceSerializer,
-			triggerable,
-			stateHandler.getKeyedStateBackend());
+			triggerable);
 	}
 
 	public void processWatermark(Watermark mark) throws Exception {

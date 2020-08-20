@@ -95,8 +95,11 @@ public abstract class StateReaderOperator<F extends Function, KEY, N, OUT> imple
 	}
 
 	protected final InternalTimerService<N> getInternalTimerService(String name) {
-		TimerSerializer<KEY, N> timerSerializer = new TimerSerializer<>(keySerializer, namespaceSerializer);
-		return timerServiceManager.getInternalTimerService(name, timerSerializer, VoidTriggerable.instance());
+		return timerServiceManager.getInternalTimerService(
+			name,
+			keySerializer,
+			namespaceSerializer,
+			VoidTriggerable.instance());
 	}
 
 	public void open() throws Exception {

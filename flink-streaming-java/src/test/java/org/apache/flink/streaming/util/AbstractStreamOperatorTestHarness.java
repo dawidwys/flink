@@ -274,8 +274,9 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 		TtlTimeProvider ttlTimeProvider) {
 		return new StreamTaskStateInitializerImpl(
 			env,
-			stateBackend,
-			ttlTimeProvider);
+			ttlTimeProvider,
+			stateBackend
+		);
 	}
 
 	public void setStateBackend(StateBackend stateBackend) {

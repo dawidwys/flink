@@ -18,29 +18,20 @@
 
 package org.apache.flink.streaming.api.operators;
 
-import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.runtime.state.KeyedStateBackend;
-import org.apache.flink.runtime.state.StateSnapshotContext;
-import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.runtime.state.KeyGroupStatePartitionStreamProvider;
+import org.apache.flink.runtime.state.internal.InternalKeyedStateBackend;
+import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 
-public interface InternalTimeServiceManager<K> {
-	<N> InternalTimerService<N> getInternalTimerService(
-		String name,
-		TypeSerializer<K> keySerializer,
-		TypeSerializer<N> namespaceSerializer,
-		Triggerable<K, N> triggerable);
+import java.io.IOException;
 
-	void advanceWatermark(Watermark watermark) throws Exception;
+@FunctionalInterface
+public interface InternalTimeServiceManagerProvider {
 
-	void snapshotState(
-		KeyedStateBackend<?> keyedStateBackend,
-		StateSnapshotContext context,
-		String operatorName) throws Exception;
-
-	@VisibleForTesting
-	int numProcessingTimeTimers();
-
-	@VisibleForTesting
-	int numEventTimeTimers();
+	<K> InternalTimeServiceManager<K> create(
+			ClassLoader userClassloader,
+			InternalKeyedStateBackend<K> keyedStatedBackend,
+			KeyContext keyContext, //the operator
+			ProcessingTimeService processingTimeService,
+			Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates
+	) throws IOException;
 }

@@ -88,23 +88,33 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 
 	private final TtlTimeProvider ttlTimeProvider;
 
-	public StreamTaskStateInitializerImpl(
-		Environment environment,
-		StateBackend stateBackend) {
+	private final InternalTimeServiceManagerProvider timeServiceManagerProvider;
 
-		this(environment, stateBackend, TtlTimeProvider.DEFAULT);
+	public StreamTaskStateInitializerImpl(
+			Environment environment,
+			StateBackend stateBackend) {
+		this(environment, stateBackend, InternalTimeServiceManagerImpl::create, TtlTimeProvider.DEFAULT);
+	}
+
+	public StreamTaskStateInitializerImpl(
+			Environment environment,
+			TtlTimeProvider ttlTimeProvider,
+			StateBackend stateBackend) {
+		this(environment, stateBackend, InternalTimeServiceManagerImpl::create, ttlTimeProvider);
 	}
 
 	@VisibleForTesting
 	public StreamTaskStateInitializerImpl(
 		Environment environment,
 		StateBackend stateBackend,
+		InternalTimeServiceManagerProvider timeServiceManagerProvider,
 		TtlTimeProvider ttlTimeProvider) {
 
 		this.environment = environment;
 		this.taskStateManager = Preconditions.checkNotNull(environment.getTaskStateManager());
 		this.stateBackend = Preconditions.checkNotNull(stateBackend);
 		this.ttlTimeProvider = ttlTimeProvider;
+		this.timeServiceManagerProvider = Preconditions.checkNotNull(timeServiceManagerProvider);
 	}
 
 	// -----------------------------------------------------------------------------------------------------------------
@@ -164,7 +174,12 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 			streamTaskCloseableRegistry.registerCloseable(rawOperatorStateInputs);
 
 			// -------------- Internal Timer Service Manager --------------
-			timeServiceManager = internalTimeServiceManager(keyedStatedBackend, keyContext, processingTimeService, rawKeyedStateInputs);
+			timeServiceManager = timeServiceManagerProvider.create(
+				environment.getUserClassLoader(),
+				keyedStatedBackend,
+				keyContext,
+				processingTimeService,
+				rawKeyedStateInputs);
 
 			// -------------- Preparing return value --------------
 
@@ -217,7 +232,7 @@ public class StreamTaskStateInitializerImpl implements StreamTaskStateInitialize
 
 		final KeyGroupRange keyGroupRange = keyedStatedBackend.getKeyGroupRange();
 
-		final InternalTimeServiceManager<K> timeServiceManager = new InternalTimeServiceManager<>(
+		final InternalTimeServiceManagerImpl<K> timeServiceManager = new InternalTimeServiceManagerImpl<>(
 			keyGroupRange,
 			keyContext,
 			keyedStatedBackend,
