@@ -42,6 +42,7 @@ import org.apache.flink.streaming.api.operators.OutputFormatOperatorFactory;
 import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.sorted.BatchOneInputSortingOperator;
+import org.apache.flink.streaming.api.operators.sorted.BatchTwoInputSortingOperator;
 import org.apache.flink.streaming.api.operators.sorted.SingleKeyInternalTimeServiceManager;
 import org.apache.flink.streaming.api.operators.sorted.SingleKeyStateBackend;
 import org.apache.flink.streaming.api.transformations.AbstractMultipleInputTransformation;
@@ -60,6 +61,7 @@ import org.apache.flink.streaming.api.transformations.SplitTransformation;
 import org.apache.flink.streaming.api.transformations.TwoInputTransformation;
 import org.apache.flink.streaming.api.transformations.UnionTransformation;
 import org.apache.flink.streaming.runtime.io.MultipleInputSelectionHandler;
+import org.apache.flink.util.OutputTag;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -897,18 +899,54 @@ public class StreamGraphGenerator {
 		streamGraph.setParallelism(transform.getId(), parallelism);
 		streamGraph.setMaxParallelism(transform.getId(), transform.getMaxParallelism());
 
-		for (Integer inputId: inputIds1) {
-			streamGraph.addEdge(inputId,
-					transform.getId(),
-					1
+		final Integer sortingId1;
+		final Integer sortingId2;
+		if (runtimeExecutionMode == RuntimeExecutionMode.BATCH && transform.getStateKeySelector1() != null) {
+			sortingId1 = Transformation.getNewNodeId();
+			sortingId2 = Transformation.getNewNodeId();
+			TypeInformation<?> stateKeyType = transform.getStateKeyType();
+			OutputTag<IN2> output2 = new OutputTag<>("output-2", transform.getInputType2());
+			BatchTwoInputSortingOperator<?, IN1, Object> operator =
+				new BatchTwoInputSortingOperator<>(createComparator(stateKeyType), new OutputTag[] {output2});
+			streamGraph.addCoOperator(
+				sortingId1,
+				slotSharingGroup,
+				transform.getCoLocationGroupKey(),
+				SimpleOperatorFactory.of(operator),
+				transform.getInputType1(),
+				transform.getInputType2(),
+				transform.getInputType1(),
+				transform.getName() + "-" + "-sorting"
 			);
+			streamGraph.addVirtualSideOutputNode(sortingId1, sortingId2, output2);
+			streamGraph.setParallelism(sortingId1, parallelism);
+			streamGraph.setMaxParallelism(sortingId1, transform.getMaxParallelism());
+			streamGraph.setTwoInputStateKey(
+				sortingId1,
+				transform.getStateKeySelector1(),
+				transform.getStateKeySelector2(),
+				stateKeyType.createSerializer(executionConfig));
+		} else {
+			sortingId1 = null;
+			sortingId2 = null;
+		}
+
+		for (Integer inputId: inputIds1) {
+			if (sortingId1 != null) {
+				streamGraph.addEdge(inputId, sortingId1, 1);
+				streamGraph.addEdge(sortingId1, transform.getId(), 1);
+			} else {
+				streamGraph.addEdge(inputId, transform.getId(), 1);
+			}
 		}
 
 		for (Integer inputId: inputIds2) {
-			streamGraph.addEdge(inputId,
-					transform.getId(),
-					2
-			);
+			if (sortingId2 != null) {
+				streamGraph.addEdge(inputId, sortingId1, 2);
+				streamGraph.addEdge(sortingId2, transform.getId(), 2);
+			} else {
+				streamGraph.addEdge(inputId, transform.getId(), 2);
+			}
 		}
 
 		return Collections.singleton(transform.getId());
