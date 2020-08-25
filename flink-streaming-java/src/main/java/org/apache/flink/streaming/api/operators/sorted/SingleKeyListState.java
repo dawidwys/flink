@@ -25,14 +25,13 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.state.internal.InternalListState;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
  * A {@link ListState} which keeps value for a single key at a time.
  */
 public class SingleKeyListState<K, N, T>
-		extends AbstractSingleKeyState<K, N, List<T>>
+		extends MergingAbstractSingleKeyState<K, N, List<T>, T, Iterable<T>>
 		implements InternalListState<K, N, T> {
 
 	protected SingleKeyListState(
@@ -81,17 +80,8 @@ public class SingleKeyListState<K, N, T>
 	}
 
 	@Override
-	public void mergeNamespaces(N target, Collection<N> sources) throws Exception {
-
-	}
-
-	@Override
-	public List<T> getInternal() throws Exception {
-		return getCurrentNamespaceValue();
-	}
-
-	@Override
-	public void updateInternal(List<T> valueToStore) throws Exception {
-		setCurrentNamespaceValue(valueToStore);
+	protected List<T> merge(List<T> target, List<T> source) {
+		target.addAll(source);
+		return target;
 	}
 }

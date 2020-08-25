@@ -27,13 +27,12 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.state.internal.InternalReducingState;
 
 import java.io.IOException;
-import java.util.Collection;
 
 /**
  * A {@link ReducingState} which keeps value for a single key at a time.
  */
 public class SingleKeyReducingState<K, N, T>
-		extends AbstractSingleKeyState<K, N, T>
+		extends MergingAbstractSingleKeyState<K, N, T, T, T>
 		implements InternalReducingState<K, N, T> {
 	private final ReduceFunction<T> reduceFunction;
 
@@ -78,17 +77,7 @@ public class SingleKeyReducingState<K, N, T>
 	}
 
 	@Override
-	public void mergeNamespaces(N target, Collection<N> sources) throws Exception {
-
-	}
-
-	@Override
-	public T getInternal() throws Exception {
-		return getCurrentNamespaceValue();
-	}
-
-	@Override
-	public void updateInternal(T valueToStore) throws Exception {
-		setCurrentNamespaceValue(valueToStore);
+	protected T merge(T target, T source) throws Exception {
+		return reduceFunction.reduce(target, source);
 	}
 }

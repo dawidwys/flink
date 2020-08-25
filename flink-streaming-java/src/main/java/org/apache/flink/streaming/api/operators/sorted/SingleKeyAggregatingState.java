@@ -27,13 +27,12 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.runtime.state.internal.InternalAggregatingState;
 
 import java.io.IOException;
-import java.util.Collection;
 
 /**
  * A {@link AggregatingState} which keeps value for a single key at a time.
  */
 public class SingleKeyAggregatingState<K, N, IN, ACC, OUT>
-		extends AbstractSingleKeyState<K, N, ACC>
+		extends MergingAbstractSingleKeyState<K, N, ACC, IN, OUT>
 		implements InternalAggregatingState<K, N, IN, ACC, OUT> {
 
 	private final AggregateFunction<IN, ACC, OUT> aggFunction;
@@ -78,17 +77,7 @@ public class SingleKeyAggregatingState<K, N, IN, ACC, OUT>
 	}
 
 	@Override
-	public void mergeNamespaces(N target, Collection<N> sources) throws Exception {
-
-	}
-
-	@Override
-	public ACC getInternal() throws Exception {
-		return getCurrentNamespaceValue();
-	}
-
-	@Override
-	public void updateInternal(ACC valueToStore) throws Exception {
-		setCurrentNamespaceValue(valueToStore);
+	protected ACC merge(ACC target, ACC source) {
+		return aggFunction.merge(target, source);
 	}
 }
