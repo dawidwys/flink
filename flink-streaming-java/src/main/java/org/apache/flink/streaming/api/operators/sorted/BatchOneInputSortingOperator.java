@@ -80,6 +80,7 @@ public class BatchOneInputSortingOperator<IN, K> extends AbstractStreamOperator<
 				.enableSpilling(environment.getIOManager())
 				.memoryFraction(1.0)
 				.startSpillingFraction(0.8)
+				.objectReuse(containingTask.getExecutionConfig().isObjectReuseEnabled())
 				.maxNumFileHandles(128)
 				.build();
 		} catch (MemoryAllocationException e) {

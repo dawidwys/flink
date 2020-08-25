@@ -1615,8 +1615,8 @@ public class StreamExecutionEnvironment {
 		return addSource(function, sourceName, typeInfo, Boundedness.CONTINUOUS_UNBOUNDED);
 	}
 
-	@Nonnull
-	private <OUT> DataStreamSource<OUT> addSource(
+	@Internal
+	public <OUT> DataStreamSource<OUT> addSource(
 			SourceFunction<OUT> function,
 			String sourceName,
 			TypeInformation<OUT> typeInfo,

@@ -118,6 +118,7 @@ public class BatchTwoInputSortingOperator<K, IN1, IN2>
 				containingTask,
 				streamElementSerializer,
 				elementComparator)
+				.objectReuse(containingTask.getExecutionConfig().isObjectReuseEnabled())
 				.enableSpilling(environment.getIOManager())
 				.memoryFraction(1.0 / (float) numberOfInputs)
 				.startSpillingFraction(0.8)
