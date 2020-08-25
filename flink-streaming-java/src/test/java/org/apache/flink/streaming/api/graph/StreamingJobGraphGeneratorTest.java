@@ -18,6 +18,7 @@
 package org.apache.flink.streaming.api.graph;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -663,6 +664,7 @@ public class StreamingJobGraphGeneratorTest extends TestLogger {
 		// use eager schedule mode by default
 		StreamGraph streamGraph = new StreamGraphGenerator(Collections.emptyList(),
 			env.getConfig(), env.getCheckpointConfig())
+			.setRuntimeExecutionMode(RuntimeExecutionMode.MANUAL)
 			.generate();
 		JobGraph jobGraph = StreamingJobGraphGenerator.createJobGraph(streamGraph);
 		assertEquals(ScheduleMode.EAGER, jobGraph.getScheduleMode());
@@ -677,6 +679,7 @@ public class StreamingJobGraphGeneratorTest extends TestLogger {
 
 		StreamGraph streamGraph = new StreamGraphGenerator(Collections.emptyList(),
 			env.getConfig(), env.getCheckpointConfig())
+			.setRuntimeExecutionMode(RuntimeExecutionMode.MANUAL)
 			.setScheduleMode(ScheduleMode.LAZY_FROM_SOURCES)
 			.generate();
 		JobGraph jobGraph = StreamingJobGraphGenerator.createJobGraph(streamGraph);

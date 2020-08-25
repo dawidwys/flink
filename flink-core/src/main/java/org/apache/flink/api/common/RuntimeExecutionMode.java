@@ -21,5 +21,6 @@ package org.apache.flink.api.common;
 public enum RuntimeExecutionMode {
 	STREAM,
 	BATCH,
-	AUTOMATIC
+	AUTOMATIC,
+	MANUAL
 }

@@ -143,7 +143,7 @@ public class StreamTaskStateInitializerImplTest {
 			}
 
 			@Override
-			public <K> AbstractKeyedStateBackend<K> createKeyedStateBackend(
+			public <K> InternalKeyedStateBackend<K> createKeyedStateBackend(
 				Environment env,
 				JobID jobID,
 				String operatorIdentifier,
@@ -154,7 +154,7 @@ public class StreamTaskStateInitializerImplTest {
 				MetricGroup metricGroup,
 				@Nonnull Collection<KeyedStateHandle> stateHandles,
 				CloseableRegistry cancelStreamRegistry) throws Exception {
-				return mock(AbstractKeyedStateBackend.class);
+				return mock(InternalKeyedStateBackend.class);
 			}
 
 			@Override

@@ -136,7 +136,7 @@ public class StreamGraphGenerator {
 
 	private boolean chaining = true;
 
-	private ScheduleMode scheduleMode = null;
+	private ScheduleMode scheduleMode = ScheduleMode.EAGER;
 
 	private Collection<Tuple2<String, DistributedCache.DistributedCacheEntry>> userArtifacts;
 
@@ -146,9 +146,9 @@ public class StreamGraphGenerator {
 
 	private String jobName = DEFAULT_JOB_NAME;
 
-	private GlobalDataExchangeMode globalDataExchangeMode = null;
+	private GlobalDataExchangeMode globalDataExchangeMode = GlobalDataExchangeMode.ALL_EDGES_PIPELINED;
 
-	private RuntimeExecutionMode runtimeExecutionMode = null;
+	private RuntimeExecutionMode runtimeExecutionMode = RuntimeExecutionMode.AUTOMATIC;
 
 	private boolean allVerticesInSameSlotSharingGroup = true;
 
@@ -173,6 +173,11 @@ public class StreamGraphGenerator {
 		this.transformations = checkNotNull(transformations);
 		this.executionConfig = checkNotNull(executionConfig);
 		this.checkpointConfig = checkNotNull(checkpointConfig);
+	}
+
+	public StreamGraphGenerator setRuntimeExecutionMode(RuntimeExecutionMode executionMode) {
+		this.runtimeExecutionMode = executionMode;
+		return this;
 	}
 
 	public StreamGraphGenerator setStateBackend(StateBackend stateBackend) {
@@ -226,7 +231,7 @@ public class StreamGraphGenerator {
 	}
 
 	public StreamGraph generate() {
-		this.runtimeExecutionMode = determineExecutionMode(RuntimeExecutionMode.AUTOMATIC);
+		this.runtimeExecutionMode = determineExecutionMode(runtimeExecutionMode);
 		streamGraph = new StreamGraph(
 			executionConfig,
 			checkpointConfig,
@@ -256,6 +261,10 @@ public class StreamGraphGenerator {
 		graph.setJobName(jobName);
 		graph.setAllVerticesInSameSlotSharingGroupByDefault(allVerticesInSameSlotSharingGroup);
 		switch (executionMode) {
+			case MANUAL:
+				graph.setGlobalDataExchangeMode(this.globalDataExchangeMode);
+				graph.setScheduleMode(this.scheduleMode);
+				break;
 			case STREAM:
 				graph.setGlobalDataExchangeMode(GlobalDataExchangeMode.ALL_EDGES_PIPELINED);
 				graph.setScheduleMode(ScheduleMode.EAGER);
