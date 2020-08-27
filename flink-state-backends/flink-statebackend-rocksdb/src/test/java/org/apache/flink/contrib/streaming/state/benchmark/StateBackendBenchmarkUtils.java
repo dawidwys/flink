@@ -49,6 +49,7 @@ import org.apache.flink.runtime.state.heap.HeapKeyedStateBackend;
 import org.apache.flink.runtime.state.heap.HeapKeyedStateBackendBuilder;
 import org.apache.flink.runtime.state.heap.HeapPriorityQueueSetFactory;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
+import org.apache.flink.streaming.api.operators.sorted.SingleKeyStateBackend;
 import org.apache.flink.util.IOUtils;
 
 import org.rocksdb.RocksDBException;
@@ -74,6 +75,24 @@ public class StateBackendBenchmarkUtils {
 			case ROCKSDB:
 				rootDir = prepareDirectory(rootDirName, null);
 				return createRocksDBKeyedStateBackend(rootDir);
+			case SINGLE_KEY:
+				try {
+					return new SingleKeyStateBackend().createKeyedStateBackend(
+						null,
+						null,
+						null,
+						new LongSerializer(),
+						0,
+						null,
+						null,
+						null,
+						null,
+						Collections.emptyList(),
+						null
+					);
+				} catch (Exception e) {
+					throw new IOException(e);
+				}
 			default:
 				throw new IllegalArgumentException("Unknown backend type: " + backendType);
 		}
@@ -193,6 +212,6 @@ public class StateBackendBenchmarkUtils {
 	 * Enum of backend type.
 	 */
 	public enum StateBackendType {
-		HEAP, ROCKSDB
+		HEAP, ROCKSDB, SINGLE_KEY
 	}
 }

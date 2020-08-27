@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.api.operators.sorted;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.state.AggregatingStateDescriptor;
 import org.apache.flink.api.common.state.FoldingStateDescriptor;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -134,6 +135,10 @@ class SingleKeyKeyedStateBackend<K> implements InternalKeyedStateBackend<K> {
 		checkNotNull(namespaceSerializer, "Namespace serializer");
 		checkNotNull(keySerializer, "State key serializer has not been configured in the config. " +
 			"This operation cannot use partitioned state.");
+
+		if (!stateDescriptor.isSerializerInitialized()) {
+			stateDescriptor.initializeSerializerUnlessSet(new ExecutionConfig());
+		}
 
 		State state = states.get(stateDescriptor.getName());
 		if (state == null) {
