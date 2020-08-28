@@ -18,21 +18,25 @@
 
 package org.apache.flink.streaming.scala.examples.ml
 
-import java.util.concurrent.TimeUnit
-
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala._
+import org.apache.flink.core.fs.Path
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks
 import org.apache.flink.streaming.api.functions.co.CoMapFunction
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
-import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.scala.function.AllWindowFunction
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
+
+import java.util.concurrent.TimeUnit
 
 /**
  * Skeleton for incremental machine learning algorithm consisting of a
@@ -78,7 +82,12 @@ object IncrementalLearningSkeleton {
 
     // emit result
     if (params.has("output")) {
-      prediction.writeAsText(params.get("output"))
+      prediction.addSink(
+        StreamingFileSink.forRowFormat(
+            new Path(params.get("output")),
+            new SimpleStringEncoder[Int]())
+          .withBucketAssigner(new BasePathBucketAssigner[Int])
+          .build())
     } else {
       println("Printing result to stdout. Use --output to specify output path.")
       prediction.print()

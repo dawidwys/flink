@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.tests;
 
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -27,13 +28,15 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 
@@ -72,7 +75,13 @@ public class PeriodicStreamingJob {
 			.timeWindow(Time.seconds(5))
 			.sum(0);
 
-		result.writeAsText(outputPath + "/result.txt", FileSystem.WriteMode.OVERWRITE)
+		result
+			.addSink(
+				StreamingFileSink.forRowFormat(
+						new Path(outputPath + "/result.txt"),
+						new SimpleStringEncoder<Tuple>())
+					.withBucketAssigner(new BasePathBucketAssigner<>())
+					.build())
 			.setParallelism(1);
 
 		sEnv.execute();

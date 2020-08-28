@@ -18,10 +18,8 @@
 
 package org.apache.flink.streaming.scala.examples
 
-import java.io.File
-
-import org.apache.commons.io.FileUtils
-import org.apache.flink.core.fs.FileSystem.WriteMode
+import org.apache.flink.api.java.io.TextOutputFormat
+import org.apache.flink.core.fs.{FileSystem, Path}
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.examples.iteration.util.IterateExampleData
@@ -30,7 +28,7 @@ import org.apache.flink.streaming.examples.twitter.util.TwitterExampleData
 import org.apache.flink.streaming.examples.windowing.util.SessionWindowingData
 import org.apache.flink.streaming.scala.examples.iteration.IterateExample
 import org.apache.flink.streaming.scala.examples.join.WindowJoin
-import org.apache.flink.streaming.scala.examples.join.WindowJoin.{Grade, Salary}
+import org.apache.flink.streaming.scala.examples.join.WindowJoin.{Grade, Person, Salary}
 import org.apache.flink.streaming.scala.examples.ml.IncrementalLearningSkeleton
 import org.apache.flink.streaming.scala.examples.twitter.TwitterExample
 import org.apache.flink.streaming.scala.examples.windowing.{SessionWindowing, WindowWordCount}
@@ -38,7 +36,11 @@ import org.apache.flink.streaming.scala.examples.wordcount.WordCount
 import org.apache.flink.streaming.test.examples.join.WindowJoinData
 import org.apache.flink.test.testdata.WordCountData
 import org.apache.flink.test.util.{AbstractTestBase, TestBaseUtils}
+
+import org.apache.commons.io.FileUtils
 import org.junit.Test
+
+import java.io.File
 
 /**
  * Integration test for streaming programs in Scala examples.
@@ -80,8 +82,10 @@ class StreamingExamplesITCase extends AbstractTestBase {
           Salary(fields(1), fields(2).toInt)
         })
 
+      val outputFormat = new TextOutputFormat[Person](new Path(resultPath))
+      outputFormat.setWriteMode(FileSystem.WriteMode.OVERWRITE)
       WindowJoin.joinStreams(grades, salaries, 100)
-        .writeAsText(resultPath, WriteMode.OVERWRITE)
+        .writeUsingOutputFormat(outputFormat)
 
       env.execute()
 
@@ -120,8 +124,8 @@ class StreamingExamplesITCase extends AbstractTestBase {
 
   @Test
   def testWindowWordCount(): Unit = {
-    val windowSize = "250"
-    val slideSize = "150"
+    val windowSize = "50"
+    val slideSize = "10"
     val textPath = createTempFile("text.txt", WordCountData.TEXT)
     val resultPath = getTempDirPath("result")
 

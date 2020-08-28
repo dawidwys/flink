@@ -18,13 +18,17 @@
 
 package org.apache.flink.streaming.scala.examples.iteration
 
-import java.util.Random
-
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala._
+import org.apache.flink.core.fs.Path
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
+
+import java.util.Random
 
 /**
  * Example illustrating iterations in Flink streaming.
@@ -95,7 +99,12 @@ object IterateExample {
       )
 
     if (params.has("output")) {
-      numbers.writeAsText(params.get("output"))
+      numbers.addSink(
+        StreamingFileSink.forRowFormat(
+            new Path(params.get("output")),
+            new SimpleStringEncoder[((Int, Int), Int)]())
+          .withBucketAssigner(new BasePathBucketAssigner[((Int, Int), Int)])
+          .build())
     } else {
       println("Printing result to stdout. Use --output to specify output path.")
       numbers.print()

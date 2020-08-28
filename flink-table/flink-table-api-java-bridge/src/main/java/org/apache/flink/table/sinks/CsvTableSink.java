@@ -21,9 +21,11 @@ package org.apache.flink.table.sinks;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.io.TextOutputFormat;
 import org.apache.flink.api.java.operators.DataSink;
 import org.apache.flink.api.java.operators.MapOperator;
 import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -137,11 +139,11 @@ public class CsvTableSink implements BatchTableSink<Row>, AppendStreamTableSink<
 			dataStream.map(new CsvFormatter(fieldDelim == null ? "," : fieldDelim));
 
 		DataStreamSink<String> sink;
+		TextOutputFormat<String> format = new TextOutputFormat<>(new Path(path));
 		if (writeMode != null) {
-			sink = csvRows.writeAsText(path, writeMode);
-		} else {
-			sink = csvRows.writeAsText(path);
+			format.setWriteMode(writeMode);
 		}
+		sink = csvRows.writeUsingOutputFormat(format);
 
 		if (numFiles > 0) {
 			csvRows.setParallelism(numFiles);

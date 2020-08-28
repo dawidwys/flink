@@ -19,15 +19,18 @@
 package org.apache.flink.streaming.examples.statemachine;
 
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
-import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.examples.statemachine.dfa.State;
@@ -134,7 +137,12 @@ public class StateMachineExample {
 			alerts.print();
 		} else {
 			alerts
-				.writeAsText(outputFile, FileSystem.WriteMode.OVERWRITE)
+				.addSink(
+					StreamingFileSink.forRowFormat(
+							new Path(outputFile),
+							new SimpleStringEncoder<Alert>())
+						.withBucketAssigner(new BasePathBucketAssigner<>())
+						.build())
 				.setParallelism(1);
 		}
 

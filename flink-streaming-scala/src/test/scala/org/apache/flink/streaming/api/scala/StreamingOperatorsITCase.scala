@@ -19,11 +19,17 @@
 package org.apache.flink.streaming.api.scala
 
 import org.apache.flink.api.common.functions.{FoldFunction, RichMapFunction}
-import org.apache.flink.core.fs.FileSystem
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
+import org.apache.flink.api.java.io.TextOutputFormat
+import org.apache.flink.api.java.tuple.Tuple3
+import org.apache.flink.core.fs.{FileSystem, Path}
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.{AbstractTestBase, TestBaseUtils}
 import org.apache.flink.util.MathUtils
+
 import org.junit.rules.TemporaryFolder
 import org.junit.{After, Before, Rule, Test}
 
@@ -44,9 +50,9 @@ class StreamingOperatorsITCase extends AbstractTestBase {
   @Before
   def before(): Unit = {
     val temp = tempFolder
-    resultPath1 = temp.newFile.toURI.toString
-    resultPath2 = temp.newFile.toURI.toString
-    resultPath3 = temp.newFile.toURI.toString
+    resultPath1 = temp.newFolder().toURI.toString
+    resultPath2 = temp.newFolder().toURI.toString
+    resultPath3 = temp.newFolder().toURI.toString
     expected1 = ""
     expected2 = ""
     expected3 = ""
@@ -112,13 +118,21 @@ class StreamingOperatorsITCase extends AbstractTestBase {
     splittedResult
       .select("0")
       .map(_._2)
-      .javaStream
-      .writeAsText(resultPath1, FileSystem.WriteMode.OVERWRITE)
+      .addSink(StreamingFileSink
+        .forRowFormat(
+          new Path(resultPath1),
+          new SimpleStringEncoder[Int])
+        .withBucketAssigner(new BasePathBucketAssigner[Int])
+        .build)
     splittedResult
       .select("1")
       .map(_._2)
-      .javaStream
-      .writeAsText(resultPath2, FileSystem.WriteMode.OVERWRITE)
+      .addSink(StreamingFileSink
+        .forRowFormat(
+          new Path(resultPath2),
+          new SimpleStringEncoder[Int])
+        .withBucketAssigner(new BasePathBucketAssigner[Int])
+        .build)
 
     val groupedSequence = 0 until numElements groupBy( MathUtils.murmurHash(_) % numKeys )
 
@@ -142,10 +156,12 @@ class StreamingOperatorsITCase extends AbstractTestBase {
       StreamingOperatorsITCase.Outer(2, StreamingOperatorsITCase.Inner(8, "alma"), true)
     )
 
+    val outputFormat = new TextOutputFormat[StreamingOperatorsITCase.Outer](new Path(resultPath3))
+    outputFormat.setWriteMode(FileSystem.WriteMode.OVERWRITE)
     inp
       .keyBy("a")
       .sum("i.c")
-        .writeAsText(resultPath3, FileSystem.WriteMode.OVERWRITE)
+        .writeUsingOutputFormat(outputFormat)
 
     expected3 =
       "Outer(1,Inner(3,alma),true)\n" +

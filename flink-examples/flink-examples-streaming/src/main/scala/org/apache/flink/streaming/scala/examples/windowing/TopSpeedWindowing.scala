@@ -19,11 +19,12 @@
 package org.apache.flink.streaming.scala.examples.windowing
 
 
-import java.beans.Transient
-import java.util.concurrent.TimeUnit
-
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.core.fs.Path
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.functions.windowing.delta.DeltaFunction
@@ -32,6 +33,9 @@ import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
 import org.apache.flink.streaming.api.windowing.evictors.TimeEvictor
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.triggers.DeltaTrigger
+
+import java.beans.Transient
+import java.util.concurrent.TimeUnit
 
 import scala.language.postfixOps
 import scala.util.Random
@@ -115,7 +119,12 @@ object TopSpeedWindowing {
       .maxBy("speed")
 
     if (params.has("output")) {
-      topSpeeds.writeAsText(params.get("output"))
+      topSpeeds.addSink(
+        StreamingFileSink.forRowFormat(
+            new Path(params.get("output")),
+            new SimpleStringEncoder[CarEvent]())
+          .withBucketAssigner(new BasePathBucketAssigner[CarEvent])
+          .build())
     } else {
       println("Printing result to stdout. Use --output to specify output path.")
       topSpeeds.print()

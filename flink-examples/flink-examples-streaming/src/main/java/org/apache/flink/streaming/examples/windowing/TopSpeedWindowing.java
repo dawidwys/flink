@@ -18,11 +18,15 @@
 package org.apache.flink.streaming.examples.windowing;
 
 import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.streaming.api.functions.windowing.delta.DeltaFunction;
@@ -87,7 +91,13 @@ public class TopSpeedWindowing {
 				.maxBy(1);
 
 		if (params.has("output")) {
-			topSpeeds.writeAsText(params.get("output"));
+			topSpeeds
+				.addSink(
+					StreamingFileSink.forRowFormat(
+							new Path(params.get("output")),
+							new SimpleStringEncoder<Tuple4<Integer, Integer, Double, Long>>())
+						.withBucketAssigner(new BasePathBucketAssigner<>())
+						.build());
 		} else {
 			System.out.println("Printing result to stdout. Use --output to specify output path.");
 			topSpeeds.print();

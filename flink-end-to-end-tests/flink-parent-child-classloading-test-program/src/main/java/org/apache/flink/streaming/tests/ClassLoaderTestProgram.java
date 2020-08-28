@@ -18,9 +18,12 @@
 package org.apache.flink.streaming.tests;
 
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -74,7 +77,12 @@ public class ClassLoaderTestProgram {
 				String message = ParentChildTestingVehicle.getMessage();
 				return message + ":" + messageFromPropsFile + ":" + orderedProperties;
 			})
-			.writeAsText(params.getRequired("output"), FileSystem.WriteMode.OVERWRITE);
+			.addSink(
+				StreamingFileSink.forRowFormat(
+					new Path(params.get("output")),
+					new SimpleStringEncoder<String>())
+					.withBucketAssigner(new BasePathBucketAssigner<>())
+					.build());
 
 		env.execute("ClassLoader Test Program");
 	}

@@ -17,11 +17,15 @@
 
 package org.apache.flink.streaming.examples.windowing;
 
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.assigners.EventTimeSessionWindows;
@@ -86,7 +90,13 @@ public class SessionWindowing {
 				.sum(2);
 
 		if (fileOutput) {
-			aggregated.writeAsText(params.get("output"));
+			aggregated
+				.addSink(
+					StreamingFileSink.forRowFormat(
+							new Path(params.get("output")),
+							new SimpleStringEncoder<Tuple3<String, Long, Integer>>())
+						.withBucketAssigner(new BasePathBucketAssigner<>())
+						.build());
 		} else {
 			System.out.println("Printing result to stdout. Use --output to specify output path.");
 			aggregated.print();

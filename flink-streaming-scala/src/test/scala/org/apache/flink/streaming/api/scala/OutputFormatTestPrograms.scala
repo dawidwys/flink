@@ -19,7 +19,8 @@ package org.apache.flink.streaming.api.scala
 
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema
-import org.apache.flink.core.fs.FileSystem
+import org.apache.flink.api.java.io.TextOutputFormat
+import org.apache.flink.core.fs.{FileSystem, Path}
 
 import scala.language.existentials
 
@@ -41,7 +42,7 @@ object OutputFormatTestPrograms {
 
     val counts = wordCountProgram(text)
 
-    counts.writeAsText(outputPath)
+    counts.writeUsingOutputFormat(new TextOutputFormat[(String, Int)](new Path(outputPath)))
 
     env.execute("Scala WordCountToText")
   }
@@ -56,7 +57,9 @@ object OutputFormatTestPrograms {
 
     val counts = wordCountProgram(text)
 
-    counts.writeAsText(outputPath, writeMode)
+    val outputFormat = new TextOutputFormat[(String, Int)](new Path(outputPath))
+    outputFormat.setWriteMode(writeMode)
+    counts.writeUsingOutputFormat(outputFormat)
 
     env.execute("Scala WordCountToText")
   }

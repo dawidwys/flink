@@ -17,12 +17,16 @@
 
 package org.apache.flink.streaming.examples.ml;
 
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
 import org.apache.flink.streaming.api.functions.co.CoMapFunction;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -77,7 +81,13 @@ public class IncrementalLearningSkeleton {
 
 		// emit result
 		if (params.has("output")) {
-			prediction.writeAsText(params.get("output"));
+			prediction
+				.addSink(
+					StreamingFileSink.forRowFormat(
+							new Path(params.get("output")),
+							new SimpleStringEncoder<Integer>())
+						.withBucketAssigner(new BasePathBucketAssigner<>())
+						.build());
 		} else {
 			System.out.println("Printing result to stdout. Use --output to specify output path.");
 			prediction.print();

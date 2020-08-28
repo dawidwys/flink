@@ -987,46 +987,6 @@ class DataStream[T](stream: JavaStream[T]) {
   @PublicEvolving
   def printToErr(sinkIdentifier: String) = stream.printToErr(sinkIdentifier)
 
-  /**
-    * Writes a DataStream to the file specified by path in text format. For
-    * every element of the DataStream the result of .toString is written.
-    *
-    * @param path The path pointing to the location the text file is written to
-    * @return The closed DataStream
-    *
-    * @deprecated Please use the
-    *             [[org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink]]
-    *             explicitly using the [[addSink()]] method.
-    */
-  @Deprecated
-  @PublicEvolving
-  def writeAsText(path: String): DataStreamSink[T] =
-    stream.writeAsText(path)
-
-
-
-  /**
-    * Writes a DataStream to the file specified by path in text format. For
-    * every element of the DataStream the result of .toString is written.
-    *
-    * @param path The path pointing to the location the text file is written to
-    * @param writeMode Controls the behavior for existing files. Options are NO_OVERWRITE and
-    *                  OVERWRITE.
-    * @return The closed DataStream
-    *
-    * @deprecated Please use the
-    *             [[org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink]]
-    *             explicitly using the [[addSink()]] method.
-    */
-  @Deprecated
-  @PublicEvolving
-  def writeAsText(path: String, writeMode: FileSystem.WriteMode): DataStreamSink[T] = {
-    if (writeMode != null) {
-      stream.writeAsText(path, writeMode)
-    } else {
-      stream.writeAsText(path)
-    }
-  }
 
   /**
     * Writes the DataStream in CSV format to the file specified by the path parameter. The writing

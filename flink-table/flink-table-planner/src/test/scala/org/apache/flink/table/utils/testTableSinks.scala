@@ -20,8 +20,10 @@ package org.apache.flink.table.utils
 
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.DataSet
+import org.apache.flink.api.java.io.TextOutputFormat
 import org.apache.flink.api.java.operators.DataSink
-import org.apache.flink.core.fs.FileSystem
+import org.apache.flink.core.fs.FileSystem.WriteMode
+import org.apache.flink.core.fs.{FileSystem, Path}
 import org.apache.flink.streaming.api.datastream.{DataStream, DataStreamSink}
 import org.apache.flink.table.api.TableSchema
 import org.apache.flink.table.sinks.{AppendStreamTableSink, BatchTableSink, OverwritableTableSink, TableSink}
@@ -60,12 +62,11 @@ final class TestingOverwritableTableSink private (
   }
 
   override def consumeDataStream(dataStream: DataStream[Row]): DataStreamSink[_] = {
-    val writeMode = if (overwrite) {
-      FileSystem.WriteMode.OVERWRITE
-    } else {
-      FileSystem.WriteMode.NO_OVERWRITE
+    val output = new TextOutputFormat[Row](new Path(path))
+    if (overwrite) {
+      output.setWriteMode(WriteMode.OVERWRITE)
     }
-    dataStream.writeAsText(path, writeMode).setParallelism(1)
+    dataStream.writeUsingOutputFormat(output).setParallelism(1)
   }
 
   override def getConsumedDataType: DataType = getTableSchema.toRowDataType

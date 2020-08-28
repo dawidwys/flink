@@ -18,14 +18,18 @@
 package org.apache.flink.streaming.examples.iteration;
 
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import java.util.ArrayList;
@@ -100,7 +104,13 @@ public class IterateExample {
 
 		// emit results
 		if (params.has("output")) {
-			numbers.writeAsText(params.get("output"));
+			numbers
+				.addSink(
+					StreamingFileSink.forRowFormat(
+							new Path(params.get("output")),
+							new SimpleStringEncoder<Tuple2<Tuple2<Integer, Integer>, Integer>>())
+						.withBucketAssigner(new BasePathBucketAssigner<>())
+						.build());
 		} else {
 			System.out.println("Printing result to stdout. Use --output to specify output path.");
 			numbers.print();

@@ -18,9 +18,13 @@
 
 package org.apache.flink.streaming.scala.examples.windowing
 
+import org.apache.flink.api.common.serialization.SimpleStringEncoder
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala._
+import org.apache.flink.core.fs.Path
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
+import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
@@ -80,7 +84,12 @@ object SessionWindowing {
       .sum(2)
 
     if (fileOutput) {
-      aggregated.writeAsText(params.get("output"))
+      aggregated.addSink(
+        StreamingFileSink.forRowFormat(
+            new Path(params.get("output")),
+            new SimpleStringEncoder[(String, Long, Int)]())
+          .withBucketAssigner(new BasePathBucketAssigner[(String, Long, Int)])
+          .build())
     } else {
       print("Printing result to stdout. Use --output to specify output path.")
       aggregated.print()
