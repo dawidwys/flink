@@ -17,7 +17,9 @@
 
 package org.apache.flink.test.streaming.api.outputformat;
 
+import org.apache.flink.api.java.io.CsvOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.testdata.WordCountData;
@@ -43,7 +45,7 @@ public class CsvOutputFormatITCase extends AbstractTestBase {
 				.flatMap(new Tokenizer())
 				.keyBy(0).sum(1);
 
-		counts.writeAsCsv(resultPath);
+		counts.writeUsingOutputFormat(new CsvOutputFormat<>(new Path(resultPath)));
 
 		env.execute("WriteAsCsvTest");
 

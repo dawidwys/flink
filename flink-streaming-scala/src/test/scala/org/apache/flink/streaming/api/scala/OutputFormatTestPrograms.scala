@@ -20,6 +20,7 @@ package org.apache.flink.streaming.api.scala
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.java.io.TextOutputFormat
+import org.apache.flink.api.scala.operators.ScalaCsvOutputFormat
 import org.apache.flink.core.fs.{FileSystem, Path}
 
 import scala.language.existentials
@@ -71,7 +72,7 @@ object OutputFormatTestPrograms {
 
     val counts = wordCountProgram(text)
 
-    counts.writeAsCsv(outputPath)
+    counts.writeUsingOutputFormat(new ScalaCsvOutputFormat[(String, Int)](new Path(outputPath)))
 
     env.execute("Scala WordCountToCsv")
   }
@@ -86,7 +87,9 @@ object OutputFormatTestPrograms {
 
     val counts = wordCountProgram(text)
 
-    counts.writeAsCsv(outputPath, writeMode)
+    val outputFormat = new ScalaCsvOutputFormat[(String, Int)](new Path(outputPath))
+    outputFormat.setWriteMode(writeMode)
+    counts.writeUsingOutputFormat(outputFormat)
 
     env.execute("Scala WordCountToCsv")
   }
@@ -103,7 +106,12 @@ object OutputFormatTestPrograms {
 
     val counts = wordCountProgram(text)
 
-    counts.writeAsCsv(outputPath, writeMode, rowDelimiter, fieldDelimiter)
+    val outputFormat = new ScalaCsvOutputFormat[(String, Int)](
+      new Path(outputPath),
+      rowDelimiter,
+      fieldDelimiter)
+    outputFormat.setWriteMode(writeMode)
+    counts.writeUsingOutputFormat(outputFormat)
 
     env.execute("Scala WordCountToCsv")
   }

@@ -262,6 +262,9 @@ under the License.
 							<exclude>org.apache.flink.streaming.api.scala.DataStream#iterate\$default\$3()</exclude>
 							<exclude>org.apache.flink.streaming.api.scala.DataStream#assignTimestamps(org.apache.flink.streaming.api.functions.TimestampExtractor)</exclude>
 							<exclude>org.apache.flink.streaming.api.scala.ConnectedStreams#keyBy(scala.Function1,scala.Function1,org.apache.flink.api.common.typeinfo.TypeInformation,org.apache.flink.api.common.typeinfo.TypeInformation)</exclude>
+
+							<!-- Exclude generated class for writeAsCsv -->
+							<exclude>org.apache.flink.streaming.api.scala.DataStream$$$$anonfun$$writeAsCsv$$1</exclude>
 						</excludes>
 					</parameter>
 				</configuration>

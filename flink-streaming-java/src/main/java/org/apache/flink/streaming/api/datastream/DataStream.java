@@ -43,13 +43,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.Utils;
 import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.api.java.io.CsvOutputFormat;
-import org.apache.flink.api.java.io.TextOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.typeutils.InputTypeConfigurable;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
-import org.apache.flink.core.fs.FileSystem.WriteMode;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -1019,96 +1015,6 @@ public class DataStream<T> {
 	public DataStreamSink<T> printToErr(String sinkIdentifier) {
 		PrintSinkFunction<T> printFunction = new PrintSinkFunction<>(sinkIdentifier, true);
 		return addSink(printFunction).name("Print to Std. Err");
-	}
-
-	/**
-	 * Writes a DataStream to the file specified by the path parameter.
-	 *
-	 * <p>For every field of an element of the DataStream the result of {@link Object#toString()}
-	 * is written. This method can only be used on data streams of tuples.
-	 *
-	 * @param path
-	 *            the path pointing to the location the text file is written to
-	 *
-	 * @return the closed DataStream
-	 *
-	 * @deprecated Please use the {@link org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly using the
-	 * {@link #addSink(SinkFunction)} method.
-	 */
-	@Deprecated
-	@PublicEvolving
-	public DataStreamSink<T> writeAsCsv(String path) {
-		return writeAsCsv(path, null, CsvOutputFormat.DEFAULT_LINE_DELIMITER, CsvOutputFormat.DEFAULT_FIELD_DELIMITER);
-	}
-
-
-	/**
-	 * Writes a DataStream to the file specified by the path parameter.
-	 *
-	 * <p>For every field of an element of the DataStream the result of {@link Object#toString()}
-	 * is written. This method can only be used on data streams of tuples.
-	 *
-	 * @param path
-	 *            the path pointing to the location the text file is written to
-	 * @param writeMode
-	 *            Controls the behavior for existing files. Options are
-	 *            NO_OVERWRITE and OVERWRITE.
-	 *
-	 * @return the closed DataStream
-	 *
-	 * @deprecated Please use the {@link org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly using the
-	 * {@link #addSink(SinkFunction)} method.
-	 */
-	@Deprecated
-	@PublicEvolving
-	public DataStreamSink<T> writeAsCsv(String path, WriteMode writeMode) {
-		return writeAsCsv(path, writeMode, CsvOutputFormat.DEFAULT_LINE_DELIMITER, CsvOutputFormat.DEFAULT_FIELD_DELIMITER);
-	}
-
-	/**
-	 * Writes a DataStream to the file specified by the path parameter. The
-	 * writing is performed periodically every millis milliseconds.
-	 *
-	 * <p>For every field of an element of the DataStream the result of {@link Object#toString()}
-	 * is written. This method can only be used on data streams of tuples.
-	 *
-	 * @param path
-	 *            the path pointing to the location the text file is written to
-	 * @param writeMode
-	 *            Controls the behavior for existing files. Options are
-	 *            NO_OVERWRITE and OVERWRITE.
-	 * @param rowDelimiter
-	 *            the delimiter for two rows
-	 * @param fieldDelimiter
-	 *            the delimiter for two fields
-	 *
-	 * @return the closed DataStream
-	 *
-	 * @deprecated Please use the {@link org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink} explicitly using the
-	 * {@link #addSink(SinkFunction)} method.
-	 */
-	@SuppressWarnings("unchecked")
-	@Deprecated
-	@PublicEvolving
-	public <X extends Tuple> DataStreamSink<T> writeAsCsv(
-			String path,
-			WriteMode writeMode,
-			String rowDelimiter,
-			String fieldDelimiter) {
-		Preconditions.checkArgument(
-			getType().isTupleType(),
-			"The writeAsCsv() method can only be used on data streams of tuples.");
-
-		CsvOutputFormat<X> of = new CsvOutputFormat<>(
-			new Path(path),
-			rowDelimiter,
-			fieldDelimiter);
-
-		if (writeMode != null) {
-			of.setWriteMode(writeMode);
-		}
-
-		return writeUsingOutputFormat((OutputFormat<T>) of);
 	}
 
 	/**
