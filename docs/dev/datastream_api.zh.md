@@ -140,8 +140,6 @@ an outside system by creating a sink. These are just some example methods for
 creating a sink:
 
 {% highlight java %}
-writeAsText(String path)
-
 print()
 {% endhighlight %}
 
@@ -205,8 +203,6 @@ an outside system by creating a sink. These are just some example methods for
 creating a sink:
 
 {% highlight scala %}
-writeAsText(path: String)
-
 print()
 {% endhighlight %}
 
@@ -479,12 +475,6 @@ Data sinks consume DataStreams and forward them to files, sockets, external syst
 Flink comes with a variety of built-in output formats that are encapsulated behind operations on the
 DataStreams:
 
-- `writeAsText()` / `TextOutputFormat` - Writes elements line-wise as Strings. The Strings are
-  obtained by calling the *toString()* method of each element.
-
-- `writeAsCsv(...)` / `CsvOutputFormat` - Writes tuples as comma-separated value files. Row and field
-  delimiters are configurable. The value for each field comes from the *toString()* method of the objects.
-
 - `print()` / `printToErr()`  - Prints the *toString()* value
 of each element on the standard out / standard error stream. Optionally, a prefix (msg) can be provided which is
 prepended to the output. This can help to distinguish between different calls to *print*. If the parallelism is
@@ -506,12 +496,6 @@ greater than 1, the output will also be prepended with the identifier of the tas
 Data sinks consume DataStreams and forward them to files, sockets, external systems, or print them.
 Flink comes with a variety of built-in output formats that are encapsulated behind operations on the
 DataStreams:
-
-- `writeAsText()` / `TextOutputFormat` - Writes elements line-wise as Strings. The Strings are
-  obtained by calling the *toString()* method of each element.
-
-- `writeAsCsv(...)` / `CsvOutputFormat` - Writes tuples as comma-separated value files. Row and field
-  delimiters are configurable. The value for each field comes from the *toString()* method of the objects.
 
 - `print()` / `printToErr()`  - Prints the *toString()* value
 of each element on the standard out / standard error stream. Optionally, a prefix (msg) can be provided which is
