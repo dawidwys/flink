@@ -24,8 +24,7 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.formats.avro.generated.Address;
 import org.apache.flink.formats.avro.generated.Colors;
 import org.apache.flink.formats.avro.generated.Fixed16;
-import org.apache.flink.formats.avro.generated.Fixed2;
-import org.apache.flink.formats.avro.generated.User;
+import org.apache.flink.formats.avro.generated.SimpleUser;
 import org.apache.flink.formats.avro.utils.AvroKryoSerializerUtils;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
@@ -34,15 +33,13 @@ import org.apache.flink.test.util.TestBaseUtils;
 import org.apache.flink.types.Row;
 
 import org.apache.avro.util.Utf8;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,7 +55,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(Parameterized.class)
 public class AvroTypesITCase extends TableProgramsClusterTestBase {
 
-	private static final User USER_1 = User.newBuilder()
+	private static final SimpleUser USER_1 = SimpleUser.newBuilder()
 			.setName("Charlie")
 			.setFavoriteColor("blue")
 			.setFavoriteNumber(null)
@@ -81,16 +78,9 @@ public class AvroTypesITCase extends TableProgramsClusterTestBase {
 							.setState("Berlin")
 							.setZip("12049").build())
 			.setTypeBytes(ByteBuffer.allocate(10))
-			.setTypeDate(LocalDate.parse("2014-03-01"))
-			.setTypeTimeMillis(LocalTime.parse("12:12:12"))
-			.setTypeTimeMicros(123456)
-			.setTypeTimestampMillis(DateTime.parse("2014-03-01T12:12:12.321Z"))
-			.setTypeTimestampMicros(123456L)
-			.setTypeDecimalBytes(ByteBuffer.wrap(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
-			.setTypeDecimalFixed(new Fixed2(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
 			.build();
 
-	private static final User USER_2 = User.newBuilder()
+	private static final SimpleUser USER_2 = SimpleUser.newBuilder()
 			.setName("Whatever")
 			.setFavoriteNumber(null)
 			.setFavoriteColor("black")
@@ -104,17 +94,11 @@ public class AvroTypesITCase extends TableProgramsClusterTestBase {
 			.setTypeMap(new HashMap<>())
 			.setTypeFixed(new Fixed16())
 			.setTypeUnion(null)
-			.setTypeNested(null).setTypeDate(LocalDate.parse("2014-03-01"))
+			.setTypeNested(null)
 			.setTypeBytes(ByteBuffer.allocate(10))
-			.setTypeTimeMillis(LocalTime.parse("12:12:12"))
-			.setTypeTimeMicros(123456)
-			.setTypeTimestampMillis(DateTime.parse("2014-03-01T12:12:12.321Z"))
-			.setTypeTimestampMicros(123456L)
-			.setTypeDecimalBytes(ByteBuffer.wrap(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
-			.setTypeDecimalFixed(new Fixed2(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
 			.build();
 
-	private static final User USER_3 = User.newBuilder()
+	private static final SimpleUser USER_3 = SimpleUser.newBuilder()
 			.setName("Terminator")
 			.setFavoriteNumber(null)
 			.setFavoriteColor("yellow")
@@ -130,13 +114,6 @@ public class AvroTypesITCase extends TableProgramsClusterTestBase {
 			.setTypeUnion(null)
 			.setTypeNested(null)
 			.setTypeBytes(ByteBuffer.allocate(10))
-			.setTypeDate(LocalDate.parse("2014-03-01"))
-			.setTypeTimeMillis(LocalTime.parse("12:12:12"))
-			.setTypeTimeMicros(123456)
-			.setTypeTimestampMillis(DateTime.parse("2014-03-01T12:12:12.321Z"))
-			.setTypeTimestampMicros(123456L)
-			.setTypeDecimalBytes(ByteBuffer.wrap(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
-			.setTypeDecimalFixed(new Fixed2(BigDecimal.valueOf(2000, 2).unscaledValue().toByteArray()))
 			.build();
 
 	public AvroTypesITCase(
@@ -157,20 +134,14 @@ public class AvroTypesITCase extends TableProgramsClusterTestBase {
 
 		List<Row> results = tEnv.toDataSet(result, Row.class).collect();
 		String expected =
-			"black,null,Whatever,[true],[hello],true,java.nio.HeapByteBuffer[pos=0 lim=10 cap=10]," +
-			"2014-03-01,java.nio.HeapByteBuffer[pos=0 lim=2 cap=2],[7, -48],0.0,GREEN," +
-			"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],42,{},null,null,null,123456," +
-			"12:12:12.000,123456,2014-03-01T12:12:12.321Z,null\n" +
-			"blue,null,Charlie,[],[],false,java.nio.HeapByteBuffer[pos=0 lim=10 cap=10],2014-03-01," +
-			"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2],[7, -48],1.337,RED,null,1337,{}," +
+			"black,null,Whatever,[true],[hello],true,java.nio.HeapByteBuffer[pos=0 lim=10 cap=10],0.0,GREEN," +
+			"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],42,{},null,null,null,null\n" +
+			"blue,null,Charlie,[],[],false,java.nio.HeapByteBuffer[pos=0 lim=10 cap=10],1.337,RED,null,1337,{}," +
 			"{\"num\": 42, \"street\": \"Bakerstreet\", \"city\": \"Berlin\", \"state\": " +
-			"\"Berlin\", \"zip\": \"12049\"},null,null,123456,12:12:12.000,123456," +
-			"2014-03-01T12:12:12.321Z,null\n" +
+			"\"Berlin\", \"zip\": \"12049\"},null,null,null\n" +
 			"yellow,null,Terminator,[false],[world],false," +
-			"java.nio.HeapByteBuffer[pos=0 lim=10 cap=10],2014-03-01," +
-			"java.nio.HeapByteBuffer[pos=0 lim=2 cap=2],[7, -48],0.0,GREEN," +
-			"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],1,{},null,null,null,123456," +
-			"12:12:12.000,123456,2014-03-01T12:12:12.321Z,null";
+			"java.nio.HeapByteBuffer[pos=0 lim=10 cap=10],0.0,GREEN," +
+			"[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],1,{},null,null,null,null";
 		TestBaseUtils.compareResultAsText(results, expected);
 	}
 
@@ -212,13 +183,13 @@ public class AvroTypesITCase extends TableProgramsClusterTestBase {
 		Table t = tEnv.fromDataSet(testData(env));
 		Table result = t.select($("*"));
 
-		List<User> results = tEnv.toDataSet(result, Types.POJO(User.class)).collect();
-		List<User> expected = Arrays.asList(USER_1, USER_2, USER_3);
+		List<SimpleUser> results = tEnv.toDataSet(result, Types.POJO(SimpleUser.class)).collect();
+		List<SimpleUser> expected = Arrays.asList(USER_1, USER_2, USER_3);
 		assertEquals(expected, results);
 	}
 
-	private DataSet<User> testData(ExecutionEnvironment env) {
-		List<User> data = new ArrayList<>(3);
+	private DataSet<SimpleUser> testData(ExecutionEnvironment env) {
+		List<SimpleUser> data = new ArrayList<>(3);
 		data.add(USER_1);
 		data.add(USER_2);
 		data.add(USER_3);

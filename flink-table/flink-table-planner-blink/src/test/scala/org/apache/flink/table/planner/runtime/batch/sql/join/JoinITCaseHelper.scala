@@ -34,7 +34,8 @@ object JoinITCaseHelper {
 
   def disableOtherJoinOpForJoin(tEnv: TableEnvironment, expected: JoinType): Unit = {
     val disabledOperators = expected match {
-      case BroadcastHashJoin => "NestedLoopJoin, SortMergeJoin"
+      case BroadcastHashJoin =>
+        "NestedLoopJoin, SortMergeJoin, ShuffleHashJoin"
       case HashJoin =>
         disableBroadcastHashJoin(tEnv)
         "NestedLoopJoin, SortMergeJoin"

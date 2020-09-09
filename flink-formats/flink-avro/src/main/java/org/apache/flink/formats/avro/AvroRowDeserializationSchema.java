@@ -42,10 +42,8 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificRecord;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeFieldType;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
+
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -57,6 +55,11 @@ import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +127,11 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 	private transient Decoder decoder;
 
 	/**
+	 * Converter for joda classes.
+	 */
+	private transient @Nullable JodaConverter jodaConverter;
+
+	/**
 	 * Creates a Avro deserialization schema for the given specific record class. Having the
 	 * concrete Avro record class might improve performance.
 	 *
@@ -139,6 +147,7 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		datumReader = new SpecificDatumReader<>(schema);
 		inputStream = new MutableByteArrayInputStream();
 		decoder = DecoderFactory.get().binaryDecoder(inputStream, null);
+		jodaConverter = JodaConverter.getConverter();
 	}
 
 	/**
@@ -158,6 +167,7 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		datumReader = new GenericDatumReader<>(schema);
 		inputStream = new MutableByteArrayInputStream();
 		decoder = DecoderFactory.get().binaryDecoder(inputStream, null);
+		jodaConverter = JodaConverter.getConverter();
 	}
 
 	@Override
@@ -165,7 +175,7 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		try {
 			inputStream.setBuffer(message);
 			record = datumReader.read(record, decoder);
-			return convertAvroRecordToRow(schema, typeInfo, record);
+			return convertAvroRecordToRow(schema, typeInfo, record, jodaConverter);
 		} catch (Exception e) {
 			throw new IOException("Failed to deserialize Avro record.", e);
 		}
@@ -196,19 +206,27 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 
 	// --------------------------------------------------------------------------------------------
 
-	private Row convertAvroRecordToRow(Schema schema, RowTypeInfo typeInfo, IndexedRecord record) {
+	private Row convertAvroRecordToRow(
+			Schema schema,
+			RowTypeInfo typeInfo,
+			IndexedRecord record,
+			@Nullable JodaConverter jodaConverter) {
 		final List<Schema.Field> fields = schema.getFields();
 		final TypeInformation<?>[] fieldInfo = typeInfo.getFieldTypes();
 		final int length = fields.size();
 		final Row row = new Row(length);
 		for (int i = 0; i < length; i++) {
 			final Schema.Field field = fields.get(i);
-			row.setField(i, convertAvroType(field.schema(), fieldInfo[i], record.get(i)));
+			row.setField(i, convertAvroType(field.schema(), fieldInfo[i], record.get(i), jodaConverter));
 		}
 		return row;
 	}
 
-	private Object convertAvroType(Schema schema, TypeInformation<?> info, Object object) {
+	private Object convertAvroType(
+			Schema schema,
+			TypeInformation<?> info,
+			Object object,
+			@Nullable JodaConverter jodaConverter) {
 		// we perform the conversion based on schema information but enriched with pre-computed
 		// type information where useful (i.e., for arrays)
 
@@ -218,7 +236,7 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		switch (schema.getType()) {
 			case RECORD:
 				if (object instanceof IndexedRecord) {
-					return convertAvroRecordToRow(schema, (RowTypeInfo) info, (IndexedRecord) object);
+					return convertAvroRecordToRow(schema, (RowTypeInfo) info, (IndexedRecord) object, jodaConverter);
 				}
 				throw new IllegalStateException("IndexedRecord expected but was: " + object.getClass());
 			case ENUM:
@@ -227,10 +245,10 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 			case ARRAY:
 				if (info instanceof BasicArrayTypeInfo) {
 					final TypeInformation<?> elementInfo = ((BasicArrayTypeInfo<?, ?>) info).getComponentInfo();
-					return convertToObjectArray(schema.getElementType(), elementInfo, object);
+					return convertToObjectArray(schema.getElementType(), elementInfo, object, jodaConverter);
 				} else {
 					final TypeInformation<?> elementInfo = ((ObjectArrayTypeInfo<?, ?>) info).getComponentInfo();
-					return convertToObjectArray(schema.getElementType(), elementInfo, object);
+					return convertToObjectArray(schema.getElementType(), elementInfo, object, jodaConverter);
 				}
 			case MAP:
 				final MapTypeInfo<?, ?> mapTypeInfo = (MapTypeInfo<?, ?>) info;
@@ -239,7 +257,12 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 				for (Map.Entry<?, ?> entry : map.entrySet()) {
 					convertedMap.put(
 						entry.getKey().toString(),
-						convertAvroType(schema.getValueType(), mapTypeInfo.getValueTypeInfo(), entry.getValue()));
+						convertAvroType(
+							schema.getValueType(),
+							mapTypeInfo.getValueTypeInfo(),
+							entry.getValue(),
+							jodaConverter)
+					);
 				}
 				return convertedMap;
 			case UNION:
@@ -247,11 +270,11 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 				final int size = types.size();
 				final Schema actualSchema;
 				if (size == 2 && types.get(0).getType() == Schema.Type.NULL) {
-					return convertAvroType(types.get(1), info, object);
+					return convertAvroType(types.get(1), info, object, jodaConverter);
 				} else if (size == 2 && types.get(1).getType() == Schema.Type.NULL) {
-					return convertAvroType(types.get(0), info, object);
+					return convertAvroType(types.get(0), info, object, jodaConverter);
 				} else if (size == 1) {
-					return convertAvroType(types.get(0), info, object);
+					return convertAvroType(types.get(0), info, object, jodaConverter);
 				} else {
 					// generic type
 					return object;
@@ -272,14 +295,19 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 				return bytes;
 			case INT:
 				if (info == Types.SQL_DATE) {
-					return convertToDate(object);
+					return convertToDate(object, jodaConverter);
 				} else if (info == Types.SQL_TIME) {
-					return convertToTime(object);
+					return convertToTime(object, jodaConverter);
 				}
 				return object;
 			case LONG:
 				if (info == Types.SQL_TIMESTAMP) {
-					return convertToTimestamp(object);
+					return convertToTimestamp(
+						object,
+						jodaConverter,
+						schema.getLogicalType() == LogicalTypes.timestampMicros());
+				}  else if (info == Types.SQL_TIME) {
+					return convertToTime(object, jodaConverter);
 				}
 				return object;
 			case FLOAT:
@@ -295,52 +323,75 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		return new BigDecimal(new BigInteger(bytes), decimalType.getScale());
 	}
 
-	private Date convertToDate(Object object) {
+	private Date convertToDate(Object object, @Nullable JodaConverter jodaConverter) {
 		final long millis;
 		if (object instanceof Integer) {
 			final Integer value = (Integer) object;
 			// adopted from Apache Calcite
 			final long t = (long) value * 86400000L;
 			millis = t - (long) LOCAL_TZ.getOffset(t);
+		} else if (object instanceof LocalDate) {
+			long t = ((LocalDate) object).toEpochDay() * 86400000L;
+			millis = t - (long) LOCAL_TZ.getOffset(t);
+		} else if (jodaConverter != null) {
+			millis = jodaConverter.convertDate(object);
 		} else {
-			// use 'provided' Joda time
-			final LocalDate value = (LocalDate) object;
-			millis = value.toDate().getTime();
+			throw new IllegalArgumentException("Unexpected object type for DATE logical type. Received: " + object);
 		}
 		return new Date(millis);
 	}
 
-	private Time convertToTime(Object object) {
+	private Time convertToTime(Object object, @Nullable JodaConverter jodaConverter) {
 		final long millis;
 		if (object instanceof Integer) {
 			millis = (Integer) object;
+		} else if (object instanceof Long) {
+			millis = (Long) object / 1000L;
+		} else if (object instanceof LocalTime) {
+			millis = ((LocalTime) object).get(ChronoField.MILLI_OF_DAY);
+		} else if (jodaConverter != null) {
+			millis = jodaConverter.convertTime(object);
 		} else {
-			// use 'provided' Joda time
-			final LocalTime value = (LocalTime) object;
-			millis = (long) value.get(DateTimeFieldType.millisOfDay());
+			throw new IllegalArgumentException("Unexpected object type for DATE logical type. Received: " + object);
 		}
 		return new Time(millis - LOCAL_TZ.getOffset(millis));
 	}
 
-	private Timestamp convertToTimestamp(Object object) {
+	private Timestamp convertToTimestamp(Object object, @Nullable JodaConverter jodaConverter, boolean isMicros) {
 		final long millis;
 		if (object instanceof Long) {
-			millis = (Long) object;
+			if (isMicros) {
+				long micros = (Long) object;
+				Instant instant = Instant.ofEpochSecond(0)
+					.plus(micros, ChronoUnit.MICROS)
+					.minusMillis(LOCAL_TZ.getOffset(micros / 1000L));
+				return Timestamp.from(instant);
+			} else {
+				millis = (Long) object;
+			}
+		} else if (object instanceof Instant) {
+			Instant instant = (Instant) object;
+			instant = instant.minusMillis(LOCAL_TZ.getOffset(instant.toEpochMilli()));
+			return Timestamp.from(instant);
+		} else if (jodaConverter != null) {
+			millis = jodaConverter.convertTimestamp(object);
 		} else {
-			// use 'provided' Joda time
-			final DateTime value = (DateTime) object;
-			millis = value.toDate().getTime();
+			throw new IllegalArgumentException("Unexpected object type for DATE logical type. Received: " + object);
 		}
 		return new Timestamp(millis - LOCAL_TZ.getOffset(millis));
 	}
 
-	private Object[] convertToObjectArray(Schema elementSchema, TypeInformation<?> elementInfo, Object object) {
+	private Object[] convertToObjectArray(
+			Schema elementSchema,
+			TypeInformation<?> elementInfo,
+			Object object,
+			@Nullable JodaConverter jodaConverter) {
 		final List<?> list = (List<?>) object;
 		final Object[] convertedArray = (Object[]) Array.newInstance(
 			elementInfo.getTypeClass(),
 			list.size());
 		for (int i = 0; i < list.size(); i++) {
-			convertedArray[i] = convertAvroType(elementSchema, elementInfo, list.get(i));
+			convertedArray[i] = convertAvroType(elementSchema, elementInfo, list.get(i), jodaConverter);
 		}
 		return convertedArray;
 	}
@@ -364,5 +415,6 @@ public class AvroRowDeserializationSchema extends AbstractDeserializationSchema<
 		datumReader = new SpecificDatumReader<>(schema);
 		this.inputStream = new MutableByteArrayInputStream();
 		decoder = DecoderFactory.get().binaryDecoder(this.inputStream, null);
+		jodaConverter = JodaConverter.getConverter();
 	}
 }

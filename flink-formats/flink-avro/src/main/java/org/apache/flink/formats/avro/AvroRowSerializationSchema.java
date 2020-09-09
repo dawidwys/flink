@@ -48,9 +48,11 @@ import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoField;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -248,9 +250,9 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 				} else if (object instanceof LocalDate) {
 					return convertFromDate(schema, Date.valueOf((LocalDate) object));
 				} else if (object instanceof Time) {
-					return convertFromTime(schema, (Time) object);
+					return convertFromTimeMillis(schema, (Time) object);
 				} else if (object instanceof LocalTime) {
-					return convertFromTime(schema, Time.valueOf((LocalTime) object));
+					return convertFromTimeMillis(schema, Time.valueOf((LocalTime) object));
 				}
 				return object;
 			case LONG:
@@ -259,6 +261,8 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 					return convertFromTimestamp(schema, (Timestamp) object);
 				} else if (object instanceof LocalDateTime) {
 					return convertFromTimestamp(schema, Timestamp.valueOf((LocalDateTime) object));
+				} else if (object instanceof Time) {
+					return convertFromTimeMicros(schema, (Time) object);
 				}
 				return object;
 			case FLOAT:
@@ -287,21 +291,30 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 		final LogicalType logicalType = schema.getLogicalType();
 		if (logicalType == LogicalTypes.date()) {
 			// adopted from Apache Calcite
-			final long time = date.getTime();
-			final long converted = time + (long) LOCAL_TZ.getOffset(time);
+			final long converted = toEpochMillis(date);
 			return (int) (converted / 86400000L);
 		} else {
 			throw new RuntimeException("Unsupported date type.");
 		}
 	}
 
-	private int convertFromTime(Schema schema, Time date) {
+	private int convertFromTimeMillis(Schema schema, Time date) {
 		final LogicalType logicalType = schema.getLogicalType();
 		if (logicalType == LogicalTypes.timeMillis()) {
 			// adopted from Apache Calcite
-			final long time = date.getTime();
-			final long converted = time + (long) LOCAL_TZ.getOffset(time);
-			return (int) (converted % 86400000L);
+			final long millis = toEpochMillis(date);
+			return (int) (millis % 86400000L);
+		} else {
+			throw new RuntimeException("Unsupported time type.");
+		}
+	}
+
+	private Object convertFromTimeMicros(Schema schema, Time date) {
+		final LogicalType logicalType = schema.getLogicalType();
+		if (logicalType == LogicalTypes.timeMicros()) {
+			// adopted from Apache Calcite
+			final long millis = toEpochMillis(date);
+			return (millis % 86400000L) * 1000L;
 		} else {
 			throw new RuntimeException("Unsupported time type.");
 		}
@@ -311,11 +324,19 @@ public class AvroRowSerializationSchema implements SerializationSchema<Row> {
 		final LogicalType logicalType = schema.getLogicalType();
 		if (logicalType == LogicalTypes.timestampMillis()) {
 			// adopted from Apache Calcite
-			final long time = date.getTime();
-			return time + (long) LOCAL_TZ.getOffset(time);
+			return toEpochMillis(date);
+		} else if (logicalType == LogicalTypes.timestampMicros()) {
+			Instant instant = date.toInstant();
+			return instant.getEpochSecond() + instant.get(ChronoField.MICRO_OF_SECOND) +
+				((long) LOCAL_TZ.getOffset(instant.toEpochMilli()) * 1000L);
 		} else {
 			throw new RuntimeException("Unsupported timestamp type.");
 		}
+	}
+
+	private long toEpochMillis(java.util.Date date) {
+		final long time = date.getTime();
+		return time + (long) LOCAL_TZ.getOffset(time);
 	}
 
 	private void writeObject(ObjectOutputStream outputStream) throws IOException {

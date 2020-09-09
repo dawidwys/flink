@@ -45,6 +45,7 @@ public class JSONGenerator {
 	public static final String PACT = "pact";
 	public static final String CONTENTS = "contents";
 	public static final String PARALLELISM = "parallelism";
+	public static final String SHUFFLE_MODE = "shuffle_mode";
 
 	private StreamGraph streamGraph;
 	private final ObjectMapper mapper = new ObjectMapper();
@@ -160,6 +161,7 @@ public class JSONGenerator {
 		inputArray.add(input);
 		input.put(ID, mappedInputID);
 		input.put(SHIP_STRATEGY, inEdge.getPartitioner().toString());
+		input.put(SHUFFLE_MODE, inEdge.getShuffleMode().toString());
 		input.put(SIDE, (inputArray.size() == 0) ? "first" : "second");
 	}
 

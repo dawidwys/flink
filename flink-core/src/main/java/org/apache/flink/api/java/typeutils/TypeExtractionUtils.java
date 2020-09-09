@@ -25,6 +25,7 @@ import org.apache.flink.api.common.functions.InvalidTypesException;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -32,8 +33,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.flink.shaded.asm7.org.objectweb.asm.Type.getConstructorDescriptor;
 import static org.apache.flink.shaded.asm7.org.objectweb.asm.Type.getMethodDescriptor;
@@ -351,5 +354,30 @@ public class TypeExtractionUtils {
 				+ "An easy workaround is to use an (anonymous) class instead that implements the '" + baseClass.getName() + "' interface. "
 				+ "Otherwise the type has to be specified explicitly using type information.");
 		}
+	}
+
+	public static Optional<Method> getGetter(Field f) {
+		final String fieldNameLow = f.getName().toLowerCase().replaceAll("_", "");
+		Method[] methods = f.getDeclaringClass().getMethods();
+		Class<?> fieldType = f.getType();
+		return Arrays.stream(methods)
+			.filter(
+				m -> {
+					final String methodNameLow = m.getName().endsWith("_$eq") ?
+						m.getName().toLowerCase().replaceAll("_", "").replaceFirst("\\$eq$", "_\\$eq") :
+						m.getName().toLowerCase().replaceAll("_", "");
+
+					// The name should be "get<FieldName>" or "<fieldName>" (for scala) or "is<fieldName>" for boolean fields.
+					boolean isMatchingName = (methodNameLow.equals("get" + fieldNameLow) ||
+						                          methodNameLow.equals("is" + fieldNameLow) ||
+						                          methodNameLow.equals(fieldNameLow));
+
+					boolean isZeroArgs = m.getParameterTypes().length == 0;
+
+					boolean isMatchingReturnType = m.getGenericReturnType().equals(fieldType);
+
+					return isMatchingName && isZeroArgs && isMatchingReturnType;
+				}
+			).findAny();
 	}
 }

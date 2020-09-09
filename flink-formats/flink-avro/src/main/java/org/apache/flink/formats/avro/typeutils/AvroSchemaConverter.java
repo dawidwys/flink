@@ -46,6 +46,7 @@ import org.apache.avro.SchemaParseException;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificRecord;
 
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -155,8 +156,11 @@ public class AvroSchemaConverter {
 				return Types.INT;
 			case LONG:
 				// logical timestamp type
-				if (schema.getLogicalType() == LogicalTypes.timestampMillis()) {
+				if (schema.getLogicalType() == LogicalTypes.timestampMillis() ||
+						schema.getLogicalType() == LogicalTypes.timestampMicros()) {
 					return Types.SQL_TIMESTAMP;
+				} else if (schema.getLogicalType() == LogicalTypes.timeMicros()) {
+					return Types.SQL_TIME;
 				}
 				return Types.LONG;
 			case FLOAT:
@@ -272,11 +276,14 @@ public class AvroSchemaConverter {
 				return DataTypes.TIMESTAMP(3)
 						.bridgedTo(java.sql.Timestamp.class)
 						.notNull();
-			}
-			if (schema.getLogicalType() == LogicalTypes.timestampMicros()) {
+			} else if (schema.getLogicalType() == LogicalTypes.timestampMicros()) {
 				return DataTypes.TIMESTAMP(6)
 						.bridgedTo(java.sql.Timestamp.class)
 						.notNull();
+			} else if (schema.getLogicalType() == LogicalTypes.timeMicros()) {
+				return DataTypes.TIME(6)
+					.bridgedTo(LocalTime.class)
+					.notNull();
 			}
 			return DataTypes.BIGINT().notNull();
 		case FLOAT:

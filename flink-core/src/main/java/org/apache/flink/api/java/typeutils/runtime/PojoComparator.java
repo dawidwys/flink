@@ -22,17 +22,22 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.CompositeTypeComparator;
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.typeutils.TypeExtractionUtils;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.types.NullKeyFieldException;
 import org.apache.flink.util.InstantiationUtil;
+import org.apache.flink.util.WrappingRuntimeException;
 
 @Internal
 public final class PojoComparator<T> extends CompositeTypeComparator<T> implements java.io.Serializable {
@@ -176,14 +181,25 @@ public final class PojoComparator<T> extends CompositeTypeComparator<T> implemen
 	 */
 	public final Object accessField(Field field, Object object) {
 		try {
-			object = field.get(object);
+			if (field.isAccessible()) {
+				return field.get(object);
+			} else {
+				// try using the getter
+				Optional<Method> getter = TypeExtractionUtils.getGetter(field);
+				if (!getter.isPresent()) {
+					throw new IllegalStateException("This should not happen. The field should either be accessible or" +
+						" we should have a getter. Field: " + field + " obj: " + object);
+				}
+				return getter.get().invoke(object);
+			}
 		} catch (NullPointerException npex) {
 			throw new NullKeyFieldException("Unable to access field "+field+" on object "+object);
 		} catch (IllegalAccessException iaex) {
-			throw new RuntimeException("This should not happen since we call setAccesssible(true) in PojoTypeInfo."
+			throw new RuntimeException("This should not happen since we call setAccessible(true) in PojoTypeInfo."
 			+ " fields: " + field + " obj: " + object);
+		} catch (InvocationTargetException e) {
+			throw new WrappingRuntimeException(e);
 		}
-		return object;
 	}
 
 	@Override
