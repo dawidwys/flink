@@ -24,9 +24,9 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
-import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.InternalKeyedStateBackend;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateBackend;
@@ -69,7 +69,7 @@ final class StubStateBackend implements StateBackend {
 	}
 
 	@Override
-	public <K> AbstractKeyedStateBackend<K> createKeyedStateBackend(
+	public <K> InternalKeyedStateBackend<K> createKeyedStateBackend(
 		Environment env,
 		JobID jobID,
 		String operatorIdentifier,
