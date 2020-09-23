@@ -136,6 +136,25 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 			RoundRobinOperatorStateRepartitioner.INSTANCE;
 
 	private InternalTimeServiceManagerImpl<?> timeServiceManager;
+	private InternalTimeServiceManager.Provider timeServiceManagerProvider = new InternalTimeServiceManager.Provider() {
+		@Override
+		public <K> InternalTimeServiceManager<K> create(
+				CheckpointableKeyedStateBackend<K> keyedStatedBackend,
+				ClassLoader userClassloader,
+				KeyContext keyContext,
+				ProcessingTimeService processingTimeService,
+				Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws Exception {
+			InternalTimeServiceManagerImpl<K> typedTimeServiceManager = InternalTimeServiceManagerImpl.create(
+				keyedStatedBackend,
+				userClassloader,
+				keyContext,
+				processingTimeService,
+				rawKeyedStates
+			);
+			timeServiceManager = typedTimeServiceManager;
+			return typedTimeServiceManager;
+		}
+	};
 
 	/**
 	 * Whether setup() was called on the operator. This is reset when calling close().
@@ -256,7 +275,11 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 		ttlTimeProvider = new MockTtlTimeProvider();
 		ttlTimeProvider.setCurrentTimestamp(0);
 
-		this.streamTaskStateInitializer = createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider);
+		this.streamTaskStateInitializer = createStreamTaskStateManager(
+			environment,
+			stateBackend,
+			ttlTimeProvider,
+			timeServiceManagerProvider);
 
 		BiConsumer<String, Throwable> handleAsyncException = (message, t) -> {
 			wasFailedExternally = true;
@@ -276,33 +299,17 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 			.build();
 	}
 
-	protected StreamTaskStateInitializer createStreamTaskStateManager(
+	private StreamTaskStateInitializer createStreamTaskStateManager(
 		Environment env,
 		StateBackend stateBackend,
-		TtlTimeProvider ttlTimeProvider) {
+		TtlTimeProvider ttlTimeProvider,
+		InternalTimeServiceManager.Provider timeServiceManagerProvider) {
 		return new StreamTaskStateInitializerImpl(
 			env,
 			stateBackend,
 			ttlTimeProvider,
-			new InternalTimeServiceManager.Provider() {
-				@Override
-				public <K> InternalTimeServiceManager<K> create(
-						CheckpointableKeyedStateBackend<K> keyedStatedBackend,
-						ClassLoader userClassloader,
-						KeyContext keyContext,
-						ProcessingTimeService processingTimeService,
-						Iterable<KeyGroupStatePartitionStreamProvider> rawKeyedStates) throws Exception {
-					InternalTimeServiceManagerImpl<K> typedTimeServiceManager = InternalTimeServiceManagerImpl.create(
-						keyedStatedBackend,
-						userClassloader,
-						keyContext,
-						processingTimeService,
-						rawKeyedStates
-					);
-					timeServiceManager = typedTimeServiceManager;
-					return typedTimeServiceManager;
-				}
-			});
+			timeServiceManagerProvider
+		);
 	}
 
 	public void setStateBackend(StateBackend stateBackend) {
@@ -386,7 +393,7 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 	public void setup(TypeSerializer<OUT> outputSerializer) {
 		if (!setupCalled) {
 			streamTaskStateInitializer =
-				createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider);
+				createStreamTaskStateManager(environment, stateBackend, ttlTimeProvider, timeServiceManagerProvider);
 			mockTask.setStreamTaskStateInitializer(streamTaskStateInitializer);
 
 			if (operator == null) {
@@ -719,6 +726,10 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 	@VisibleForTesting
 	public TaskMailbox getTaskMailbox() {
 		return taskMailbox;
+	}
+
+	public void setTimeServiceManagerProvider(InternalTimeServiceManager.Provider timeServiceManagerProvider) {
+		this.timeServiceManagerProvider = timeServiceManagerProvider;
 	}
 
 	private class MockOutput implements Output<StreamRecord<OUT>> {
