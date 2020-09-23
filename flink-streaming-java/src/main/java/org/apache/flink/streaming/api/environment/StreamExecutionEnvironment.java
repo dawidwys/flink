@@ -34,6 +34,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -1593,7 +1594,15 @@ public class StreamExecutionEnvironment {
 	 * @return the data stream constructed
 	 */
 	public <OUT> DataStreamSource<OUT> addSource(SourceFunction<OUT> function, String sourceName, TypeInformation<OUT> typeInfo) {
+		return addSource(function, sourceName, typeInfo, Boundedness.CONTINUOUS_UNBOUNDED);
+	}
 
+	@Internal
+	public <OUT> DataStreamSource<OUT> addSource(
+			SourceFunction<OUT> function,
+			String sourceName,
+			TypeInformation<OUT> typeInfo,
+			Boundedness boundedness) {
 		TypeInformation<OUT> resolvedTypeInfo = getTypeInfo(function, sourceName, SourceFunction.class, typeInfo);
 
 		boolean isParallel = function instanceof ParallelSourceFunction;
