@@ -197,6 +197,14 @@ public class StreamConfig implements Serializable {
 		setInputs(inputs);
 	}
 
+	public void setSortInputs(boolean sortInputs) {
+		this.config.setBoolean("sort-inputs", sortInputs);
+	}
+
+	public boolean shouldSortInputs() {
+		return this.config.getBoolean("sort-inputs", false);
+	}
+
 	public void setInputs(InputConfig...inputs) {
 		try {
 			InstantiationUtil.writeObjectToConfig(inputs, this.config, INPUTS);

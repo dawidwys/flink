@@ -66,6 +66,7 @@ public class StreamNode implements Serializable {
 	private @Nullable String coLocationGroup;
 	private KeySelector<?, ?>[] statePartitioners = new KeySelector[0];
 	private TypeSerializer<?> stateKeySerializer;
+	private boolean shouldSortInputs;
 
 	private final transient StreamOperatorFactory<?> operatorFactory;
 	private TypeSerializer<?>[] typeSerializersIn = new TypeSerializer[0];
@@ -143,6 +144,14 @@ public class StreamNode implements Serializable {
 
 	public void setParallelism(Integer parallelism) {
 		this.parallelism = parallelism;
+	}
+
+	public void setShouldSortInputs(boolean sortInputs) {
+		this.shouldSortInputs = sortInputs;
+	}
+
+	public boolean shouldSortInputs() {
+		return shouldSortInputs;
 	}
 
 	/**

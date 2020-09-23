@@ -476,6 +476,7 @@ public class StreamingJobGraphGenerator {
 
 		config.setTypeSerializersIn(vertex.getTypeSerializersIn());
 		config.setTypeSerializerOut(vertex.getTypeSerializerOut());
+		config.setSortInputs(vertex.shouldSortInputs());
 
 		// iterate edges, find sideOutput edges create and save serializers for each outputTag type
 		for (StreamEdge edge : chainableOutputs) {

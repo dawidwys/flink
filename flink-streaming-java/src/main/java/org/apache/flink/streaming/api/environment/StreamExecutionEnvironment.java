@@ -1603,7 +1603,7 @@ public class StreamExecutionEnvironment {
 	}
 
 	@Nonnull
-	private <OUT> DataStreamSource<OUT> addSource(
+	public <OUT> DataStreamSource<OUT> addSource(
 			SourceFunction<OUT> function,
 			String sourceName,
 			TypeInformation<OUT> typeInfo,

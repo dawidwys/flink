@@ -21,12 +21,14 @@ package org.apache.flink.streaming.runtime.tasks;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
 import org.apache.flink.runtime.metrics.MetricNames;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
+import org.apache.flink.streaming.api.operators.sort.SortingDataOutput;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.AbstractDataOutput;
 import org.apache.flink.streaming.runtime.io.CheckpointedInputGate;
@@ -82,6 +84,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	}
 
 	@Override
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public void init() throws Exception {
 		StreamConfig configuration = getConfiguration();
 		int numberOfInputs = configuration.getNumberOfNetworkInputs();
@@ -89,6 +92,17 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 		if (numberOfInputs > 0) {
 			CheckpointedInputGate inputGate = createCheckpointedInputGate();
 			EndOfInputAwareDataOutput<IN> output = createDataOutput();
+			if (configuration.shouldSortInputs()){
+				ClassLoader userCodeClassLoader = getUserCodeClassLoader();
+				output = new SortingDataOutput<>(
+					output,
+					getEnvironment(),
+					configuration.getTypeSerializerIn1(userCodeClassLoader),
+					configuration.getStateKeySerializer(userCodeClassLoader),
+					(KeySelector<IN, Object>) (KeySelector) configuration.getStatePartitioner(0, userCodeClassLoader),
+					this
+				);
+			}
 			StreamTaskInput<IN> input = createTaskInput(inputGate, output);
 			inputProcessor = new StreamOneInputProcessor<>(
 				input,

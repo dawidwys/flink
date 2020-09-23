@@ -136,13 +136,13 @@ public class VariableLengthByteKeyComparator<IN> extends TypeComparator<Tuple2<b
 		} else {
 			target.put(offset, data, 0, length);
 			int lastOffset = offset + numBytes;
+			offset += length;
 			long valueOfTimestamp = record.f1.asRecord().getTimestamp() - Long.MIN_VALUE;
 			if (length + TIMESTAMP_BYTE_SIZE > numBytes) {
-				for (int i = length; i < lastOffset; i++) {
-					target.put(offset + i, (byte) (valueOfTimestamp >>> ((7 - i) << 3)));
+				for (int i = 0; offset < lastOffset; offset++, i++) {
+					target.put(offset, (byte) (valueOfTimestamp >>> ((7 - i) << 3)));
 				}
 			} else {
-				offset += length;
 				target.putLongBigEndian(offset, valueOfTimestamp);
 				offset += TIMESTAMP_BYTE_SIZE;
 				while (offset < lastOffset) {

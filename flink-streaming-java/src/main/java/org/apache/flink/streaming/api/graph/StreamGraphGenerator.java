@@ -142,7 +142,7 @@ public class StreamGraphGenerator {
 
 	private StreamGraph streamGraph;
 
-	private RuntimeExecutionMode runtimeExecutionMode = RuntimeExecutionMode.STREAM;
+	private RuntimeExecutionMode runtimeExecutionMode = RuntimeExecutionMode.AUTOMATIC;
 
 	// Keep track of which Transforms we have already transformed, this is necessary because
 	// we have loops, i.e. feedback edges.
@@ -696,6 +696,9 @@ public class StreamGraphGenerator {
 		if (transform.getStateKeySelector() != null) {
 			TypeSerializer<?> keySerializer = transform.getStateKeyType().createSerializer(executionConfig);
 			streamGraph.setOneInputStateKey(transform.getId(), transform.getStateKeySelector(), keySerializer);
+			if (runtimeExecutionMode == RuntimeExecutionMode.BATCH) {
+				streamGraph.getStreamNode(transform.getId()).setShouldSortInputs(true);
+			}
 		}
 
 		int parallelism = transform.getParallelism() != ExecutionConfig.PARALLELISM_DEFAULT ?
