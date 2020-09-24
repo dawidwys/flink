@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.runtime.io;
 
+import org.apache.flink.streaming.api.operators.AbstractStreamOperatorV2;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
 import org.apache.flink.streaming.api.operators.Input;
@@ -29,19 +30,12 @@ import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
  * Utils for forwarding the end of input signal to the {@link BoundedOneInput} and {@link BoundedMultiInput}.
  */
 public final class EndOfInputUtil {
-
 	/**
 	 * Notifies the given input about end of input.
 	 */
 	public static void endInput(Input<?> input) throws Exception {
-		if (input instanceof BoundedMultiInput) {
-			throw new IllegalStateException(
-				String.format(
-					"Illegal combination of Input and BoundedMultiInput for class: %s." +
-						" Only two/multi input operators can implement BoundedMultiInput interface.", input.getClass()
-				));
-		} else if (input instanceof BoundedOneInput) {
-			((BoundedOneInput) input).endInput();
+		if (input instanceof BoundedOneInput) {
+			endInput((BoundedOneInput) input);
 		}
 	}
 
@@ -49,15 +43,8 @@ public final class EndOfInputUtil {
 	 * Notifies the given operator about end of input.
 	 */
 	public static void endInput(OneInputStreamOperator<?, ?> operator) throws Exception {
-		if (operator instanceof BoundedMultiInput) {
-			throw new IllegalStateException(
-				String.format(
-					"Illegal combination of OneInputStreamOperator and BoundedMultiInput for class: %s." +
-						" Only two/multi input operators can implement BoundedMultiInput interface.",
-					operator.getClass()
-				));
-		} else if (operator instanceof BoundedOneInput) {
-			((BoundedOneInput) operator).endInput();
+		if (operator instanceof BoundedOneInput) {
+			endInput((BoundedOneInput) operator);
 		}
 	}
 
@@ -65,15 +52,8 @@ public final class EndOfInputUtil {
 	 * Notifies the given operator about end of input of given index.
 	 */
 	public static void endInput(TwoInputStreamOperator<?, ?, ?> operator, int inputIdx) throws Exception {
-		if (operator instanceof BoundedOneInput) {
-			throw new IllegalStateException(
-				String.format(
-					"Illegal combination of TwoInputStreamOperator and BoundedOneInput for class: %s." +
-						" Two input operators can implement only BoundedMultiInput interface.",
-					operator.getClass()
-				));
-		} else if (operator instanceof BoundedMultiInput) {
-			((BoundedMultiInput) operator).endInput(inputIdx);
+		if (operator instanceof BoundedMultiInput) {
+			endInput((BoundedMultiInput) operator, inputIdx);
 		}
 	}
 
@@ -81,16 +61,53 @@ public final class EndOfInputUtil {
 	 * Notifies the given operator about end of input of given index.
 	 */
 	public static void endInput(MultipleInputStreamOperator<?> operator, int inputIdx) throws Exception {
+		if (operator instanceof BoundedMultiInput) {
+			endInput((BoundedMultiInput) operator, inputIdx);
+		}
+	}
+
+	/**
+	 * Notifies the given operator about end of input of given index.
+	 */
+	public static void endInput(AbstractStreamOperatorV2<?> operator, int inputIdx) throws Exception {
 		if (operator instanceof BoundedOneInput) {
+			if (inputIdx == 1) {
+				endInput((BoundedOneInput) operator);
+			} else {
+				throw new IllegalStateException(
+					String.format(
+						"Illegal combination of multiple input stream operator and BoundedOneInput for class: %s." +
+							" Multiple input operators can implement only BoundedMultiInput interface.",
+						operator.getClass()
+					));
+			}
+		} else if (operator instanceof BoundedMultiInput) {
+			endInput((BoundedMultiInput) operator, inputIdx);
+		}
+	}
+
+	private static void endInput(BoundedOneInput boundedOneInput) throws Exception {
+		if (boundedOneInput instanceof BoundedMultiInput) {
 			throw new IllegalStateException(
 				String.format(
-					"Illegal combination of MultipleInputStreamOperator and BoundedOneInput for class: %s." +
-						" Multiple input operators can implement only BoundedMultiInput interface.",
-					operator.getClass()
+					"Illegal combination of one input stream operator and BoundedMultiInput for class: %s." +
+						" Only two/multi input operators can implement BoundedMultiInput interface.",
+					boundedOneInput.getClass()
 				));
-		} else if (operator instanceof BoundedMultiInput) {
-			((BoundedMultiInput) operator).endInput(inputIdx);
 		}
+		boundedOneInput.endInput();
+	}
+
+	private static void endInput(BoundedMultiInput boundedMultiInput, int inputIdx) throws Exception {
+		if (boundedMultiInput instanceof BoundedOneInput) {
+			throw new IllegalStateException(
+				String.format(
+					"Illegal combination of multiple input stream operator and BoundedOneInput for class: %s." +
+						" Multiple input operators can implement only BoundedMultiInput interface.",
+					boundedMultiInput.getClass()
+				));
+		}
+		boundedMultiInput.endInput(inputIdx);
 	}
 
 	private EndOfInputUtil() {
