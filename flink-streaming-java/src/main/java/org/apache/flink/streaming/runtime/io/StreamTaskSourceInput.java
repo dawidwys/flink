@@ -62,7 +62,8 @@ public final class StreamTaskSourceInput<T> implements StreamTaskInput<T> {
 
 	@Override
 	public void close() {
-		IOUtils.closeQuietly(operator::close);
+		// SourceOperator is closed via OperatorChain
+//		IOUtils.closeQuietly(operator::close);
 	}
 
 	@Override
