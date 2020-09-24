@@ -42,7 +42,6 @@ import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.streaming.runtime.tasks.SourceOperatorStreamTask.AsyncDataOutputToOutput;
 import org.apache.flink.util.ExceptionUtils;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -59,7 +58,7 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 	private final MultipleInputSelectionHandler inputSelectionHandler;
 
-	private final InputProcessor<?>[] inputProcessors;
+	private final StreamOneInputProcessor<?>[] inputProcessors;
 	/**
 	 * Stream status for the two inputs. We need to keep track for determining when
 	 * to forward stream status changes downstream.
@@ -89,7 +88,7 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		List<Input> operatorInputs = mainOperator.getInputs();
 		int inputsCount = operatorInputs.size();
 
-		this.inputProcessors = new InputProcessor[inputsCount];
+		this.inputProcessors = new StreamOneInputProcessor[inputsCount];
 		this.streamStatuses = new StreamStatus[inputsCount];
 		this.numRecordsIn = numRecordsIn;
 
@@ -104,14 +103,16 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 					inputWatermarkGauges[i],
 					i);
 
-				inputProcessors[i] = new InputProcessor(
-					dataOutput,
+				inputProcessors[i] = new StreamOneInputProcessor(
 					new StreamTaskNetworkInput<>(
 						checkpointedInputGates[networkInput.getInputGateIndex()],
 						networkInput.getTypeSerializer(),
 						ioManager,
-						new StatusWatermarkValve(checkpointedInputGates[networkInput.getInputGateIndex()].getNumberOfInputChannels(), dataOutput),
-						i));
+						new StatusWatermarkValve(
+							checkpointedInputGates[networkInput.getInputGateIndex()].getNumberOfInputChannels(),
+							dataOutput),
+						i),
+					dataOutput);
 			}
 			else if (configuredInput instanceof SourceInputConfig) {
 				SourceInputConfig sourceInput = (SourceInputConfig) configuredInput;
@@ -137,7 +138,7 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		final CompletableFuture<?> anyInputAvailable = new CompletableFuture<>();
 		for (int i = 0; i < inputProcessors.length; i++) {
 			if (!inputSelectionHandler.isInputFinished(i) && inputSelectionHandler.isInputSelected(i)) {
-				inputProcessors[i].taskInput.getAvailableFuture().thenRun(() -> anyInputAvailable.complete(null));
+				inputProcessors[i].getAvailableFuture().thenRun(() -> anyInputAvailable.complete(null));
 			}
 		}
 		return anyInputAvailable;
@@ -159,6 +160,9 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 		lastReadInputIndex = readingInputIndex;
 		InputStatus inputStatus = inputProcessors[readingInputIndex].processInput();
+		if (inputStatus == InputStatus.END_OF_INPUT) {
+			inputSelectionHandler.nextSelection();
+		}
 		return inputSelectionHandler.updateStatus(inputStatus, readingInputIndex);
 	}
 
@@ -176,7 +180,7 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 	@Override
 	public void close() throws IOException {
 		IOException ex = null;
-		for (InputProcessor<?> input : inputProcessors) {
+		for (StreamOneInputProcessor<?> input : inputProcessors) {
 			try {
 				input.close();
 			} catch (IOException e) {
@@ -221,11 +225,11 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 
 	private void fullCheckAndSetAvailable() {
 		for (int i = 0; i < inputProcessors.length; i++) {
-			InputProcessor<?> inputProcessor = inputProcessors[i];
+			StreamOneInputProcessor<?> inputProcessor = inputProcessors[i];
 			// TODO: isAvailable() can be a costly operation (checking volatile). If one of
 			// the input is constantly available and another is not, we will be checking this volatile
 			// once per every record. This might be optimized to only check once per processed NetworkBuffer
-			if (inputProcessor.taskInput.isApproximatelyAvailable() || inputProcessor.taskInput.isAvailable()) {
+			if (inputProcessor.isApproximatelyAvailable() || inputProcessor.isAvailable()) {
 				inputSelectionHandler.setAvailableInput(i);
 			}
 		}
@@ -240,57 +244,11 @@ public final class StreamMultipleInputProcessor implements StreamInputProcessor 
 		return true;
 	}
 
-	private class InputProcessor<T> implements Closeable {
-		private final EndOfInputAwareDataOutput<T> dataOutput;
-		private final StreamTaskInput<T> taskInput;
-
-		public InputProcessor(
-				EndOfInputAwareDataOutput<T> dataOutput,
-				StreamTaskInput<T> taskInput) {
-			this.dataOutput = dataOutput;
-			this.taskInput = taskInput;
-		}
-
-		public InputStatus processInput() throws Exception {
-			InputStatus status = taskInput.emitNext(dataOutput);
-			if (status == InputStatus.END_OF_INPUT) {
-				dataOutput.endOutput();
-				inputSelectionHandler.nextSelection();
-			}
-			return status;
-		}
-
-		public void close() throws IOException {
-			IOException ex = null;
-			try {
-				taskInput.close();
-			} catch (IOException e) {
-				ex = e;
-			}
-
-			try {
-				dataOutput.close();
-			} catch (IOException e) {
-				ex = ExceptionUtils.firstOrSuppressed(e, ex);
-			}
-
-			if (ex != null) {
-				throw ex;
-			}
-		}
-
-		public CompletableFuture<?> prepareSnapshot(
-				ChannelStateWriter channelStateWriter,
-				long checkpointId) throws IOException {
-			return taskInput.prepareSnapshot(channelStateWriter, checkpointId);
-		}
-	}
-
-	private class SourceInputProcessor<T> extends InputProcessor<T> {
+	private static class SourceInputProcessor<T> extends StreamOneInputProcessor<T> {
 		public SourceInputProcessor(
 				EndOfInputAwareDataOutput<T> dataOutput,
 				StreamTaskInput<T> taskInput) {
-			super(dataOutput, taskInput);
+			super(taskInput, dataOutput);
 		}
 
 		@Override
