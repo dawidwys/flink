@@ -54,10 +54,8 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 	private final TwoInputSelectionHandler inputSelectionHandler;
 
-	private final StreamTaskInput<IN1> input1;
-	private final StreamTaskInput<IN2> input2;
-	private final EndOfInputAwareDataOutput<IN1> output1;
-	private final EndOfInputAwareDataOutput<IN2> output2;
+	private final StreamOneInputProcessor<IN1> processor1;
+	private final StreamOneInputProcessor<IN2> processor2;
 
 	/** Input status to keep track for determining whether the input is finished or not. */
 	private InputStatus firstInputStatus = InputStatus.MORE_AVAILABLE;
@@ -89,31 +87,37 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 		this.inputSelectionHandler = checkNotNull(inputSelectionHandler);
 
-		this.output1 = new StreamTaskNetworkOutput<>(
+		StreamTaskNetworkOutput<IN1> output1 = new StreamTaskNetworkOutput<>(
 			streamOperator,
 			record -> processRecord1(record, streamOperator, numRecordsIn),
 			streamStatusMaintainer,
 			input1WatermarkGauge,
 			0);
-		this.output2 = new StreamTaskNetworkOutput<>(
+		this.processor1 = new StreamOneInputProcessor<>(
+			new StreamTaskNetworkInput<>(
+				checkpointedInputGates[0],
+				inputSerializer1,
+				ioManager,
+				new StatusWatermarkValve(checkpointedInputGates[0].getNumberOfInputChannels(), output1),
+				0),
+			output1
+		);
+
+		StreamTaskNetworkOutput<IN2> output2 = new StreamTaskNetworkOutput<>(
 			streamOperator,
 			record -> processRecord2(record, streamOperator, numRecordsIn),
 			streamStatusMaintainer,
 			input2WatermarkGauge,
 			1);
-
-		this.input1 = new StreamTaskNetworkInput<>(
-			checkpointedInputGates[0],
-			inputSerializer1,
-			ioManager,
-			new StatusWatermarkValve(checkpointedInputGates[0].getNumberOfInputChannels(), output1),
-			0);
-		this.input2 = new StreamTaskNetworkInput<>(
-			checkpointedInputGates[1],
-			inputSerializer2,
-			ioManager,
-			new StatusWatermarkValve(checkpointedInputGates[1].getNumberOfInputChannels(), output2),
-			1);
+		this.processor2 = new StreamOneInputProcessor<>(
+			new StreamTaskNetworkInput<>(
+				checkpointedInputGates[1],
+				inputSerializer2,
+				ioManager,
+				new StatusWatermarkValve(checkpointedInputGates[1].getNumberOfInputChannels(), output2),
+				1),
+			output2
+		);
 	}
 
 	private void processRecord1(
@@ -146,7 +150,7 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		if (inputSelectionHandler.areAllInputsSelected()) {
 			return isAnyInputAvailable();
 		} else {
-			StreamTaskInput<?> input = (inputSelectionHandler.isFirstInputSelected()) ? input1 : input2;
+			StreamOneInputProcessor<?> input = (inputSelectionHandler.isFirstInputSelected()) ? processor1 : processor2;
 			return input.getAvailableFuture();
 		}
 	}
@@ -169,11 +173,11 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		lastReadInputIndex = readingInputIndex;
 
 		if (readingInputIndex == 0) {
-			firstInputStatus = input1.emitNext(output1);
-			checkFinished(firstInputStatus, output1);
+			firstInputStatus = processor1.processInput();
+			checkFinished(firstInputStatus);
 		} else {
-			secondInputStatus = input2.emitNext(output2);
-			checkFinished(secondInputStatus, output2);
+			secondInputStatus = processor2.processInput();
+			checkFinished(secondInputStatus);
 		}
 
 		return getInputStatus();
@@ -184,8 +188,8 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 			ChannelStateWriter channelStateWriter,
 			long checkpointId) throws IOException {
 		return CompletableFuture.allOf(
-			input1.prepareSnapshot(channelStateWriter, checkpointId),
-			input2.prepareSnapshot(channelStateWriter, checkpointId));
+			processor1.prepareSnapshot(channelStateWriter, checkpointId),
+			processor2.prepareSnapshot(channelStateWriter, checkpointId));
 	}
 
 	private int selectFirstReadingInputIndex() throws IOException {
@@ -199,9 +203,8 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		return selectNextReadingInputIndex();
 	}
 
-	private void checkFinished(InputStatus status, EndOfInputAwareDataOutput<?> output) throws Exception {
+	private void checkFinished(InputStatus status) throws Exception {
 		if (status == InputStatus.END_OF_INPUT) {
-			output.endOutput();
 			inputSelectionHandler.nextSelection();
 		}
 	}
@@ -228,25 +231,13 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 	public void close() throws IOException {
 		IOException ex = null;
 		try {
-			input1.close();
+			processor1.close();
 		} catch (IOException e) {
 			ex = e;
 		}
 
 		try {
-			input2.close();
-		} catch (IOException e) {
-			ex = ExceptionUtils.firstOrSuppressed(e, ex);
-		}
-
-		try {
-			output1.close();
-		} catch (IOException e) {
-			ex = ExceptionUtils.firstOrSuppressed(e, ex);
-		}
-
-		try {
-			output2.close();
+			processor2.close();
 		} catch (IOException e) {
 			ex = ExceptionUtils.firstOrSuppressed(e, ex);
 		}
@@ -287,15 +278,15 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 	}
 
 	private void updateAvailability() {
-		updateAvailability(firstInputStatus, input1);
-		updateAvailability(secondInputStatus, input2);
+		updateAvailability(firstInputStatus, processor1, 0);
+		updateAvailability(secondInputStatus, processor2, 1);
 	}
 
-	private void updateAvailability(InputStatus status, StreamTaskInput<?> input) {
+	private void updateAvailability(InputStatus status, StreamOneInputProcessor<?> input, int inputIdx) {
 		if (status == InputStatus.MORE_AVAILABLE || (status != InputStatus.END_OF_INPUT && input.isApproximatelyAvailable())) {
-			inputSelectionHandler.setAvailableInput(input.getInputIndex());
+			inputSelectionHandler.setAvailableInput(inputIdx);
 		} else {
-			inputSelectionHandler.setUnavailableInput(input.getInputIndex());
+			inputSelectionHandler.setUnavailableInput(inputIdx);
 		}
 	}
 
@@ -315,19 +306,19 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 	private CompletableFuture<?> isAnyInputAvailable() {
 		if (firstInputStatus == InputStatus.END_OF_INPUT) {
-			return input2.getAvailableFuture();
+			return processor2.getAvailableFuture();
 		}
 
 		if (secondInputStatus == InputStatus.END_OF_INPUT) {
-			return input1.getAvailableFuture();
+			return processor1.getAvailableFuture();
 		}
 
-		return (input1.isApproximatelyAvailable() || input2.isApproximatelyAvailable()) ?
-			AVAILABLE : CompletableFuture.anyOf(input1.getAvailableFuture(), input2.getAvailableFuture());
+		return (processor1.isApproximatelyAvailable() || processor2.isApproximatelyAvailable()) ?
+			AVAILABLE : CompletableFuture.anyOf(processor1.getAvailableFuture(), processor2.getAvailableFuture());
 	}
 
-	private StreamTaskInput<?> getInput(int inputIndex) {
-		return inputIndex == 0 ? input1 : input2;
+	private StreamOneInputProcessor<?> getInput(int inputIndex) {
+		return inputIndex == 0 ? processor1 : processor2;
 	}
 
 	/**
