@@ -18,14 +18,21 @@
 
 package org.apache.flink.streaming.runtime.io;
 
-import org.apache.flink.annotation.Internal;
 import org.apache.flink.metrics.Counter;
+import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
+import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
+import org.apache.flink.runtime.metrics.MetricNames;
 import org.apache.flink.streaming.api.graph.StreamConfig;
+import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.Input;
+import org.apache.flink.streaming.api.operators.InputSelectable;
+import org.apache.flink.streaming.api.operators.MultipleInputStreamOperator;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.metrics.MinWatermarkGauge;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -34,19 +41,93 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.streaming.runtime.tasks.SourceOperatorStreamTask;
+import org.apache.flink.streaming.runtime.tasks.SubtaskCheckpointCoordinator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.flink.streaming.runtime.io.EndOfInputUtil.endInput;
 import static org.apache.flink.util.Preconditions.checkNotNull;
+import static org.apache.flink.util.Preconditions.checkState;
 
-@Internal
-public class StreamMultiInputProcessorBuilder {
+public class MultiInputStreamProcessorFactory<OUT>
+		extends AbstractStreamProcessorFactory<OUT, MultipleInputStreamOperator<OUT>> {
+	private static final Logger LOG = LoggerFactory.getLogger(MultiInputStreamProcessorFactory.class);
+
+	@Override
+	public StreamInputProcessor create(
+			AbstractInvokable owner,
+			StreamConfig config,
+			Environment environment,
+			MultipleInputStreamOperator<OUT> operator,
+			OperatorChain<OUT, ?> operatorChain,
+			SubtaskCheckpointCoordinator checkpointCoordinator) {
+
+		ClassLoader userClassLoader = environment.getUserCodeClassLoader().asClassLoader();
+		StreamConfig.InputConfig[] inputs = config.getInputs(userClassLoader);
+
+		List<IndexedInputGate>[] inputLists = new ArrayList[config.getNumberOfNetworkInputs()];
+		WatermarkGauge[] watermarkGauges = new WatermarkGauge[inputs.length];
+
+		for (int i = 0; i < inputLists.length; i++) {
+			inputLists[i] = new ArrayList<>();
+		}
+
+		for (int i = 0; i < inputs.length; i++) {
+			watermarkGauges[i] = new WatermarkGauge();
+			operator.getMetricGroup().gauge(MetricNames.currentInputWatermarkName(i + 1), watermarkGauges[i]);
+		}
+
+		MinWatermarkGauge minInputWatermarkGauge = new MinWatermarkGauge(watermarkGauges);
+		operator.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, minInputWatermarkGauge);
+
+		List<StreamEdge> inEdges = config.getInPhysicalEdges(userClassLoader);
+		int numberOfInputs = config.getNumberOfNetworkInputs();
+
+		for (int i = 0; i < numberOfInputs; i++) {
+			int inputType = inEdges.get(i).getTypeNumber();
+			IndexedInputGate reader = environment.getInputGate(i);
+			inputLists[inputType - 1].add(reader);
+		}
+
+		// wrap watermark gauge since registered metrics must be unique
+		environment.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, minInputWatermarkGauge::getValue);
+
+		MultipleInputSelectionHandler selectionHandler = new MultipleInputSelectionHandler(
+			operator instanceof InputSelectable ? (InputSelectable) operator : null,
+			inputs.length);
+
+		CheckpointedInputGate[] checkpointedInputGates = InputProcessorUtil.createCheckpointedMultipleInputGate(
+			owner,
+			config,
+			checkpointCoordinator,
+			environment.getMetricGroup().getIOMetricGroup(),
+			getTaskNameWithSubtaskAndId(environment),
+			inputLists);
+		checkState(checkpointedInputGates.length == inputLists.length);
+
+		return new StreamMultipleInputProcessor(
+			selectionHandler,
+			createInputProcessors(
+				checkpointedInputGates,
+				inputs,
+				environment.getIOManager(),
+				watermarkGauges,
+				operatorChain,
+				operator.getInputs(),
+				setupNumRecordsInCounter(operator),
+				selectionHandler
+			)
+		);
+	}
 
 	@Nonnull
-	public StreamOneInputProcessor<?>[] createInputProcessors(
+	private StreamOneInputProcessor<?>[] createInputProcessors(
 			CheckpointedInputGate[] checkpointedInputGates,
 			StreamConfig.InputConfig[] configuredInputs,
 			IOManager ioManager,
@@ -148,11 +229,11 @@ public class StreamMultiInputProcessorBuilder {
 	}
 
 	private static StreamOneInputProcessor<?> createNetworkInputProcessor(
-			CheckpointedInputGate checkpointedInputGate,
-			IOManager ioManager,
-			int inputIdx,
-			StreamConfig.NetworkInputConfig configuredInput,
-			EndOfInputAwareDataOutput<?> dataOutput) {
+		CheckpointedInputGate checkpointedInputGate,
+		IOManager ioManager,
+		int inputIdx,
+		StreamConfig.NetworkInputConfig configuredInput,
+		EndOfInputAwareDataOutput<?> dataOutput) {
 
 		return new StreamOneInputProcessor<>(
 			new StreamTaskNetworkInput<>(

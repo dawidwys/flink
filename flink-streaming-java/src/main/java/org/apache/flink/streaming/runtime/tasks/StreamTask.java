@@ -62,8 +62,10 @@ import org.apache.flink.streaming.api.operators.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializerImpl;
+import org.apache.flink.streaming.runtime.io.DummyStreamInputProcessorFactory;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamInputProcessorFactory;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -166,6 +168,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	@Nullable
 	protected StreamInputProcessor inputProcessor;
 
+	private final StreamInputProcessorFactory<OUT, OP> inputProcessorFactory;
+
 	/** the main operator that consumes the input streams of this task. */
 	protected OP mainOperator;
 
@@ -232,7 +236,40 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 	 * @param env The task environment for this task.
 	 */
 	protected StreamTask(Environment env) throws Exception {
-		this(env, null);
+		this(env, new DummyStreamInputProcessorFactory<OUT, OP>());
+	}
+
+	/**
+	 * Constructor for initialization, possibly with initial state (recovery / savepoint / etc).
+	 *
+	 * @param env The task environment for this task.
+	 */
+	protected StreamTask(
+			Environment env,
+			StreamInputProcessorFactory<OUT, OP> streamInputProcessorFactory) throws Exception {
+		this(
+			env,
+			null,
+			FatalExitExceptionHandler.INSTANCE,
+			StreamTaskActionExecutor.IMMEDIATE,
+			streamInputProcessorFactory);
+	}
+
+	/**
+	 * Constructor for initialization, possibly with initial state (recovery / savepoint / etc).
+	 *
+	 * @param env The task environment for this task.
+	 */
+	protected StreamTask(
+			Environment env,
+			@Nullable TimerService timerService,
+			StreamInputProcessorFactory<OUT, OP> streamInputProcessorFactory) throws Exception {
+		this(
+			env,
+			timerService,
+			FatalExitExceptionHandler.INSTANCE,
+			StreamTaskActionExecutor.IMMEDIATE,
+			streamInputProcessorFactory);
 	}
 
 	/**
@@ -269,7 +306,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			@Nullable TimerService timerService,
 			Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
 			StreamTaskActionExecutor actionExecutor) throws Exception {
-		this(environment, timerService, uncaughtExceptionHandler, actionExecutor, new TaskMailboxImpl(Thread.currentThread()));
+		this(
+			environment,
+			timerService,
+			uncaughtExceptionHandler,
+			actionExecutor,
+			new DummyStreamInputProcessorFactory<>(),
+			new TaskMailboxImpl(Thread.currentThread()));
 	}
 
 	protected StreamTask(
@@ -277,6 +320,37 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 			@Nullable TimerService timerService,
 			Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
 			StreamTaskActionExecutor actionExecutor,
+			StreamInputProcessorFactory<OUT, OP> inputProcessorFactory) throws Exception {
+		this(
+			environment,
+			timerService,
+			uncaughtExceptionHandler,
+			actionExecutor,
+			inputProcessorFactory,
+			new TaskMailboxImpl(Thread.currentThread()));
+	}
+
+	protected StreamTask(
+			Environment environment,
+			@Nullable TimerService timerService,
+			Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
+			StreamTaskActionExecutor actionExecutor,
+			TaskMailbox mailbox) throws Exception {
+		this(
+			environment,
+			timerService,
+			uncaughtExceptionHandler,
+			actionExecutor,
+			new DummyStreamInputProcessorFactory<>(),
+			mailbox);
+	}
+
+	protected StreamTask(
+			Environment environment,
+			@Nullable TimerService timerService,
+			Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
+			StreamTaskActionExecutor actionExecutor,
+			StreamInputProcessorFactory<OUT, OP> inputProcessorFactory,
 			TaskMailbox mailbox) throws Exception {
 
 		super(environment);
@@ -313,6 +387,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		}
 
 		this.channelIOExecutor = Executors.newSingleThreadExecutor(new ExecutorThreadFactory("channel-state-unspilling"));
+		this.inputProcessorFactory = inputProcessorFactory;
 	}
 
 	private CompletableFuture<Void> prepareInputSnapshot(ChannelStateWriter channelStateWriter, long checkpointId) throws IOException {
@@ -461,6 +536,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		mainOperator = operatorChain.getMainOperator();
 
 		// task specific initialization
+		inputProcessor = inputProcessorFactory.create(
+			this,
+			configuration,
+			getEnvironment(),
+			mainOperator,
+			operatorChain,
+			getCheckpointCoordinator()
+		);
 		init();
 
 		// save the work of reloading state, etc, if the task is already canceled

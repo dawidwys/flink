@@ -109,6 +109,7 @@ import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.runtime.io.MockIndexedInputGate;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamInputProcessorFactory;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.streaming.runtime.tasks.mailbox.MailboxDefaultAction;
@@ -1359,12 +1360,22 @@ public class StreamTaskTest extends TestLogger {
 	public static class NoOpStreamTask<T, OP extends StreamOperator<T>> extends StreamTask<T, OP> {
 
 		public NoOpStreamTask(Environment environment) throws Exception {
-			super(environment);
+			super(environment, new StreamInputProcessorFactory<T, OP>() {
+				@Override
+				public StreamInputProcessor create(
+						AbstractInvokable owner,
+						StreamConfig config,
+						Environment environment,
+						OP operator,
+						OperatorChain<T, ?> operatorChain,
+						SubtaskCheckpointCoordinator checkpointCoordinator) {
+					return new EmptyInputProcessor();
+				}
+			});
 		}
 
 		@Override
 		protected void init() throws Exception {
-			inputProcessor = new EmptyInputProcessor();
 		}
 
 		@Override

@@ -20,17 +20,21 @@ package org.apache.flink.streaming.util;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.state.CheckpointStorageWorkerView;
 import org.apache.flink.runtime.util.FatalExitExceptionHandler;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamInputProcessorFactory;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
+import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeServiceFactory;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.streaming.runtime.tasks.StreamTaskActionExecutor;
+import org.apache.flink.streaming.runtime.tasks.SubtaskCheckpointCoordinator;
 import org.apache.flink.streaming.runtime.tasks.TimerService;
 import org.apache.flink.streaming.runtime.tasks.mailbox.TaskMailbox;
 
@@ -64,7 +68,24 @@ public class MockStreamTask<OUT, OP extends StreamOperator<OUT>> extends StreamT
 		StreamTaskActionExecutor.SynchronizedStreamTaskActionExecutor taskActionExecutor,
 		StreamInputProcessor inputProcessor) throws Exception {
 
-		super(environment, timerService, FatalExitExceptionHandler.INSTANCE, taskActionExecutor, taskMailbox);
+		super(
+			environment,
+			timerService,
+			FatalExitExceptionHandler.INSTANCE,
+			taskActionExecutor,
+			new StreamInputProcessorFactory<OUT, OP>() {
+				@Override
+				public StreamInputProcessor create(
+						AbstractInvokable owner,
+						StreamConfig config,
+						Environment environment,
+						OP operator,
+						OperatorChain<OUT, ?> operatorChain,
+						SubtaskCheckpointCoordinator checkpointCoordinator) {
+					return inputProcessor;
+				}
+			},
+			taskMailbox);
 		this.checkpointLock = checkpointLock;
 		this.config = config;
 		this.executionConfig = executionConfig;
@@ -73,7 +94,6 @@ public class MockStreamTask<OUT, OP extends StreamOperator<OUT>> extends StreamT
 		this.checkpointStorage = checkpointStorage;
 		this.processingTimeService = timerService;
 		this.handleAsyncException = handleAsyncException;
-		this.inputProcessor = inputProcessor;
 	}
 
 	@Override

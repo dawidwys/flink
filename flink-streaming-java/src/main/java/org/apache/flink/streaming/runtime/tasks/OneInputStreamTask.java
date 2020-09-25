@@ -20,27 +20,9 @@ package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.execution.Environment;
-import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
-import org.apache.flink.runtime.metrics.MetricNames;
-import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
-import org.apache.flink.streaming.api.watermark.Watermark;
-import org.apache.flink.streaming.runtime.io.AbstractDataOutput;
-import org.apache.flink.streaming.runtime.io.CheckpointedInputGate;
-import org.apache.flink.streaming.runtime.io.EndOfInputAwareDataOutput;
-import org.apache.flink.streaming.runtime.io.InputProcessorUtil;
-import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
-import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
-import org.apache.flink.streaming.runtime.io.StreamTaskInput;
-import org.apache.flink.streaming.runtime.io.StreamTaskNetworkInput;
-import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
-import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
-import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.apache.flink.streaming.runtime.streamstatus.StatusWatermarkValve;
-import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
+import org.apache.flink.streaming.runtime.io.OneInputStreamProcessorFactory;
 
 import javax.annotation.Nullable;
 
@@ -53,15 +35,13 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamOperator<IN, OUT>> {
 
-	private final WatermarkGauge inputWatermarkGauge = new WatermarkGauge();
-
 	/**
 	 * Constructor for initialization, possibly with initial state (recovery / savepoint / etc).
 	 *
 	 * @param env The task environment for this task.
 	 */
 	public OneInputStreamTask(Environment env) throws Exception {
-		super(env);
+		super(env, new OneInputStreamProcessorFactory<>());
 	}
 
 	/**
@@ -78,105 +58,12 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 	public OneInputStreamTask(
 			Environment env,
 			@Nullable TimerService timeProvider) throws Exception {
-		super(env, timeProvider);
+		super(env, timeProvider, new OneInputStreamProcessorFactory<>());
 	}
 
 	@Override
 	public void init() throws Exception {
-		StreamConfig configuration = getConfiguration();
-		int numberOfInputs = configuration.getNumberOfNetworkInputs();
 
-		if (numberOfInputs > 0) {
-			CheckpointedInputGate inputGate = createCheckpointedInputGate();
-			EndOfInputAwareDataOutput<IN> output = createDataOutput();
-			StreamTaskInput<IN> input = createTaskInput(inputGate, output);
-			inputProcessor = new StreamOneInputProcessor<>(
-				input,
-				output
-			);
-		}
-		mainOperator.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, this.inputWatermarkGauge);
-		// wrap watermark gauge since registered metrics must be unique
-		getEnvironment().getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, this.inputWatermarkGauge::getValue);
 	}
 
-	private CheckpointedInputGate createCheckpointedInputGate() {
-		IndexedInputGate[] inputGates = getEnvironment().getAllInputGates();
-
-		return InputProcessorUtil.createCheckpointedInputGate(
-			this,
-			configuration,
-			getCheckpointCoordinator(),
-			inputGates,
-			getEnvironment().getMetricGroup().getIOMetricGroup(),
-			getTaskNameWithSubtaskAndId());
-	}
-
-	private EndOfInputAwareDataOutput<IN> createDataOutput() {
-		return new StreamTaskNetworkOutput<>(
-			mainOperator,
-			getStreamStatusMaintainer(),
-			inputWatermarkGauge,
-			setupNumRecordsInCounter(mainOperator));
-	}
-
-	private StreamTaskInput<IN> createTaskInput(CheckpointedInputGate inputGate, DataOutput<IN> output) {
-		int numberOfInputChannels = inputGate.getNumberOfInputChannels();
-		StatusWatermarkValve statusWatermarkValve = new StatusWatermarkValve(numberOfInputChannels, output);
-
-		TypeSerializer<IN> inSerializer = configuration.getTypeSerializerIn1(getUserCodeClassLoader());
-		return new StreamTaskNetworkInput<>(
-			inputGate,
-			inSerializer,
-			getEnvironment().getIOManager(),
-			statusWatermarkValve,
-			0);
-	}
-
-	/**
-	 * The network data output implementation used for processing stream elements
-	 * from {@link StreamTaskNetworkInput} in one input processor.
-	 */
-	private static class StreamTaskNetworkOutput<IN> extends AbstractDataOutput<IN> {
-
-		private final OneInputStreamOperator<IN, ?> operator;
-
-		private final WatermarkGauge watermarkGauge;
-		private final Counter numRecordsIn;
-
-		private StreamTaskNetworkOutput(
-				OneInputStreamOperator<IN, ?> operator,
-				StreamStatusMaintainer streamStatusMaintainer,
-				WatermarkGauge watermarkGauge,
-				Counter numRecordsIn) {
-			super(streamStatusMaintainer);
-
-			this.operator = checkNotNull(operator);
-			this.watermarkGauge = checkNotNull(watermarkGauge);
-			this.numRecordsIn = checkNotNull(numRecordsIn);
-		}
-
-		@Override
-		public void emitRecord(StreamRecord<IN> record) throws Exception {
-			numRecordsIn.inc();
-			operator.setKeyContextElement1(record);
-			operator.processElement(record);
-		}
-
-		@Override
-		public void emitWatermark(Watermark watermark) throws Exception {
-			watermarkGauge.setCurrentWatermark(watermark.getTimestamp());
-			operator.processWatermark(watermark);
-		}
-
-		@Override
-		public void emitLatencyMarker(LatencyMarker latencyMarker) throws Exception {
-			operator.processLatencyMarker(latencyMarker);
-		}
-
-		@Override
-		public void endOutput() throws Exception {
-			endInput(operator);
-		}
-	}
 }

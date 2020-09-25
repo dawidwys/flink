@@ -67,7 +67,7 @@ public class TwoInputStreamTaskTestHarness<IN1, IN2, OUT> extends StreamTaskTest
 	 * it should be assigned to the first (1), or second (2) input of the task.
 	 */
 	public TwoInputStreamTaskTestHarness(
-			FunctionWithException<Environment, ? extends AbstractTwoInputStreamTask<IN1, IN2, OUT>, Exception> taskFactory,
+			FunctionWithException<Environment, ? extends TwoInputStreamTask<IN1, IN2, OUT>, Exception> taskFactory,
 			int numInputGates,
 			int numInputChannelsPerGate,
 			int[] inputGateAssignment,
@@ -92,7 +92,7 @@ public class TwoInputStreamTaskTestHarness<IN1, IN2, OUT> extends StreamTaskTest
 	 * second task input.
 	 */
 	public TwoInputStreamTaskTestHarness(
-			FunctionWithException<Environment, ? extends AbstractTwoInputStreamTask<IN1, IN2, OUT>, Exception> taskFactory,
+			FunctionWithException<Environment, ? extends TwoInputStreamTask<IN1, IN2, OUT>, Exception> taskFactory,
 			TypeInformation<IN1> inputType1,
 			TypeInformation<IN2> inputType2,
 			TypeInformation<OUT> outputType) {
@@ -162,8 +162,8 @@ public class TwoInputStreamTaskTestHarness<IN1, IN2, OUT> extends StreamTaskTest
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public AbstractTwoInputStreamTask<IN1, IN2, OUT> getTask() {
-		return (AbstractTwoInputStreamTask<IN1, IN2, OUT>) super.getTask();
+	public TwoInputStreamTask<IN1, IN2, OUT> getTask() {
+		return (TwoInputStreamTask<IN1, IN2, OUT>) super.getTask();
 	}
 }
 

@@ -20,12 +20,16 @@ package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
+import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.AbstractDataOutput;
 import org.apache.flink.streaming.runtime.io.EndOfInputAwareDataOutput;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
+import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamInputProcessorFactory;
 import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
 import org.apache.flink.streaming.runtime.io.StreamTaskInput;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
@@ -42,20 +46,31 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T, ?>> {
 
 	public SourceOperatorStreamTask(Environment env) throws Exception {
-		super(env);
+		super(env, new StreamInputProcessorFactory<T, SourceOperator<T, ?>>() {
+			@Override
+			public StreamInputProcessor create(
+					AbstractInvokable owner,
+					StreamConfig config,
+					Environment environment,
+					SourceOperator<T, ?> operator,
+					OperatorChain<T, ?> operatorChain,
+					SubtaskCheckpointCoordinator checkpointCoordinator) {
+				StreamTaskInput<T> input = new StreamTaskSourceInput<>(operator);
+				EndOfInputAwareDataOutput<T> output = new AsyncDataOutputToOutput<>(
+					operatorChain.getMainOperatorOutput(),
+					operatorChain);
+
+				return new StreamOneInputProcessor<>(
+					input,
+					output
+				);
+			}
+		});
 	}
 
 	@Override
 	public void init() {
-		StreamTaskInput<T> input = new StreamTaskSourceInput<>(mainOperator);
-		EndOfInputAwareDataOutput<T> output = new AsyncDataOutputToOutput<>(
-			operatorChain.getMainOperatorOutput(),
-			getStreamStatusMaintainer());
 
-		inputProcessor = new StreamOneInputProcessor<>(
-			input,
-			output
-		);
 	}
 
 	/**
