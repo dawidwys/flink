@@ -45,7 +45,7 @@ public class TestBoundedMultipleInputOperator extends AbstractStreamOperatorV2<S
 	}
 
 	@Override
-	public List<Input> getInputs() {
+	public List<Input<?>> getInputs() {
 		return Arrays.asList(
 			new TestInput(this, 1),
 			new TestInput(this, 2),

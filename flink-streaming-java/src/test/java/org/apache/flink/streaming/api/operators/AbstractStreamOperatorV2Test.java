@@ -92,7 +92,7 @@ public class AbstractStreamOperatorV2Test extends AbstractStreamOperatorTest {
 		}
 
 		@Override
-		public List<Input> getInputs() {
+		public List<Input<?>> getInputs() {
 			return Collections.singletonList(new AbstractInput<Tuple2<Integer, String>, String>(this, 1) {
 				@Override
 				public void processElement(StreamRecord<Tuple2<Integer, String>> element) throws Exception {

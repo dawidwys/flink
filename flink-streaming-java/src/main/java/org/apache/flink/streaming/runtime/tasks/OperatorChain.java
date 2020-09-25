@@ -269,7 +269,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 			"Creating chained input is only supported with MultipleInputStreamOperator and MultipleInputStreamTask");
 		Map<SourceInputConfig, ChainedSource> chainedSourceInputs = new HashMap<>();
 		MultipleInputStreamOperator<?> multipleInputOperator = (MultipleInputStreamOperator<?>) mainOperatorWrapper.getStreamOperator();
-		List<Input> operatorInputs = multipleInputOperator.getInputs();
+		List<Input<?>> operatorInputs = multipleInputOperator.getInputs();
 
 		for (int inputId = 0; inputId < configuredInputs.length; inputId++) {
 			if (!(configuredInputs[inputId] instanceof SourceInputConfig)) {

@@ -260,7 +260,7 @@ public class MultipleInputStreamTaskTest {
 		}
 
 		@Override
-		public List<Input> getInputs() {
+		public List<Input<?>> getInputs() {
 			return Arrays.asList(
 				new DuplicatingInput(this, 1),
 				new DuplicatingInput(this, 2),
@@ -664,7 +664,7 @@ public class MultipleInputStreamTaskTest {
 		}
 
 		@Override
-		public List<Input> getInputs() {
+		public List<Input<?>> getInputs() {
 			return Arrays.asList(
 				new MapToStringInput<String>(this, 1),
 				new MapToStringInput<Integer>(this, 2),

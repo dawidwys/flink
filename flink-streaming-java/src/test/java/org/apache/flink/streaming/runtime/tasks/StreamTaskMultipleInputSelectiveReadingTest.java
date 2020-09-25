@@ -253,7 +253,7 @@ public class StreamTaskMultipleInputSelectiveReadingTest {
 		}
 
 		@Override
-		public List<Input> getInputs() {
+		public List<Input<?>> getInputs() {
 			return Arrays.asList(
 				new ToStringInput(this, 1) {
 					@Override
@@ -354,11 +354,11 @@ public class StreamTaskMultipleInputSelectiveReadingTest {
 		}
 
 		@Override
-		public List<Input> getInputs() {
+		public List<Input<?>> getInputs() {
 			return Arrays.asList(
-				new ToStringInput(this, 1),
-				new ToStringInput(this, 2),
-				new ToStringInput(this, 3));
+				new ToStringInput<>(this, 1),
+				new ToStringInput<>(this, 2),
+				new ToStringInput<>(this, 3));
 		}
 	}
 

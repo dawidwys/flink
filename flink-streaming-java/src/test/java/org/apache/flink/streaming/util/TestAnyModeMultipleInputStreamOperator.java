@@ -48,7 +48,7 @@ public class TestAnyModeMultipleInputStreamOperator extends AbstractStreamOperat
 	}
 
 	@Override
-	public List<Input> getInputs() {
+	public List<Input<?>> getInputs() {
 		return Arrays.asList(
 			new ToStringInput(this, 1),
 			new ToStringInput(this, 2));

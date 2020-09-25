@@ -27,5 +27,5 @@ import java.util.List;
  */
 @PublicEvolving
 public interface MultipleInputStreamOperator<OUT> extends StreamOperator<OUT> {
-	List<Input> getInputs();
+	List<Input<?>> getInputs();
 }
