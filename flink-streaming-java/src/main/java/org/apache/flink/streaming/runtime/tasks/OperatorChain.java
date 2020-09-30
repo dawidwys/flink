@@ -36,6 +36,7 @@ import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamConfig.InputConfig;
 import org.apache.flink.streaming.api.graph.StreamConfig.SourceInputConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
+import org.apache.flink.streaming.api.operators.EndOfInputAware;
 import org.apache.flink.streaming.api.operators.Input;
 import org.apache.flink.streaming.api.operators.MultipleInputStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
@@ -86,7 +87,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  *              main operator.
  */
 @Internal
-public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements StreamStatusMaintainer {
+public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements StreamStatusMaintainer, EndOfInputAware {
 
 	private static final Logger LOG = LoggerFactory.getLogger(OperatorChain.class);
 
@@ -381,6 +382,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 	 *
 	 * @param inputId the input ID starts from 1 which indicates the first input.
 	 */
+	@Override
 	public void endMainOperatorInput(int inputId) throws Exception {
 		if (mainOperatorWrapper != null) {
 			mainOperatorWrapper.endOperatorInput(inputId);
