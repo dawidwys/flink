@@ -70,6 +70,10 @@ public class TwoInputSelectionHandler {
 		return inputSelection.areAllInputsSelected();
 	}
 
+	boolean isInputUnavailable(int inputIndex) {
+		return (availableInputsMask & (1L << inputIndex)) == 0;
+	}
+
 	boolean isFirstInputSelected() {
 		return inputSelection.isInputSelected(1);
 	}

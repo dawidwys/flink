@@ -23,15 +23,11 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.streaming.api.operators.InputSelection;
-import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
-import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.TwoInputStreamTask;
 import org.apache.flink.util.ExceptionUtils;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
-
-import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Input reader for {@link TwoInputStreamTask}.
@@ -67,7 +63,8 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
 	@Override
 	public CompletableFuture<?> getAvailableFuture() {
-		if (inputSelectionHandler.areAllInputsSelected()) {
+		if (inputSelectionHandler.areAllInputsSelected() ||
+				(inputSelectionHandler.isInputUnavailable(0) && !inputSelectionHandler.isInputUnavailable(1))) {
 			return isAnyInputAvailable();
 		} else {
 			StreamOneInputProcessor<?> input = (inputSelectionHandler.isFirstInputSelected()) ? processor1 : processor2;
@@ -80,14 +77,13 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		int readingInputIndex;
 		if (isPrepared) {
 			readingInputIndex = selectNextReadingInputIndex();
-			assert readingInputIndex != InputSelection.NONE_AVAILABLE;
 		} else {
 			// the preparations here are not placed in the constructor because all work in it
 			// must be executed after all operators are opened.
 			readingInputIndex = selectFirstReadingInputIndex();
-			if (readingInputIndex == InputSelection.NONE_AVAILABLE) {
-				return InputStatus.NOTHING_AVAILABLE;
-			}
+		}
+		if (readingInputIndex == InputSelection.NONE_AVAILABLE) {
+			return InputStatus.NOTHING_AVAILABLE;
 		}
 
 		lastReadInputIndex = readingInputIndex;
@@ -124,6 +120,7 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 	}
 
 	private void checkFinished(InputStatus status) throws Exception {
+		updateAvailability();
 		if (status == InputStatus.END_OF_INPUT) {
 			inputSelectionHandler.nextSelection();
 		}
@@ -171,6 +168,10 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		updateAvailability();
 		checkInputSelectionAgainstIsFinished();
 
+		if (inputSelectionHandler.isInputUnavailable(0) && inputSelectionHandler.isInputUnavailable(1)) {
+			fullCheckAndSetAvailable();
+		}
+
 		int readingInputIndex = inputSelectionHandler.selectNextInputIndex(lastReadInputIndex);
 		if (readingInputIndex == InputSelection.NONE_AVAILABLE) {
 			return InputSelection.NONE_AVAILABLE;
@@ -183,6 +184,20 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 		}
 
 		return readingInputIndex;
+	}
+
+	private void fullCheckAndSetAvailable() {
+		// TODO: isAvailable() can be a costly operation (checking volatile). If one of
+		// the input is constantly available and another is not, we will be checking this volatile
+		// once per every record. This might be optimized to only check once per processed NetworkBuffer
+		if (firstInputStatus != InputStatus.END_OF_INPUT &&
+				(processor1.isApproximatelyAvailable() || processor1.isAvailable())) {
+			inputSelectionHandler.setAvailableInput(0);
+		}
+		if (secondInputStatus != InputStatus.END_OF_INPUT &&
+				(processor2.isApproximatelyAvailable() || processor2.isAvailable())) {
+			inputSelectionHandler.setAvailableInput(1);
+		}
 	}
 
 	private void checkInputSelectionAgainstIsFinished() throws IOException {
