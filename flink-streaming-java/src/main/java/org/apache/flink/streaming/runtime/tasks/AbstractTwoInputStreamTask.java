@@ -59,9 +59,6 @@ public abstract class AbstractTwoInputStreamTask<IN1, IN2, OUT> extends StreamTa
 		StreamConfig configuration = getConfiguration();
 		ClassLoader userClassLoader = getUserCodeClassLoader();
 
-		TypeSerializer<IN1> inputDeserializer1 = configuration.getTypeSerializerIn1(userClassLoader);
-		TypeSerializer<IN2> inputDeserializer2 = configuration.getTypeSerializerIn2(userClassLoader);
-
 		int numberOfInputs = configuration.getNumberOfNetworkInputs();
 
 		ArrayList<IndexedInputGate> inputList1 = new ArrayList<>();
@@ -84,7 +81,7 @@ public abstract class AbstractTwoInputStreamTask<IN1, IN2, OUT> extends StreamTa
 			}
 		}
 
-		createInputProcessor(inputList1, inputList2, inputDeserializer1, inputDeserializer2);
+		createInputProcessor(inputList1, inputList2);
 
 		mainOperator.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_WATERMARK, minInputWatermarkGauge);
 		mainOperator.getMetricGroup().gauge(MetricNames.IO_CURRENT_INPUT_1_WATERMARK, input1WatermarkGauge);
@@ -95,7 +92,5 @@ public abstract class AbstractTwoInputStreamTask<IN1, IN2, OUT> extends StreamTa
 
 	protected abstract void createInputProcessor(
 		List<IndexedInputGate> inputGates1,
-		List<IndexedInputGate> inputGates2,
-		TypeSerializer<IN1> inputDeserializer1,
-		TypeSerializer<IN2> inputDeserializer2) throws Exception;
+		List<IndexedInputGate> inputGates2) throws Exception;
 }

@@ -47,9 +47,7 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends AbstractTwoInputStreamTas
 	@Override
 	protected void createInputProcessor(
 		List<IndexedInputGate> inputGates1,
-		List<IndexedInputGate> inputGates2,
-		TypeSerializer<IN1> inputDeserializer1,
-		TypeSerializer<IN2> inputDeserializer2) {
+		List<IndexedInputGate> inputGates2) {
 
 		TwoInputSelectionHandler twoInputSelectionHandler = new TwoInputSelectionHandler(
 			mainOperator instanceof InputSelectable ? (InputSelectable) mainOperator : null);
@@ -67,10 +65,10 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends AbstractTwoInputStreamTas
 		checkState(checkpointedInputGates.length == 2);
 
 		inputProcessor = StreamTwoInputProcessorFactory.create(
+			this,
 			checkpointedInputGates,
-			inputDeserializer1,
-			inputDeserializer2,
 			getEnvironment().getIOManager(),
+			getEnvironment().getMemoryManager(),
 			getEnvironment().getMetricGroup().getIOMetricGroup(),
 			getStreamStatusMaintainer(),
 			mainOperator,
@@ -78,6 +76,8 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends AbstractTwoInputStreamTas
 			input1WatermarkGauge,
 			input2WatermarkGauge,
 			operatorChain,
+			getConfiguration(),
+			getUserCodeClassLoader(),
 			setupNumRecordsInCounter(mainOperator));
 	}
 }

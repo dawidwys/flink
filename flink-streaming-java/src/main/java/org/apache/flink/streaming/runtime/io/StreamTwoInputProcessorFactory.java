@@ -19,10 +19,17 @@
 package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ExecutionOptions;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
+import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
+import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.TwoInputStreamOperator;
+import org.apache.flink.streaming.api.operators.sort.MultiInputSortingDataInputs;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
@@ -40,10 +47,10 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 public class StreamTwoInputProcessorFactory {
 	public static <IN1, IN2> StreamTwoInputProcessor<IN1, IN2> create(
+			AbstractInvokable ownerTask,
 			CheckpointedInputGate[] checkpointedInputGates,
-			TypeSerializer<IN1> inputSerializer1,
-			TypeSerializer<IN2> inputSerializer2,
 			IOManager ioManager,
+			MemoryManager memoryManager,
 			TaskIOMetricGroup taskIOMetricGroup,
 			StreamStatusMaintainer streamStatusMaintainer,
 			TwoInputStreamOperator<IN1, IN2, ?> streamOperator,
@@ -51,27 +58,61 @@ public class StreamTwoInputProcessorFactory {
 			WatermarkGauge input1WatermarkGauge,
 			WatermarkGauge input2WatermarkGauge,
 			OperatorChain<?, ?> operatorChain,
+			StreamConfig streamConfig,
+			ClassLoader userClassloader,
 			Counter numRecordsIn) {
 
 		checkNotNull(operatorChain);
 		checkNotNull(inputSelectionHandler);
+
 		StreamStatusTracker statusTracker = new StreamStatusTracker();
 		taskIOMetricGroup.reuseRecordsInputCounter(numRecordsIn);
+		TypeSerializer<IN1> typeSerializer1 = streamConfig.getTypeSerializerIn(0, userClassloader);
+		StreamTaskInput<IN1> input1 = new StreamTaskNetworkInput<>(
+			checkpointedInputGates[0],
+			typeSerializer1,
+			ioManager,
+			new StatusWatermarkValve(checkpointedInputGates[0].getNumberOfInputChannels()),
+			0);
+		TypeSerializer<IN2> typeSerializer2 = streamConfig.getTypeSerializerIn(1, userClassloader);
+		StreamTaskInput<IN2> input2 = new StreamTaskNetworkInput<>(
+			checkpointedInputGates[1],
+			typeSerializer2,
+			ioManager,
+			new StatusWatermarkValve(checkpointedInputGates[1].getNumberOfInputChannels()),
+			1);
+
+		if (streamConfig.getConfiguration().get(ExecutionOptions.SORTED_INPUTS)) {
+			@SuppressWarnings("unchecked")
+			MultiInputSortingDataInputs<Object> multiInputs = new MultiInputSortingDataInputs<Object>(
+				new StreamTaskInput[]{input1, input2},
+				new KeySelector[]{
+					streamConfig.getStatePartitioner(0, userClassloader),
+					streamConfig.getStatePartitioner(1, userClassloader)},
+				new TypeSerializer[]{typeSerializer1, typeSerializer2},
+				streamConfig.getStateKeySerializer(userClassloader),
+				memoryManager,
+				ioManager,
+				true,
+				1.0,
+				new Configuration(),
+				ownerTask
+			);
+			input1 = multiInputs.getInput(0);
+			input2 = multiInputs.getInput(1);
+		}
+
 		StreamTaskNetworkOutput<IN1> output1 = new StreamTaskNetworkOutput<>(
 			streamOperator,
 			record -> processRecord1(record, streamOperator),
 			streamStatusMaintainer,
-			inputSelectionHandler, input1WatermarkGauge,
+			inputSelectionHandler,
+			input1WatermarkGauge,
 			statusTracker,
 			0,
 			numRecordsIn);
 		StreamOneInputProcessor<IN1> processor1 = new StreamOneInputProcessor<>(
-			new StreamTaskNetworkInput<>(
-				checkpointedInputGates[0],
-				inputSerializer1,
-				ioManager,
-				new StatusWatermarkValve(checkpointedInputGates[0].getNumberOfInputChannels()),
-				0),
+			input1,
 			output1,
 			operatorChain
 		);
@@ -80,17 +121,13 @@ public class StreamTwoInputProcessorFactory {
 			streamOperator,
 			record -> processRecord2(record, streamOperator),
 			streamStatusMaintainer,
-			inputSelectionHandler, input2WatermarkGauge,
+			inputSelectionHandler,
+			input2WatermarkGauge,
 			statusTracker,
 			1,
 			numRecordsIn);
 		StreamOneInputProcessor<IN2> processor2 = new StreamOneInputProcessor<>(
-			new StreamTaskNetworkInput<>(
-				checkpointedInputGates[1],
-				inputSerializer2,
-				ioManager,
-				new StatusWatermarkValve(checkpointedInputGates[1].getNumberOfInputChannels()),
-				1),
+			input2,
 			output2,
 			operatorChain
 		);
