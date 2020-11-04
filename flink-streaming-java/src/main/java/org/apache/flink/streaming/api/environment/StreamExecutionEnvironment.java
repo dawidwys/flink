@@ -2043,9 +2043,24 @@ public class StreamExecutionEnvironment {
 	 * executed.
 	 */
 	public static StreamExecutionEnvironment getExecutionEnvironment() {
+		return getExecutionEnvironment(new Configuration());
+	}
+
+	/**
+	 * Creates an execution environment that represents the context in which the
+	 * program is currently executed. If the program is invoked standalone, this
+	 * method returns a local execution environment, as returned by
+	 * {@link #createLocalEnvironment()}.
+	 *
+	 * @return The execution environment of the context in which the program is
+	 * executed.
+	 */
+	public static StreamExecutionEnvironment getExecutionEnvironment(Configuration configuration) {
 		return Utils.resolveFactory(threadLocalContextEnvironmentFactory, contextEnvironmentFactory)
-			.map(StreamExecutionEnvironmentFactory::createExecutionEnvironment)
-			.orElseGet(StreamExecutionEnvironment::createLocalEnvironment);
+			.map(factory -> factory.createExecutionEnvironment(configuration))
+			.orElseGet(() -> StreamExecutionEnvironment.createLocalEnvironment(
+				defaultLocalParallelism,
+				configuration));
 	}
 
 	/**
