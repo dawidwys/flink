@@ -63,6 +63,11 @@ under the License.
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers</artifactId>
+			<version>1.15.0</version>
+		</dependency>
+		<dependency>
 			<!-- To ensure that flink-dist is built beforehand -->
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-dist_${scala.binary.version}</artifactId>
@@ -124,6 +129,23 @@ under the License.
 
 	<build>
 		<plugins>
+			<!--Disable dependency convergence because testcontainers use two different
+			 	net.java.dev.jna:jna transitively -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>dependency-convergence</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<skip>true</skip>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
