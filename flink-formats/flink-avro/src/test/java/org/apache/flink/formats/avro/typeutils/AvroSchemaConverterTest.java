@@ -22,6 +22,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.formats.avro.generated.User;
+import org.apache.flink.formats.avro.utils.AvroTestUtils;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.types.DataType;
@@ -29,11 +30,20 @@ import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.Row;
 
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.io.DecoderFactory;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.IOException;
+
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -59,6 +69,44 @@ public class AvroSchemaConverterTest {
 	public void testConvertAvroSchemaToDataType() {
 		final String schema = User.getClassSchema().toString(true);
 		validateUserSchema(AvroSchemaConverter.convertToDataType(schema));
+	}
+
+	@Test
+	public void testAddingOptionalField() throws IOException {
+		Schema oldSchema = SchemaBuilder.record("record")
+			.fields()
+			.requiredLong("category_id")
+			.optionalString("name")
+			.endRecord();
+
+		Schema newSchema = AvroSchemaConverter.convertToSchema(
+			TableSchema.builder()
+				.field("category_id", DataTypes.BIGINT().notNull())
+				.field("name", DataTypes.STRING().nullable())
+				.field("description", DataTypes.STRING().nullable())
+				.build().toRowDataType().getLogicalType()
+		);
+
+		byte[] serializedRecord = AvroTestUtils.writeRecord(
+			new GenericRecordBuilder(oldSchema)
+				.set("category_id", 1L)
+				.set("name", "test")
+				.build(),
+			oldSchema
+		);
+		GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<>(
+			oldSchema,
+			newSchema);
+		GenericRecord newRecord = datumReader.read(
+			null,
+			DecoderFactory.get().binaryDecoder(serializedRecord, 0, serializedRecord.length, null));
+		assertThat(
+			newRecord,
+			equalTo(new GenericRecordBuilder(newSchema)
+				.set("category_id", 1L)
+				.set("name", "test")
+				.set("description", null)
+				.build()));
 	}
 
 	@Test
