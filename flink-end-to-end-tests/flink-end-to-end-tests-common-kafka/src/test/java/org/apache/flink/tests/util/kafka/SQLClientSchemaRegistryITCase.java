@@ -42,7 +42,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -58,10 +57,10 @@ import static org.junit.Assert.assertThat;
 public class SQLClientSchemaRegistryITCase {
 	public static final String INTER_CONTAINER_KAFKA_ALIAS = "kafka";
 	public static final String INTER_CONTAINER_REGISTRY_ALIAS = "registry";
-	private static final Path sqlAvroJar = TestUtils.getResource(".*avro-confluent.jar");
+	private static final Path sqlAvroJar = TestUtils.getResource(".*avro.jar");
+	private static final Path sqlAvroRegistryJar = TestUtils.getResource(".*avro-confluent.jar");
 	private static final Path sqlToolBoxJar = TestUtils.getResource(".*SqlToolbox.jar");
 	private final Path sqlConnectorKafkaJar = TestUtils.getResource(".*kafka.jar");
-	private final List<Path> apacheAvroJars = new ArrayList<>();
 
 	public final Network network = Network.newNetwork();
 
@@ -220,10 +219,7 @@ public class SQLClientSchemaRegistryITCase {
 
 	private void executeSqlStatements(List<String> sqlLines) throws Exception {
 		flink.submitSQLJob(new SQLJobSubmission.SQLJobSubmissionBuilder(sqlLines)
-			.addJar(sqlAvroJar)
-			.addJars(apacheAvroJars)
-			.addJar(sqlConnectorKafkaJar)
-			.addJar(sqlToolBoxJar)
+			.addJars(sqlAvroJar, sqlAvroRegistryJar, sqlConnectorKafkaJar, sqlToolBoxJar)
 			.build());
 	}
 }

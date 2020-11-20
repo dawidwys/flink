@@ -87,6 +87,14 @@ under the License.
 									<pattern>org.apache.kafka</pattern>
 									<shadedPattern>org.apache.flink.formats.avro.registry.confluent.shaded.org.apache.kafka</shadedPattern>
 								</relocation>
+								<relocation>
+									<pattern>io.confluent</pattern>
+									<shadedPattern>org.apache.flink.formats.avro.registry.confluent.shaded.io.confluent</shadedPattern>
+								</relocation>
+								<relocation>
+									<pattern>org.apache.avro</pattern>
+									<shadedPattern>org.apache.flink.formats.avro.registry.confluent.shaded.org.avro</shadedPattern>
+								</relocation>
 							</relocations>
 							<filters>
 								<filter>
