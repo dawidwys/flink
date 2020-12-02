@@ -258,7 +258,9 @@ public class NFA<T> {
 					timeoutResult.add(Tuple2.of(timedOutPattern, computationState.getStartTimestamp() + windowTime));
 				}
 
-				sharedBufferAccessor.releaseNode(computationState.getPreviousBufferEntry());
+				sharedBufferAccessor.releaseNode(
+					computationState.getPreviousBufferEntry(),
+					computationState.getVersion());
 
 				nfaState.setStateChanged();
 			} else {
@@ -312,7 +314,9 @@ public class NFA<T> {
 				} else if (isStopState(newComputationState)) {
 					//reached stop state. release entry for the stop state
 					shouldDiscardPath = true;
-					sharedBufferAccessor.releaseNode(newComputationState.getPreviousBufferEntry());
+					sharedBufferAccessor.releaseNode(
+						newComputationState.getPreviousBufferEntry(),
+						newComputationState.getVersion());
 				} else {
 					// add new computation state; it will be processed once the next event arrives
 					statesToRetain.add(newComputationState);
@@ -323,7 +327,9 @@ public class NFA<T> {
 				// a stop state was reached in this branch. release branch which results in removing previous event from
 				// the buffer
 				for (final ComputationState state : statesToRetain) {
-					sharedBufferAccessor.releaseNode(state.getPreviousBufferEntry());
+					sharedBufferAccessor.releaseNode(
+						state.getPreviousBufferEntry(),
+						state.getVersion());
 				}
 			} else {
 				newPartialMatches.addAll(statesToRetain);
@@ -352,7 +358,9 @@ public class NFA<T> {
 					);
 
 				result.add(materializedMatch);
-				sharedBufferAccessor.releaseNode(match.getPreviousBufferEntry());
+				sharedBufferAccessor.releaseNode(
+					match.getPreviousBufferEntry(),
+					match.getVersion());
 			}
 		}
 
@@ -395,7 +403,9 @@ public class NFA<T> {
 					sharedBufferAccessor);
 
 				result.add(sharedBufferAccessor.materializeMatch(matchedResult.get(0)));
-				sharedBufferAccessor.releaseNode(earliestMatch.getPreviousBufferEntry());
+				sharedBufferAccessor.releaseNode(
+					earliestMatch.getPreviousBufferEntry(),
+					earliestMatch.getVersion());
 				earliestMatch = nfaState.getCompletedMatches().peek();
 			}
 
@@ -653,7 +663,9 @@ public class NFA<T> {
 
 		if (computationState.getPreviousBufferEntry() != null) {
 			// release the shared entry referenced by the current computation state.
-			sharedBufferAccessor.releaseNode(computationState.getPreviousBufferEntry());
+			sharedBufferAccessor.releaseNode(
+				computationState.getPreviousBufferEntry(),
+				computationState.getVersion());
 		}
 
 		return resultingComputationStates;
@@ -671,7 +683,7 @@ public class NFA<T> {
 				currentState.getName(), previousEntry, version, startTimestamp, startEventId);
 		computationStates.add(computationState);
 
-		sharedBufferAccessor.lockNode(previousEntry);
+		sharedBufferAccessor.lockNode(previousEntry, computationState.getVersion());
 	}
 
 	private State<T> findFinalStateAfterProceed(

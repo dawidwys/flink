@@ -39,22 +39,22 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 public class SharedBufferNode {
 
-	private final List<SharedBufferEdge> edges;
+	private final List<Lockable<SharedBufferEdge>> edges;
 
 	public SharedBufferNode() {
 		edges = new ArrayList<>();
 	}
 
-	private SharedBufferNode(List<SharedBufferEdge> edges) {
+	private SharedBufferNode(List<Lockable<SharedBufferEdge>> edges) {
 		this.edges = edges;
 	}
 
-	public List<SharedBufferEdge> getEdges() {
+	public List<Lockable<SharedBufferEdge>> getEdges() {
 		return edges;
 	}
 
 	public void addEdge(SharedBufferEdge edge) {
-		edges.add(edge);
+		edges.add(new Lockable<>(edge, 0));
 	}
 
 	@Override
@@ -86,13 +86,14 @@ public class SharedBufferNode {
 
 		private static final long serialVersionUID = -6687780732295439832L;
 
-		private final ListSerializer<SharedBufferEdge> edgesSerializer;
+		private final ListSerializer<Lockable<SharedBufferEdge>> edgesSerializer;
 
 		public SharedBufferNodeSerializer() {
-			this.edgesSerializer = new ListSerializer<>(new SharedBufferEdgeSerializer());
+			this.edgesSerializer = new ListSerializer<>(
+				new Lockable.LockableTypeSerializer<>(new SharedBufferEdgeSerializer()));
 		}
 
-		private SharedBufferNodeSerializer(ListSerializer<SharedBufferEdge> edgesSerializer) {
+		private SharedBufferNodeSerializer(ListSerializer<Lockable<SharedBufferEdge>> edgesSerializer) {
 			this.edgesSerializer = checkNotNull(edgesSerializer);
 		}
 
@@ -128,7 +129,7 @@ public class SharedBufferNode {
 
 		@Override
 		public SharedBufferNode deserialize(DataInputView source) throws IOException {
-			List<SharedBufferEdge> edges = edgesSerializer.deserialize(source);
+			List<Lockable<SharedBufferEdge>> edges = edgesSerializer.deserialize(source);
 			return new SharedBufferNode(edges);
 		}
 
@@ -146,7 +147,7 @@ public class SharedBufferNode {
 
 		@Override
 		public TypeSerializerSnapshot<SharedBufferNode> snapshotConfiguration() {
-			return new SharedBufferNodeSerializerSnapshot(this);
+			return new SharedBufferNodeSerializerSnapshotV2(this);
 		}
 
 		/**
@@ -174,7 +175,42 @@ public class SharedBufferNode {
 			@Override
 			@SuppressWarnings("unchecked")
 			protected SharedBufferNodeSerializer createOuterSerializerWithNestedSerializers(TypeSerializer<?>[] nestedSerializers) {
-				return new SharedBufferNodeSerializer((ListSerializer<SharedBufferEdge>) nestedSerializers[0]);
+				throw new UnsupportedOperationException("");
+//				return new SharedBufferNodeSerializer((ListSerializer<SharedBufferEdge>) nestedSerializers[0]);
+			}
+
+			@Override
+			protected TypeSerializer<?>[] getNestedSerializers(SharedBufferNodeSerializer outerSerializer) {
+				return new TypeSerializer<?>[]{ outerSerializer.edgesSerializer };
+			}
+		}
+
+		/**
+		 * Serializer configuration snapshot for compatibility and format evolution.
+		 */
+		@SuppressWarnings("WeakerAccess")
+		public static final class SharedBufferNodeSerializerSnapshotV2
+				extends CompositeTypeSerializerSnapshot<SharedBufferNode, SharedBufferNodeSerializer> {
+
+			private static final int VERSION = 2;
+
+			public SharedBufferNodeSerializerSnapshotV2() {
+				super(SharedBufferNodeSerializer.class);
+			}
+
+			public SharedBufferNodeSerializerSnapshotV2(SharedBufferNodeSerializer sharedBufferNodeSerializer) {
+				super(sharedBufferNodeSerializer);
+			}
+
+			@Override
+			protected int getCurrentOuterSnapshotVersion() {
+				return VERSION;
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			protected SharedBufferNodeSerializer createOuterSerializerWithNestedSerializers(TypeSerializer<?>[] nestedSerializers) {
+				return new SharedBufferNodeSerializer((ListSerializer<Lockable<SharedBufferEdge>>) nestedSerializers[0]);
 			}
 
 			@Override

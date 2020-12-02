@@ -57,16 +57,16 @@ public class SharedBuffer<V> {
 	private static final String eventsStateName = "sharedBuffer-events";
 	private static final String eventsCountStateName = "sharedBuffer-events-count";
 
-	private MapState<EventId, Lockable<V>> eventsBuffer;
+	private final MapState<EventId, Lockable<V>> eventsBuffer;
 	/** The number of events seen so far in the stream per timestamp. */
-	private MapState<Long, Integer> eventsCount;
-	private MapState<NodeId, Lockable<SharedBufferNode>> entries;
+	private final MapState<Long, Integer> eventsCount;
+	private final MapState<NodeId, Lockable<SharedBufferNode>> entries;
 
 	/** The cache of eventsBuffer State. */
-	private Map<EventId, Lockable<V>> eventsBufferCache = new HashMap<>();
+	private final Map<EventId, Lockable<V>> eventsBufferCache = new HashMap<>();
 
 	/** The cache of sharedBufferNode. */
-	private Map<NodeId, Lockable<SharedBufferNode>> entryCache = new HashMap<>();
+	private final Map<NodeId, Lockable<SharedBufferNode>> entryCache = new HashMap<>();
 
 	public SharedBuffer(KeyedStateStore stateStore, TypeSerializer<V> valueSerializer) {
 		this.eventsBuffer = stateStore.getMapState(
