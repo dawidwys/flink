@@ -33,6 +33,7 @@ import org.apache.flink.runtime.memory.MemoryAllocationException;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.operators.sort.ExternalSorter;
 import org.apache.flink.runtime.operators.sort.PushSorter;
+import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.InputSelectable;
 import org.apache.flink.streaming.api.operators.InputSelection;
 import org.apache.flink.streaming.api.watermark.Watermark;
@@ -48,8 +49,12 @@ import org.apache.flink.util.MutableObjectIterator;
 import javax.annotation.Nonnull;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -107,11 +112,15 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
      */
     public static class SelectableSortingInputs {
         private final InputSelectable inputSelectable;
-        private final StreamTaskInput<?>[] sortingInputs;
+        private final StreamTaskInput<?>[] sortedInputs;
+        private final StreamTaskInput<?>[] passThroughInputs;
 
         public SelectableSortingInputs(
-                StreamTaskInput<?>[] sortingInputs, InputSelectable inputSelectable) {
-            this.sortingInputs = sortingInputs;
+                StreamTaskInput<?>[] sortedInputs,
+                StreamTaskInput<?>[] passThroughInputs,
+                InputSelectable inputSelectable) {
+            this.sortedInputs = sortedInputs;
+            this.passThroughInputs = passThroughInputs;
             this.inputSelectable = inputSelectable;
         }
 
@@ -119,17 +128,22 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
             return inputSelectable;
         }
 
-        public StreamTaskInput<?>[] getSortingInputs() {
-            return sortingInputs;
+        public StreamTaskInput<?>[] getSortedInputs() {
+            return sortedInputs;
+        }
+
+        public StreamTaskInput<?>[] getPassThroughInputs() {
+            return passThroughInputs;
         }
     }
 
     public static <K> SelectableSortingInputs wrapInputs(
             AbstractInvokable containingTask,
-            StreamTaskInput<Object>[] inputs,
+            StreamTaskInput<Object>[] sortingInputs,
             KeySelector<Object, K>[] keySelectors,
             TypeSerializer<Object>[] inputSerializers,
             TypeSerializer<K> keySerializer,
+            StreamTaskInput<Object>[] passThroughInputs,
             MemoryManager memoryManager,
             IOManager ioManager,
             boolean objectReuse,
@@ -146,19 +160,27 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
             comparator = new VariableLengthByteKeyComparator<>();
         }
 
-        int numberOfInputs = inputs.length;
-        CommonContext commonContext = new CommonContext(numberOfInputs);
-        StreamTaskInput<?>[] sortingInputs =
-                IntStream.range(0, numberOfInputs)
+        List<Integer> passThroughInputIndices =
+                Arrays.stream(passThroughInputs)
+                        .map(StreamTaskInput::getInputIndex)
+                        .collect(Collectors.toList());
+        int numberOfInputs = sortingInputs.length + passThroughInputs.length;
+        CommonContext commonContext = new CommonContext(sortingInputs.length);
+        InputSelector inputSelector =
+                new InputSelector(commonContext, numberOfInputs, passThroughInputIndices);
+
+        StreamTaskInput<?>[] wrappedSortingInputs =
+                IntStream.range(0, sortingInputs.length)
                         .mapToObj(
                                 idx -> {
                                     try {
                                         KeyAndValueSerializer<Object> keyAndValueSerializer =
                                                 new KeyAndValueSerializer<>(
                                                         inputSerializers[idx], keyLength);
+
                                         return new MultiInputSortingDataInput<>(
                                                 commonContext,
-                                                inputs[idx],
+                                                sortingInputs[idx],
                                                 idx,
                                                 ExternalSorter.newBuilder(
                                                                 memoryManager,
@@ -189,8 +211,14 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
                                     }
                                 })
                         .toArray(StreamTaskInput[]::new);
+
+        StreamTaskInput<?>[] wrappedPassThroughInputs =
+                Arrays.stream(passThroughInputs)
+                        .map(input -> new ObservableStreamTaskInput<>(input, inputSelector))
+                        .toArray(StreamTaskInput[]::new);
+
         return new SelectableSortingInputs(
-                sortingInputs, new InputSelector(commonContext, numberOfInputs));
+                wrappedSortingInputs, wrappedPassThroughInputs, inputSelector);
     }
 
     @Override
@@ -318,23 +346,40 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
      * all sorting inputs. Should be used by the {@link StreamInputProcessor} to choose the next
      * input to consume from.
      */
-    private static class InputSelector implements InputSelectable {
+    private static class InputSelector implements InputSelectable, BoundedMultiInput {
 
         private final CommonContext commonContext;
-        private final int numberOfInputs;
+        private final int numInputs;
+        private final ConcurrentLinkedQueue<Integer> passThroughInputsIndices;
 
-        private InputSelector(CommonContext commonContext, int numberOfInputs) {
+        private InputSelector(
+                CommonContext commonContext, int numInputs, List<Integer> passThroughInputIndices) {
             this.commonContext = commonContext;
-            this.numberOfInputs = numberOfInputs;
+            this.numInputs = numInputs;
+            this.passThroughInputsIndices = new ConcurrentLinkedQueue<>(passThroughInputIndices);
+        }
+
+        @Override
+        public void endInput(int inputId) throws Exception {
+            passThroughInputsIndices.remove(inputId);
         }
 
         @Override
         public InputSelection nextSelection() {
+            Integer currentPassThroughInputIndex = passThroughInputsIndices.peek();
+
+            if (currentPassThroughInputIndex != null) {
+                // yes, 0-based to 1-based mapping ... 🙏
+                return new InputSelection.Builder()
+                        .select(currentPassThroughInputIndex + 1)
+                        .build(numInputs);
+            }
+
             if (commonContext.allSorted()) {
                 HeadElement headElement = commonContext.getQueueOfHeads().peek();
                 if (headElement != null) {
                     int headIdx = headElement.inputIndex;
-                    return new InputSelection.Builder().select(headIdx + 1).build(numberOfInputs);
+                    return new InputSelection.Builder().select(headIdx + 1).build(numInputs);
                 }
             }
             return InputSelection.ALL;
@@ -419,8 +464,8 @@ public final class MultiInputSortingDataInput<IN, K> implements StreamTaskInput<
         private long notFinishedSortingMask = 0;
         private long finishedEmitting = 0;
 
-        public CommonContext(int numberOfInputs) {
-            for (int i = 0; i < numberOfInputs; i++) {
+        public CommonContext(int numSortingInputs) {
+            for (int i = 0; i < numSortingInputs; i++) {
                 notFinishedSortingMask = setBitMask(notFinishedSortingMask, i);
             }
         }
