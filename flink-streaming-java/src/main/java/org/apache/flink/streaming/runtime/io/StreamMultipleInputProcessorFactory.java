@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static org.apache.flink.streaming.api.graph.StreamConfig.requiresSorting;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
@@ -118,7 +119,12 @@ public class StreamMultipleInputProcessorFactory {
 
         InputSelectable inputSelectable =
                 mainOperator instanceof InputSelectable ? (InputSelectable) mainOperator : null;
-        if (streamConfig.shouldSortInputs()) {
+
+        StreamConfig.InputConfig[] inputConfigs = streamConfig.getInputs(userClassloader);
+        boolean anyRequiresSorting =
+                Arrays.stream(inputConfigs).anyMatch(StreamConfig::requiresSorting);
+
+        if (anyRequiresSorting) {
 
             if (inputSelectable != null) {
                 throw new IllegalStateException(
@@ -152,7 +158,19 @@ public class StreamMultipleInputProcessorFactory {
                                     userClassloader),
                             jobConfig);
 
-            inputs = selectableSortingInputs.getSortedInputs();
+            StreamTaskInput<?>[] sortedInputs = selectableSortingInputs.getSortedInputs();
+            StreamTaskInput<?>[] passThroughInputs = selectableSortingInputs.getPassThroughInputs();
+            int sortedIndex = 0;
+            int passThroughIndex = 0;
+            for (int i = 0; i < inputs.length; i++) {
+                if (requiresSorting(inputConfigs[i])) {
+                    inputs[i] = sortedInputs[sortedIndex];
+                    sortedIndex++;
+                } else {
+                    inputs[i] = passThroughInputs[passThroughIndex];
+                    passThroughIndex++;
+                }
+            }
             inputSelectable = selectableSortingInputs.getInputSelectable();
         }
 

@@ -43,6 +43,10 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 import org.apache.flink.util.function.ThrowingConsumer;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.flink.streaming.api.graph.StreamConfig.requiresSorting;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** A factory for {@link StreamTwoInputProcessor}. */
@@ -90,25 +94,51 @@ public class StreamTwoInputProcessorFactory {
 
         InputSelectable inputSelectable =
                 streamOperator instanceof InputSelectable ? (InputSelectable) streamOperator : null;
-        if (streamConfig.shouldSortInputs()) {
+
+        // this is a bit verbose because we're manually handling input1 and input2
+        // TODO: extract method
+        StreamConfig.InputConfig[] inputConfigs = streamConfig.getInputs(userClassloader);
+        boolean input1IsSorted = requiresSorting(inputConfigs[0]);
+        boolean input2IsSorted = requiresSorting(inputConfigs[1]);
+
+        if (input1IsSorted || input2IsSorted) {
+            // as soon as one input requires sorting we need to treat all inputs differently, to
+            // make sure that pass-through inputs have precedence
 
             if (inputSelectable != null) {
                 throw new IllegalStateException(
                         "The InputSelectable interface is not supported with sorting inputs");
             }
 
-            @SuppressWarnings("unchecked")
+            List<StreamTaskInput<?>> sortedTaskInputs = new ArrayList<>();
+            List<StreamTaskInput<?>> passThroughTaskInputs = new ArrayList<>();
+            int input1Index = 0;
+            int input2Index;
+            if (input1IsSorted) {
+                sortedTaskInputs.add(input1);
+            } else {
+                passThroughTaskInputs.add(input1);
+            }
+            if (input2IsSorted) {
+                input2Index = sortedTaskInputs.size();
+                sortedTaskInputs.add(input2);
+            } else {
+                input2Index = passThroughTaskInputs.size();
+                passThroughTaskInputs.add(input2);
+            }
+
+            @SuppressWarnings({"unchecked", "rawtypes"})
             SelectableSortingInputs selectableSortingInputs =
                     MultiInputSortingDataInput.wrapInputs(
                             ownerTask,
-                            new StreamTaskInput[] {input1, input2},
+                            sortedTaskInputs.toArray(new StreamTaskInput[0]),
                             new KeySelector[] {
                                 streamConfig.getStatePartitioner(0, userClassloader),
                                 streamConfig.getStatePartitioner(1, userClassloader)
                             },
                             new TypeSerializer[] {typeSerializer1, typeSerializer2},
                             streamConfig.getStateKeySerializer(userClassloader),
-                            new StreamTaskInput[0],
+                            passThroughTaskInputs.toArray(new StreamTaskInput[0]),
                             memoryManager,
                             ioManager,
                             executionConfig.isObjectReuseEnabled(),
@@ -118,8 +148,16 @@ public class StreamTwoInputProcessorFactory {
                                     userClassloader),
                             jobConfig);
             inputSelectable = selectableSortingInputs.getInputSelectable();
-            input1 = getSortedInput(selectableSortingInputs.getSortedInputs()[0]);
-            input2 = getSortedInput(selectableSortingInputs.getSortedInputs()[1]);
+            if (input1IsSorted) {
+                input1 = toTypedInput(selectableSortingInputs.getSortedInputs()[input1Index]);
+            } else {
+                input1 = toTypedInput(selectableSortingInputs.getPassThroughInputs()[input1Index]);
+            }
+            if (input2IsSorted) {
+                input2 = toTypedInput(selectableSortingInputs.getSortedInputs()[input2Index]);
+            } else {
+                input2 = toTypedInput(selectableSortingInputs.getPassThroughInputs()[input2Index]);
+            }
         }
 
         StreamTaskNetworkOutput<IN1> output1 =
@@ -151,7 +189,7 @@ public class StreamTwoInputProcessorFactory {
     }
 
     @SuppressWarnings("unchecked")
-    private static <IN1> StreamTaskInput<IN1> getSortedInput(StreamTaskInput<?> multiInput) {
+    private static <IN1> StreamTaskInput<IN1> toTypedInput(StreamTaskInput<?> multiInput) {
         return (StreamTaskInput<IN1>) multiInput;
     }
 
