@@ -66,7 +66,7 @@ class HeapSnapshotStrategy<K> extends AbstractSnapshotStrategy<KeyedStateHandle>
 
     private final SnapshotStrategySynchronicityBehavior<K> snapshotStrategySynchronicityTrait;
     private final Map<String, StateTable<K, ?, ?>> registeredKVStates;
-    private final Map<String, HeapPriorityQueueSnapshotRestoreWrapper> registeredPQStates;
+    private final Map<String, HeapPriorityQueueSnapshotRestoreWrapper<?>> registeredPQStates;
     private final StreamCompressionDecorator keyGroupCompressionDecorator;
     private final LocalRecoveryConfig localRecoveryConfig;
     private final KeyGroupRange keyGroupRange;
@@ -76,7 +76,7 @@ class HeapSnapshotStrategy<K> extends AbstractSnapshotStrategy<KeyedStateHandle>
     HeapSnapshotStrategy(
             SnapshotStrategySynchronicityBehavior<K> snapshotStrategySynchronicityTrait,
             Map<String, StateTable<K, ?, ?>> registeredKVStates,
-            Map<String, HeapPriorityQueueSnapshotRestoreWrapper> registeredPQStates,
+            Map<String, HeapPriorityQueueSnapshotRestoreWrapper<?>> registeredPQStates,
             StreamCompressionDecorator keyGroupCompressionDecorator,
             LocalRecoveryConfig localRecoveryConfig,
             KeyGroupRange keyGroupRange,

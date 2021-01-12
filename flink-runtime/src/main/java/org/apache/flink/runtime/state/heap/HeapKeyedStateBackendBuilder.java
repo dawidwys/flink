@@ -27,6 +27,7 @@ import org.apache.flink.runtime.state.BackendBuildingException;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.LocalRecoveryConfig;
+import org.apache.flink.runtime.state.RestoreOperation;
 import org.apache.flink.runtime.state.StreamCompressionDecorator;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 
@@ -82,10 +83,14 @@ public class HeapKeyedStateBackendBuilder<K> extends AbstractKeyedStateBackendBu
 
     @Override
     public HeapKeyedStateBackend<K> build() throws BackendBuildingException {
+        return build(false);
+    }
+
+    public HeapKeyedStateBackend<K> build(boolean restoreSavepoint) throws BackendBuildingException {
         // Map of registered Key/Value states
         Map<String, StateTable<K, ?, ?>> registeredKVStates = new HashMap<>();
         // Map of registered priority queue set states
-        Map<String, HeapPriorityQueueSnapshotRestoreWrapper> registeredPQStates = new HashMap<>();
+        Map<String, HeapPriorityQueueSnapshotRestoreWrapper<?>> registeredPQStates = new HashMap<>();
         CloseableRegistry cancelStreamRegistryForBackend = new CloseableRegistry();
         HeapSnapshotStrategy<K> snapshotStrategy =
                 initSnapshotStrategy(
@@ -95,8 +100,23 @@ public class HeapKeyedStateBackendBuilder<K> extends AbstractKeyedStateBackendBu
                         cancelStreamRegistryForBackend);
         InternalKeyContext<K> keyContext =
                 new InternalKeyContextImpl<>(keyGroupRange, numberOfKeyGroups);
-        HeapRestoreOperation<K> restoreOperation =
-                new HeapRestoreOperation<>(
+        final RestoreOperation<Void> restoreOperation;
+        if (restoreSavepoint) {
+            restoreOperation = new HeapSavepointRestoreOperation<>(
+                    restoreStateHandles,
+                    keySerializerProvider,
+                    userCodeClassLoader,
+                    registeredKVStates,
+                    registeredPQStates,
+                    cancelStreamRegistry,
+                    priorityQueueSetFactory,
+                    keyGroupRange,
+                    numberOfKeyGroups,
+                    snapshotStrategy,
+                    keyContext
+            );
+        } else {
+            restoreOperation = new HeapRestoreOperation<>(
                         restoreStateHandles,
                         keySerializerProvider,
                         userCodeClassLoader,
@@ -108,6 +128,7 @@ public class HeapKeyedStateBackendBuilder<K> extends AbstractKeyedStateBackendBu
                         numberOfKeyGroups,
                         snapshotStrategy,
                         keyContext);
+        }
         try {
             restoreOperation.restore();
             logger.info("Finished to build heap keyed state-backend.");
@@ -133,7 +154,7 @@ public class HeapKeyedStateBackendBuilder<K> extends AbstractKeyedStateBackendBu
     private HeapSnapshotStrategy<K> initSnapshotStrategy(
             boolean asynchronousSnapshots,
             Map<String, StateTable<K, ?, ?>> registeredKVStates,
-            Map<String, HeapPriorityQueueSnapshotRestoreWrapper> registeredPQStates,
+            Map<String, HeapPriorityQueueSnapshotRestoreWrapper<?>> registeredPQStates,
             CloseableRegistry cancelStreamRegistry) {
         SnapshotStrategySynchronicityBehavior<K> synchronicityTrait =
                 asynchronousSnapshots

@@ -20,12 +20,14 @@ package org.apache.flink.runtime.state.heap;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.state.MapStateDescriptor;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.StateObjectCollection;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SnapshotResult;
 import org.apache.flink.runtime.state.internal.InternalMapState;
+import org.apache.flink.runtime.state.internal.InternalValueState;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.Preconditions;
@@ -47,7 +49,7 @@ public class HeapKeyedStateBackendSnapshotMigrationTest extends HeapStateBackend
     @Test
     public void testMapStateMigrationAfterHashMapSerRemoval() throws Exception {
         ClassLoader cl = getClass().getClassLoader();
-        URL resource = cl.getResource("heap_keyed_statebackend_1_5_map.snapshot");
+        URL resource = cl.getResource("tmp_rocks_map_state");
 
         Preconditions.checkNotNull(resource, "Binary snapshot resource not found!");
 
@@ -69,8 +71,15 @@ public class HeapKeyedStateBackendSnapshotMigrationTest extends HeapStateBackend
                     new MapStateDescriptor<>("my-map-state", Long.class, Long.class);
             stateDescr.initializeSerializerUnlessSet(new ExecutionConfig());
 
+            final ValueStateDescriptor<Long> valueStateDescr =
+                    new ValueStateDescriptor<>("my-value-state", Long.class);
+            valueStateDescr.initializeSerializerUnlessSet(new ExecutionConfig());
+
             InternalMapState<String, Integer, Long, Long> state =
                     keyedBackend.createInternalState(IntSerializer.INSTANCE, stateDescr);
+
+            InternalValueState<String, Integer, Long> valueState =
+                    keyedBackend.createInternalState(IntSerializer.INSTANCE, valueStateDescr);
 
             keyedBackend.setCurrentKey("abc");
             state.setCurrentNamespace(namespace1);
@@ -116,6 +125,13 @@ public class HeapKeyedStateBackendSnapshotMigrationTest extends HeapStateBackend
             assertEquals(44L, (long) state.get(44L));
             assertEquals(55L, (long) state.get(55L));
             assertEquals(5, getStateSize(state));
+            valueState.setCurrentNamespace(namespace3);
+            assertEquals(1239L, (long) valueState.value());
+
+//            keyedBackend.create("event-time", new TimerSerializer<>(
+//                    keyedBackend.getKeySerializer(),
+//                    IntSerializer.INSTANCE
+//            ));
 
             RunnableFuture<SnapshotResult<KeyedStateHandle>> snapshot =
                     keyedBackend.snapshot(
@@ -125,6 +141,27 @@ public class HeapKeyedStateBackendSnapshotMigrationTest extends HeapStateBackend
                             CheckpointOptions.forCheckpointWithDefaultLocation());
 
             snapshot.run();
+        }
+    }
+
+    @Test
+    public void testReadingRocks() throws Exception {
+        ClassLoader cl = getClass().getClassLoader();
+        URL resource = cl.getResource("heap_keyed_statebackend_1_5_map.snapshot");
+
+        Preconditions.checkNotNull(resource, "Binary snapshot resource not found!");
+
+        final SnapshotResult<KeyedStateHandle> stateHandles;
+        try (BufferedInputStream bis =
+                     new BufferedInputStream((new FileInputStream(resource.getFile())))) {
+            stateHandles =
+                    InstantiationUtil.deserializeObject(
+                            bis, Thread.currentThread().getContextClassLoader());
+        }
+        final KeyedStateHandle stateHandle = stateHandles.getJobManagerOwnedSnapshot();
+        try (final HeapKeyedStateBackend<String> keyedBackend =
+                     createKeyedBackend(StateObjectCollection.singleton(stateHandle))) {
+
         }
     }
 

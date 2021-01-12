@@ -41,9 +41,18 @@ import java.util.Collections;
 
 /** Test utils for the RocksDB state backend. */
 public final class RocksDBTestUtils {
-
     public static <K> RocksDBKeyedStateBackendBuilder<K> builderForTestDefaults(
             File instanceBasePath, TypeSerializer<K> keySerializer) {
+        return builderForTestDefaults(
+                instanceBasePath,
+                keySerializer,
+                RocksDBStateBackend.PriorityQueueStateType.HEAP);
+    }
+
+    public static <K> RocksDBKeyedStateBackendBuilder<K> builderForTestDefaults(
+            File instanceBasePath,
+            TypeSerializer<K> keySerializer,
+            RocksDBStateBackend.PriorityQueueStateType priorityQueueStateType) {
 
         final RocksDBResourceContainer optionsContainer = new RocksDBResourceContainer();
 
@@ -59,7 +68,7 @@ public final class RocksDBTestUtils {
                 new KeyGroupRange(0, 1),
                 new ExecutionConfig(),
                 TestLocalRecoveryConfig.disabled(),
-                RocksDBStateBackend.PriorityQueueStateType.HEAP,
+                priorityQueueStateType,
                 TtlTimeProvider.DEFAULT,
                 new UnregisteredMetricsGroup(),
                 Collections.emptyList(),
