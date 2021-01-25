@@ -21,6 +21,8 @@ package org.apache.flink.runtime.state.heap;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.runtime.state.IterableStateSnapshot;
+import org.apache.flink.runtime.state.StateEntry;
 import org.apache.flink.runtime.state.StateSnapshot;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
 import org.apache.flink.runtime.state.metainfo.StateMetaInfoSnapshot;
@@ -37,7 +39,7 @@ import java.io.IOException;
  */
 @Internal
 abstract class AbstractStateTableSnapshot<K, N, S>
-        implements StateSnapshot, StateSnapshot.StateKeyGroupWriter {
+		implements IterableStateSnapshot<K, N, S>, StateSnapshot.StateKeyGroupWriter {
 
     /** The {@link StateTable} from which this snapshot was created. */
     protected final StateTable<K, N, S> owningStateTable;
@@ -86,6 +88,13 @@ abstract class AbstractStateTableSnapshot<K, N, S>
     @Override
     public StateKeyGroupWriter getKeyGroupWriter() {
         return this;
+    }
+
+    @Override
+    public Iterator<StateEntry<K, N, S>> getIterator(int keyGroupId) {
+        StateMapSnapshot<K, N, S, ? extends StateMap<K, N, S>> stateMapSnapshot =
+                getStateMapSnapshotForKeyGroup(keyGroupId);
+        return stateMapSnapshot.getIterator(stateSnapshotTransformer);
     }
 
     /**

@@ -31,7 +31,7 @@ public interface KeyValueStateIterator extends AutoCloseable {
      * Advances the iterator. Should only be called if {@link #isValid()} returned true. Valid flag
      * can only change after calling {@link #next()}.
      */
-    void next();
+    void next() throws Exception;
 
     /** Returns the key-group for the current key. */
     int keyGroup();
