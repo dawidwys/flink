@@ -142,6 +142,8 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
 
         if (hasStateEntry) {
             isValid = true;
+            keyOut.clear();
+            valueOut.clear();
             currentStateIterator.writeOutNext();
         } else {
             isValid = false;
@@ -170,7 +172,9 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
                     new RegisteredKeyValueStateBackendMetaInfo<>(stateSnapshot.getMetaInfoSnapshot())
             );
         } else if (stateSnapshot instanceof HeapPriorityQueueStateSnapshot) {
-            this.currentStateIterator = new QueueIterator(
+            this.currentStateIterator = new QueueIterator<>(
+                    ((HeapPriorityQueueStateSnapshot<Object>) stateSnapshot).getElementsForKeyGroup(
+                            currentKeyGroup),
                     new RegisteredPriorityQueueStateBackendMetaInfo<>(stateSnapshot.getMetaInfoSnapshot())
             );
         }
@@ -206,8 +210,6 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
         @Override
         public void writeOutNext() throws IOException {
             StateEntry<?, ?, ?> currentEntry = currentStateIterator.next();
-            keyOut.clear();
-            valueOut.clear();
             // set the values we need to set
             boolean isAmbigousKeyPossible =
                     SavepointSerializationUtils.isAmbiguousKeyPossible(
@@ -252,19 +254,27 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
         }
     }
 
-    private class QueueIterator implements SingleStateIterator {
-        public <T> QueueIterator(RegisteredPriorityQueueStateBackendMetaInfo<T> metaInfo) {
-            
+    private class QueueIterator<T> implements SingleStateIterator {
+        private final Iterator<T> elementsForKeyGroup;
+        private final RegisteredPriorityQueueStateBackendMetaInfo<T> metaInfo;
+
+        public QueueIterator(
+                Iterator<T> elementsForKeyGroup,
+                RegisteredPriorityQueueStateBackendMetaInfo<T> metaInfo) {
+            this.elementsForKeyGroup = elementsForKeyGroup;
+            this.metaInfo = metaInfo;
         }
 
         @Override
         public boolean hasNext() {
-            return false;
+            return elementsForKeyGroup.hasNext();
         }
 
         @Override
         public void writeOutNext() throws IOException {
-
+            T next = elementsForKeyGroup.next();
+            SavepointSerializationUtils.writeKeyGroup(keyGroup(), keyGroupPrefixBytes, keyOut);
+            metaInfo.getElementSerializer().serialize(next, keyOut);
         }
     }
 

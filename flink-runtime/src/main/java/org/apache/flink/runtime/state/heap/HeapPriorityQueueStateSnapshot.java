@@ -31,6 +31,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.lang.reflect.Array;
+import java.util.Iterator;
 
 /**
  * This class represents the snapshot of an {@link HeapPriorityQueueSet}.
@@ -55,7 +56,7 @@ public class HeapPriorityQueueStateSnapshot<T> implements StateSnapshot {
     @Nonnegative private final int totalKeyGroups;
 
     /** Result of partitioning the snapshot by key-group. */
-    @Nullable private StateKeyGroupWriter stateKeyGroupWriter;
+    @Nullable private KeyGroupPartitioner.PartitioningResult<T> partitionedElements;
 
     HeapPriorityQueueStateSnapshot(
             @Nonnull T[] heapArrayCopy,
@@ -71,12 +72,16 @@ public class HeapPriorityQueueStateSnapshot<T> implements StateSnapshot {
         this.totalKeyGroups = totalKeyGroups;
     }
 
-    @SuppressWarnings("unchecked")
     @Nonnull
     @Override
     public StateKeyGroupWriter getKeyGroupWriter() {
 
-        if (stateKeyGroupWriter == null) {
+        return getPartitionedElements();
+    }
+
+    @SuppressWarnings("unchecked")
+    private KeyGroupPartitioner.PartitioningResult<T> getPartitionedElements() {
+        if (partitionedElements == null) {
 
             T[] partitioningOutput =
                     (T[])
@@ -96,10 +101,14 @@ public class HeapPriorityQueueStateSnapshot<T> implements StateSnapshot {
                             keyExtractor,
                             elementSerializer::serialize);
 
-            stateKeyGroupWriter = keyGroupPartitioner.partitionByKeyGroup();
+            partitionedElements = keyGroupPartitioner.partitionByKeyGroup();
         }
 
-        return stateKeyGroupWriter;
+        return partitionedElements;
+    }
+
+    public Iterator<T> getElementsForKeyGroup(int keyGroupId) {
+        return getPartitionedElements().getForKeyGroup(keyGroupId);
     }
 
     @Nonnull

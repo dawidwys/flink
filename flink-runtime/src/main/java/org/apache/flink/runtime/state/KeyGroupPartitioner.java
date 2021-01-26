@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.util.Preconditions;
@@ -27,6 +28,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.stream.IntStream;
 
 /**
  * Class that contains the base algorithm for partitioning data into key-groups. This algorithm
@@ -82,7 +86,7 @@ public class KeyGroupPartitioner<T> {
     @Nonnull protected final ElementWriterFunction<T> elementWriterFunction;
 
     /** Cached result. */
-    @Nullable protected StateSnapshot.StateKeyGroupWriter computedResult;
+    @Nullable private PartitioningResult<T> computedResult;
 
     /**
      * Creates a new {@link KeyGroupPartitioner}.
@@ -125,9 +129,9 @@ public class KeyGroupPartitioner<T> {
     }
 
     /**
-     * Partitions the data into key-groups and returns the result via {@link PartitioningResult}.
+     * Partitions the data into key-groups and returns the result via {@link PartitioningResultImpl}.
      */
-    public StateSnapshot.StateKeyGroupWriter partitionByKeyGroup() {
+    public PartitioningResult<T> partitionByKeyGroup() {
         if (computedResult == null) {
             reportAllElementKeyGroups();
             int outputNumberOfElements = buildHistogramByAccumulatingCounts();
@@ -184,18 +188,23 @@ public class KeyGroupPartitioner<T> {
         }
 
         this.computedResult =
-                new PartitioningResult<>(
+                new PartitioningResultImpl<>(
                         elementWriterFunction,
                         firstKeyGroup,
                         counterHistogram,
                         partitioningDestination);
     }
 
+    @Internal
+    public interface PartitioningResult<T> extends StateSnapshot.StateKeyGroupWriter {
+        Iterator<T> getForKeyGroup(int keyGroupId);
+    }
+
     /**
      * This represents the result of key-group partitioning. The data in {@link
      * #partitionedElements} is partitioned w.r.t. {@link KeyGroupPartitioner#keyGroupRange}.
      */
-    private static class PartitioningResult<T> implements StateSnapshot.StateKeyGroupWriter {
+    private static class PartitioningResultImpl<T> implements PartitioningResult<T> {
 
         /** Function to write one element to a {@link DataOutputView}. */
         @Nonnull private final ElementWriterFunction<T> elementWriterFunction;
@@ -215,7 +224,7 @@ public class KeyGroupPartitioner<T> {
         /** The first key-group of the range covered in the partitioning. */
         @Nonnegative private final int firstKeyGroup;
 
-        PartitioningResult(
+        PartitioningResultImpl(
                 @Nonnull ElementWriterFunction<T> elementWriterFunction,
                 @Nonnegative int firstKeyGroup,
                 @Nonnull int[] keyGroupEndOffsets,
@@ -252,6 +261,15 @@ public class KeyGroupPartitioner<T> {
                 elementWriterFunction.writeElement(partitionedElements[i], dov);
             }
         }
+
+        @Override
+        public Iterator<T> getForKeyGroup(int keyGroupId) {
+            int startOffset = getKeyGroupStartOffsetInclusive(keyGroupId);
+            int endOffset = getKeyGroupEndOffsetExclusive(keyGroupId);
+
+            return Arrays.stream(partitionedElements, startOffset, endOffset)
+                    .iterator();
+        }
     }
 
     public static <T> StateSnapshotKeyGroupReader createKeyGroupPartitionReader(
@@ -262,7 +280,7 @@ public class KeyGroupPartitioner<T> {
 
     /**
      * General algorithm to read key-grouped state that was written from a {@link
-     * PartitioningResult}.
+     * PartitioningResultImpl}.
      *
      * @param <T> type of the elements to read.
      */
