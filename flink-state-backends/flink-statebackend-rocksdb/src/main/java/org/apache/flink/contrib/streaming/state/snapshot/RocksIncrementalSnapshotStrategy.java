@@ -72,7 +72,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.UUID;
 
-import static org.apache.flink.contrib.streaming.state.snapshot.RocksSnapshotUtil.SST_FILE_SUFFIX;
+import static org.apache.flink.runtime.state.FullSnapshotUtil.SST_FILE_SUFFIX;
 
 /**
  * Snapshot strategy for {@link org.apache.flink.contrib.streaming.state.RocksDBKeyedStateBackend}

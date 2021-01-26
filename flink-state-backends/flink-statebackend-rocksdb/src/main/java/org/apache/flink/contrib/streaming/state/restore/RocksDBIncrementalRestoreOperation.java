@@ -76,7 +76,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
 
-import static org.apache.flink.contrib.streaming.state.snapshot.RocksSnapshotUtil.SST_FILE_SUFFIX;
+import static org.apache.flink.runtime.state.FullSnapshotUtil.SST_FILE_SUFFIX;
 import static org.apache.flink.runtime.state.StateUtil.unexpectedStateHandleException;
 import static org.apache.flink.util.Preconditions.checkArgument;
 
