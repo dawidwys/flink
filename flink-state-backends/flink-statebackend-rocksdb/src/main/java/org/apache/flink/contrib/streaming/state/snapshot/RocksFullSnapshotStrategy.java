@@ -228,25 +228,28 @@ public class RocksFullSnapshotStrategy<K>
         }
 
         private RocksStatesPerKeyGroupMergeIterator createKVStateIterator() throws IOException {
-            ReadOptions readOptions = null;
-            List<Tuple2<RocksIteratorWrapper, Integer>> kvStateIterators = null;
+            CloseableRegistry closeableRegistry = new CloseableRegistry();
 
             try {
-                readOptions = new ReadOptions();
+                ReadOptions readOptions = new ReadOptions();
+                closeableRegistry.registerCloseable(readOptions::close);
                 readOptions.setSnapshot(snapshotResources.snapshot);
-                kvStateIterators = createKVStateIterators(readOptions);
 
-                // Here we transfer ownership of ReadOptions and RocksIterators to the
+                List<Tuple2<RocksIteratorWrapper, Integer>> kvStateIterators =
+                        createKVStateIterators(readOptions);
+
+                for (Tuple2<RocksIteratorWrapper, Integer> iter : kvStateIterators) {
+                    closeableRegistry.registerCloseable(iter.f0);
+                }
+
+                // Here we transfer ownership of the required resources to the
                 // RocksStatesPerKeyGroupMergeIterator
                 return new RocksStatesPerKeyGroupMergeIterator(
-                        readOptions, new ArrayList<>(kvStateIterators), keyGroupPrefixBytes);
+                        closeableRegistry, new ArrayList<>(kvStateIterators), keyGroupPrefixBytes);
             } catch (Throwable t) {
                 // If anything goes wrong, clean up our stuff. If things went smoothly the
                 // merging iterator is now responsible for closing the resources
-                IOUtils.closeQuietly(readOptions);
-                if (kvStateIterators != null) {
-                    kvStateIterators.forEach(kv -> IOUtils.closeQuietly(kv.f0));
-                }
+                IOUtils.closeQuietly(closeableRegistry);
                 throw new IOException("Error creating merge iterator", t);
             }
         }
