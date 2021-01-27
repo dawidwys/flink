@@ -21,6 +21,7 @@ package org.apache.flink.runtime.state.heap;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.ListSerializer;
+import org.apache.flink.api.common.typeutils.base.MapSerializer;
 import org.apache.flink.core.memory.DataOutputSerializer;
 import org.apache.flink.runtime.state.IterableStateSnapshot;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -142,8 +143,6 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
 
         if (hasStateEntry) {
             isValid = true;
-            keyOut.clear();
-            valueOut.clear();
             currentStateIterator.writeOutNext();
         } else {
             isValid = false;
@@ -192,39 +191,40 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
 
     private class StateTableIterator implements SingleStateIterator {
 
-        private final Iterator<? extends StateEntry<?, ?, ?>> currentStateIterator;
-        private final RegisteredKeyValueStateBackendMetaInfo<?, ?> currentStateSnapshot;
+        private final Iterator<? extends StateEntry<?, ?, ?>> entriesIterator;
+        private final RegisteredKeyValueStateBackendMetaInfo<?, ?> stateSnapshot;
 
         private StateTableIterator(
-                Iterator<? extends StateEntry<?, ?, ?>> currentStateIterator,
-                RegisteredKeyValueStateBackendMetaInfo<?, ?> currentStateSnapshot) {
-            this.currentStateIterator = currentStateIterator;
-            this.currentStateSnapshot = currentStateSnapshot;
+                Iterator<? extends StateEntry<?, ?, ?>> entriesIterator,
+                RegisteredKeyValueStateBackendMetaInfo<?, ?> stateSnapshot) {
+            this.entriesIterator = entriesIterator;
+            this.stateSnapshot = stateSnapshot;
         }
 
         @Override
         public boolean hasNext() {
-            return currentStateIterator.hasNext();
+            return entriesIterator.hasNext();
         }
 
         @Override
         public void writeOutNext() throws IOException {
-            StateEntry<?, ?, ?> currentEntry = currentStateIterator.next();
-            // set the values we need to set
+            StateEntry<?, ?, ?> currentEntry = entriesIterator.next();
+            keyOut.clear();
+            valueOut.clear();
             boolean isAmbigousKeyPossible =
                     SavepointSerializationUtils.isAmbiguousKeyPossible(
-                            keySerializer, currentStateSnapshot.getPreviousNamespaceSerializer());
+                            keySerializer, stateSnapshot.getPreviousNamespaceSerializer());
             SavepointSerializationUtils.writeKeyGroup(keyGroup(), keyGroupPrefixBytes, keyOut);
             SavepointSerializationUtils.writeKey(
                     currentEntry.getKey(), castToType(keySerializer), keyOut, isAmbigousKeyPossible);
             SavepointSerializationUtils.writeNameSpace(
                     currentEntry.getNamespace(),
-                    castToType(currentStateSnapshot.getPreviousNamespaceSerializer()),
+                    castToType(stateSnapshot.getPreviousNamespaceSerializer()),
                     keyOut,
                     isAmbigousKeyPossible);
             TypeSerializer<?> previousStateSerializer =
-                    currentStateSnapshot.getPreviousStateSerializer();
-            switch (currentStateSnapshot.getStateType()) {
+                    stateSnapshot.getPreviousStateSerializer();
+            switch (stateSnapshot.getStateType()) {
                 case AGGREGATING:
                 case REDUCING:
                 case FOLDING:
@@ -241,7 +241,15 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
                             valueOut);
                     break;
                 case MAP:
-                    throw new UnsupportedOperationException();
+                    MapSerializer<Object, Object> mapSerializer = (MapSerializer<Object, Object>) previousStateSerializer;
+                    currentStateIterator = new MapStateIterator(
+                            (Map<Object, Object>)currentEntry.getState(),
+                            mapSerializer.getKeySerializer(),
+                            mapSerializer.getValueSerializer(),
+                            this
+                    );
+                    currentStateIterator.writeOutNext();
+                    break;
                 default:
                     throw new IllegalStateException("");
             }
@@ -251,6 +259,45 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
         @Nonnull
         private <T> TypeSerializer<T> castToType(@Nonnull TypeSerializer<?> serializer) {
             return (TypeSerializer<T>) serializer;
+        }
+    }
+
+    private class MapStateIterator implements SingleStateIterator {
+
+        private final Iterator<Map.Entry<Object, Object>> mapEntries;
+        private final TypeSerializer<Object> userKeySerializer;
+        private final TypeSerializer<Object> userValueSerializer;
+        private final StateTableIterator parentIterator;
+        private final int keyPrefixPosition;
+
+        private MapStateIterator(
+                Map<Object, Object> mapEntries,
+                TypeSerializer<Object> userKeySerializer,
+                TypeSerializer<Object> userValueSerializer,
+                StateTableIterator parentIterator) {
+            this.mapEntries = mapEntries.entrySet().iterator();
+            this.userKeySerializer = userKeySerializer;
+            this.userValueSerializer = userValueSerializer;
+            this.parentIterator = parentIterator;
+            this.keyPrefixPosition = keyOut.length();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return true;
+        }
+
+        @Override
+        public void writeOutNext() throws IOException {
+            Map.Entry<Object, Object> entry = mapEntries.next();
+            keyOut.setPosition(keyPrefixPosition);
+            valueOut.clear();
+            userKeySerializer.serialize(entry.getKey(), keyOut);
+            userValueSerializer.serialize(entry.getValue(), valueOut);
+
+            if (!mapEntries.hasNext()) {
+                currentStateIterator = parentIterator;
+            }
         }
     }
 
@@ -272,6 +319,8 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
 
         @Override
         public void writeOutNext() throws IOException {
+            keyOut.clear();
+            valueOut.clear();
             T next = elementsForKeyGroup.next();
             SavepointSerializationUtils.writeKeyGroup(keyGroup(), keyGroupPrefixBytes, keyOut);
             metaInfo.getElementSerializer().serialize(next, keyOut);

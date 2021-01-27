@@ -22,6 +22,7 @@ import org.apache.flink.api.common.state.StateDescriptor;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.api.common.typeutils.base.ListSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
+import org.apache.flink.api.common.typeutils.base.MapSerializer;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
 import org.apache.flink.runtime.state.KeyExtractorFunction;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -57,6 +58,11 @@ public class HeapStateKeyGroupMergeIteratorTest {
                         StateDescriptor.Type.LIST, "test", namespaceSerializer,
                         new ListSerializer<>(stateSerializer));
 
+        RegisteredKeyValueStateBackendMetaInfo<String, Map<Long, Long>> mapStateMetaInfo =
+                new RegisteredKeyValueStateBackendMetaInfo<>(
+                        StateDescriptor.Type.MAP, "test", namespaceSerializer,
+                        new MapSerializer<>(stateSerializer, stateSerializer));
+
         KeyGroupRange keyGroupRange = new KeyGroupRange(0, 3);
         int totalKeyGroups = 4;
         MockInternalKeyContext<Integer> mockKeyContext = new MockInternalKeyContext<>(
@@ -68,6 +74,9 @@ public class HeapStateKeyGroupMergeIteratorTest {
 
         CopyOnWriteStateTable<Integer, String, List<Long>> listTable =
                 new CopyOnWriteStateTable<>(mockKeyContext, listStateMetaInfo, keySerializer);
+
+        CopyOnWriteStateTable<Integer, String, Map<Long, Long>> mapTable =
+                new CopyOnWriteStateTable<>(mockKeyContext, mapStateMetaInfo, keySerializer);
 
         RegisteredPriorityQueueStateBackendMetaInfo<TimerHeapInternalTimer<Integer, String>> queueMetaInfo =
                 new RegisteredPriorityQueueStateBackendMetaInfo<>(
@@ -109,6 +118,19 @@ public class HeapStateKeyGroupMergeIteratorTest {
         listTable.put("a", Arrays.asList(8L, 9L));
         listTable.put("b", Arrays.asList(10L, 11L));
 
+        HashMap<Long, Long> longMap = new HashMap<>();
+        longMap.put(1L, 1L);
+        longMap.put(2L, 1L);
+        mockKeyContext.setCurrentKeyAndKeyGroup(0);
+        mapTable.put("a", longMap);
+        mapTable.put("b", longMap);
+        mockKeyContext.setCurrentKeyAndKeyGroup(1);
+        mapTable.put("a", longMap);
+        mapTable.put("b", longMap);
+        mockKeyContext.setCurrentKeyAndKeyGroup(2);
+        mapTable.put("a", longMap);
+        mapTable.put("b", longMap);
+
         priorityQueue.add(new TimerHeapInternalTimer<>(0L, 0, "a"));
         priorityQueue.add(new TimerHeapInternalTimer<>(1L, 0, "b"));
         priorityQueue.add(new TimerHeapInternalTimer<>(2L, 1, "a"));
@@ -118,15 +140,18 @@ public class HeapStateKeyGroupMergeIteratorTest {
 
         StateUID valueStateUID = StateUID.of("value", StateMetaInfoSnapshot.BackendStateType.KEY_VALUE);
         StateUID listStateUID = StateUID.of("list", StateMetaInfoSnapshot.BackendStateType.KEY_VALUE);
+        StateUID mapStateUID = StateUID.of("map", StateMetaInfoSnapshot.BackendStateType.KEY_VALUE);
         StateUID queueStateUID = StateUID.of("queue", StateMetaInfoSnapshot.BackendStateType.PRIORITY_QUEUE);
         Map<StateUID, Integer> stateNamesToId = new HashMap<>();
         stateNamesToId.put(valueStateUID, 0);
         stateNamesToId.put(listStateUID, 1);
-        stateNamesToId.put(queueStateUID, 2);
+        stateNamesToId.put(mapStateUID, 2);
+        stateNamesToId.put(queueStateUID, 3);
 
         Map<StateUID, StateSnapshot> cowStateTables = new HashMap<>();
         cowStateTables.put(valueStateUID, valueTable.stateSnapshot());
         cowStateTables.put(listStateUID, listTable.stateSnapshot());
+        cowStateTables.put(mapStateUID, mapTable.stateSnapshot());
         cowStateTables.put(queueStateUID, wrapper.stateSnapshot());
 
         HeapStateKeyGroupMergeIterator iterator =
