@@ -27,6 +27,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.state.KeyGroupRange;
+import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.TestLocalRecoveryConfig;
 import org.apache.flink.runtime.state.UncompressedStreamCompressionDecorator;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
@@ -37,6 +38,7 @@ import org.rocksdb.RocksDB;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 
 /** Test utils for the RocksDB state backend. */
@@ -44,6 +46,18 @@ public final class RocksDBTestUtils {
 
     public static <K> RocksDBKeyedStateBackendBuilder<K> builderForTestDefaults(
             File instanceBasePath, TypeSerializer<K> keySerializer) {
+        return builderForTestDefaults(
+                instanceBasePath,
+                keySerializer,
+                RocksDBStateBackend.PriorityQueueStateType.HEAP,
+                Collections.emptyList());
+    }
+
+    public static <K> RocksDBKeyedStateBackendBuilder<K> builderForTestDefaults(
+            File instanceBasePath,
+            TypeSerializer<K> keySerializer,
+            RocksDBStateBackend.PriorityQueueStateType priorityQueueStateType,
+            Collection<KeyedStateHandle> stateHandles) {
 
         final RocksDBResourceContainer optionsContainer = new RocksDBResourceContainer();
 
@@ -59,10 +73,10 @@ public final class RocksDBTestUtils {
                 new KeyGroupRange(0, 1),
                 new ExecutionConfig(),
                 TestLocalRecoveryConfig.disabled(),
-                RocksDBStateBackend.PriorityQueueStateType.HEAP,
+                priorityQueueStateType,
                 TtlTimeProvider.DEFAULT,
                 new UnregisteredMetricsGroup(),
-                Collections.emptyList(),
+                stateHandles,
                 UncompressedStreamCompressionDecorator.INSTANCE,
                 new CloseableRegistry());
     }

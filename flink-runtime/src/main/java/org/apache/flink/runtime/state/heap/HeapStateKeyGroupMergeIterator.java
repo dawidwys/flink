@@ -293,7 +293,9 @@ public class HeapStateKeyGroupMergeIterator implements KeyValueStateIterator {
             keyOut.setPosition(keyPrefixPosition);
             valueOut.clear();
             userKeySerializer.serialize(entry.getKey(), keyOut);
-            userValueSerializer.serialize(entry.getValue(), valueOut);
+            Object userValue = entry.getValue();
+            valueOut.writeBoolean(userValue == null);
+            userValueSerializer.serialize(userValue, valueOut);
 
             if (!mapEntries.hasNext()) {
                 currentStateIterator = parentIterator;
