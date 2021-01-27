@@ -32,6 +32,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 /**
  * Abstract base class for snapshots of a {@link StateTable}. Offers a way to serialize the snapshot

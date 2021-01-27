@@ -21,6 +21,7 @@ package org.apache.flink.runtime.state.heap;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.runtime.state.StateEntry;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
 import org.apache.flink.util.ResourceGuard;
 
@@ -77,6 +78,13 @@ public class CopyOnWriteSkipListStateMapSnapshot<K, N, S>
     /** Returns the internal version of the when this snapshot was created. */
     int getSnapshotVersion() {
         return snapshotVersion;
+    }
+
+    @Override
+    public Iterator<StateEntry<K, N, S>> getIterator(
+            @Nullable StateSnapshotTransformer<S> stateSnapshotTransformer) {
+        throw new UnsupportedOperationException(
+                "Not supported for the CopyOnWriteSkipListStateMapSnapshot.");
     }
 
     @Override

@@ -20,6 +20,7 @@ package org.apache.flink.runtime.state.heap;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.memory.DataOutputView;
+import org.apache.flink.runtime.state.StateEntry;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
 
 import javax.annotation.Nonnull;
@@ -27,6 +28,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -46,6 +48,12 @@ public class NestedStateMapSnapshot<K, N, S>
      */
     public NestedStateMapSnapshot(NestedStateMap<K, N, S> owningStateMap) {
         super(owningStateMap);
+    }
+
+    @Override
+    public Iterator<StateEntry<K, N, S>> getIterator(
+            @Nullable StateSnapshotTransformer<S> stateSnapshotTransformer) {
+        throw new UnsupportedOperationException("Not supported for the NestedStateMapSnapshot.");
     }
 
     @Override

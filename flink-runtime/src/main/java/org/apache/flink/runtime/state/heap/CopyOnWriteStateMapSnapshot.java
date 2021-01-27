@@ -111,6 +111,19 @@ public class CopyOnWriteStateMapSnapshot<K, N, S>
     }
 
     @Override
+    public Iterator<StateEntry<K, N, S>> getIterator(
+            @Nullable final StateSnapshotTransformer<S> stateSnapshotTransformer) {
+
+        return stateSnapshotTransformer == null
+                ? new NonTransformSnapshotIterator<>(
+                numberOfEntriesInSnapshotData, snapshotData)
+                : new TransformedSnapshotIterator<>(
+                numberOfEntriesInSnapshotData,
+                snapshotData,
+                stateSnapshotTransformer);
+    }
+
+    @Override
     public void writeState(
             TypeSerializer<K> keySerializer,
             TypeSerializer<N> namespaceSerializer,
