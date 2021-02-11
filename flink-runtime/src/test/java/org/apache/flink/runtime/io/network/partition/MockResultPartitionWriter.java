@@ -61,6 +61,11 @@ public class MockResultPartitionWriter implements ResultPartitionWriter {
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {}
 
     @Override
+    public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
     public ResultSubpartitionView createSubpartitionView(
             int index, BufferAvailabilityListener availabilityListener) throws IOException {
         throw new UnsupportedOperationException();

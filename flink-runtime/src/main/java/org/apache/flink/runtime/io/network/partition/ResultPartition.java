@@ -190,6 +190,13 @@ public abstract class ResultPartition implements ResultPartitionWriter {
 
     // ------------------------------------------------------------------------
 
+    @Override
+    public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    public void onSubpartitionAllRecordsProcessed(int subpartition) {}
+
     /**
      * Finishes the result partition.
      *

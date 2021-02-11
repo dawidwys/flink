@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.io.network.partition;
 
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.io.network.api.EndOfUserRecordsEvent;
 import org.apache.flink.runtime.io.network.buffer.BufferCompressor;
 import org.apache.flink.runtime.io.network.buffer.BufferPool;
 import org.apache.flink.util.function.SupplierWithException;
@@ -27,8 +28,10 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
+import static org.apache.flink.util.Preconditions.checkState;
 
 /**
  * A result output of a task, pipelined (streamed) to the receivers.
@@ -51,16 +54,38 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
     private static final int PIPELINED_RESULT_PARTITION_ITSELF = -42;
 
     /**
-     * The lock that guard release operations (which can be asynchronously propagated from the
-     * networks threads.
+     * The lock that guard operations which can be asynchronously propagated from the networks
+     * threads.
      */
-    private final Object releaseLock = new Object();
+    private final Object lock = new Object();
+
+    /**
+     * A flag for each subpartition indicating whether the downstream task has processed all the
+     * user records.
+     */
+    @GuardedBy("lock")
+    private final boolean[] allRecordsProcessedSubpartitions;
+
+    /**
+     * The total number of subpartitions whose user records have not been fully processed by the
+     * downstream tasks yet.
+     */
+    @GuardedBy("lock")
+    private int numNotAllRecordsProcessedSubpartitions;
+
+    /**
+     * The future represents whether all the records has been processed by all the downstream tasks.
+     * It would be created on first acquisition.
+     */
+    @Nullable
+    @GuardedBy("lock")
+    private CompletableFuture<Void> allRecordsProcessedFuture;
 
     /**
      * A flag for each subpartition indicating whether it was already consumed or not, to make
      * releases idempotent.
      */
-    @GuardedBy("releaseLock")
+    @GuardedBy("lock")
     private final boolean[] consumedSubpartitions;
 
     /**
@@ -70,7 +95,7 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
      * results. Even if all consumers are released, partition can not be released until writer
      * releases the partition as well.
      */
-    @GuardedBy("releaseLock")
+    @GuardedBy("lock")
     private int numberOfUsers;
 
     public PipelinedResultPartition(
@@ -94,6 +119,9 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
                 partitionManager,
                 bufferCompressor,
                 bufferPoolFactory);
+
+        this.allRecordsProcessedSubpartitions = new boolean[subpartitions.length];
+        this.numNotAllRecordsProcessedSubpartitions = subpartitions.length;
 
         this.consumedSubpartitions = new boolean[subpartitions.length];
         this.numberOfUsers = subpartitions.length + 1;
@@ -126,7 +154,7 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
 
         // we synchronize only the bookkeeping section, to avoid holding the lock during any
         // calls into other components
-        synchronized (releaseLock) {
+        synchronized (lock) {
             if (subpartitionIndex != PIPELINED_RESULT_PARTITION_ITSELF) {
                 if (consumedSubpartitions[subpartitionIndex]) {
                     // repeated call - ignore
@@ -162,6 +190,35 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
     @Override
     public void flush(int targetSubpartition) {
         flushSubpartition(targetSubpartition, false);
+    }
+
+    @Override
+    public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+        synchronized (lock) {
+            if (allRecordsProcessedFuture == null) {
+                allRecordsProcessedFuture = new CompletableFuture<>();
+                broadcastEvent(EndOfUserRecordsEvent.INSTANCE, false);
+            }
+
+            return allRecordsProcessedFuture;
+        }
+    }
+
+    @Override
+    public void onSubpartitionAllRecordsProcessed(int subpartition) {
+        synchronized (lock) {
+            if (allRecordsProcessedSubpartitions[subpartition]) {
+                return;
+            }
+
+            allRecordsProcessedSubpartitions[subpartition] = true;
+            numNotAllRecordsProcessedSubpartitions--;
+
+            checkState(allRecordsProcessedFuture != null);
+            if (numNotAllRecordsProcessedSubpartitions == 0) {
+                allRecordsProcessedFuture.complete(null);
+            }
+        }
     }
 
     @Override

@@ -149,6 +149,11 @@ public class ConsumableNotifyingResultPartitionWriterDecorator {
         }
 
         @Override
+        public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+            return partitionWriter.getAllRecordsProcessedFuture();
+        }
+
+        @Override
         public void setMetricGroup(TaskIOMetricGroup metrics) {
             partitionWriter.setMetricGroup(metrics);
         }

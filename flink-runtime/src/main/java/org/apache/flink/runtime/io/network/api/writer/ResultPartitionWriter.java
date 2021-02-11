@@ -29,6 +29,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A record-oriented runtime result writer API for producing results.
@@ -64,6 +65,12 @@ public interface ResultPartitionWriter extends AutoCloseable, AvailabilityProvid
 
     /** Writes the given {@link AbstractEvent} to all channels. */
     void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException;
+
+    /**
+     * Gets the future indicating whether all the records has been processed by the downstream
+     * tasks.
+     */
+    CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException;
 
     /** Sets the metric group for the {@link ResultPartitionWriter}. */
     void setMetricGroup(TaskIOMetricGroup metrics);

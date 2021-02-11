@@ -20,6 +20,7 @@ package org.apache.flink.runtime.io.network.netty;
 
 import org.apache.flink.runtime.io.network.NetworkSequenceViewReader;
 import org.apache.flink.runtime.io.network.TaskEventPublisher;
+import org.apache.flink.runtime.io.network.netty.NettyMessage.AckAllUserRecordsProcessed;
 import org.apache.flink.runtime.io.network.netty.NettyMessage.AddCredit;
 import org.apache.flink.runtime.io.network.netty.NettyMessage.CancelPartitionRequest;
 import org.apache.flink.runtime.io.network.netty.NettyMessage.CloseRequest;
@@ -123,6 +124,10 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
 
                 outboundQueue.addCreditOrResumeConsumption(
                         request.receiverId, NetworkSequenceViewReader::resumeConsumption);
+            } else if (msgClazz == NettyMessage.AckAllUserRecordsProcessed.class) {
+                AckAllUserRecordsProcessed request = (AckAllUserRecordsProcessed) msg;
+
+                outboundQueue.acknowledgeAllRecordsProcessed(request.receiverId);
             } else {
                 LOG.warn("Received unexpected client request: {}", msg);
             }
