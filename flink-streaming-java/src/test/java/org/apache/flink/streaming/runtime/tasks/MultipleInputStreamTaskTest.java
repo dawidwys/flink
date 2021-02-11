@@ -39,10 +39,13 @@ import org.apache.flink.metrics.Metric;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
-import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
+import org.apache.flink.runtime.io.network.partition.PartitionTestUtils;
+import org.apache.flink.runtime.io.network.partition.ResultPartition;
+import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.metrics.MetricNames;
 import org.apache.flink.runtime.metrics.NoOpMetricRegistry;
@@ -94,10 +97,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.flink.streaming.runtime.tasks.StreamTaskTest.waitTillResultPartitionHasEnoughBuffers;
 import static org.apache.flink.util.Preconditions.checkArgument;
-import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -848,49 +850,74 @@ public class MultipleInputStreamTaskTest {
 
     @Test
     public void testRpcTriggerCheckpointWithoutSourceChain() throws Exception {
-        AtomicReference<Future<?>> lastCheckpointTriggerFuture = new AtomicReference<>();
+        ResultPartition[] partitionWriters = new ResultPartition[2];
+        try {
+            for (int i = 0; i < partitionWriters.length; ++i) {
+                partitionWriters[i] =
+                        PartitionTestUtils.createPartition(ResultPartitionType.PIPELINED_BOUNDED);
+                partitionWriters[i].setup();
+            }
 
-        try (StreamTaskMailboxTestHarness<String> testHarness =
-                new StreamTaskMailboxTestHarnessBuilder<>(
-                                env ->
-                                        new HoldingOnAfterInvokeMultipleInputStreamTask(
-                                                env, lastCheckpointTriggerFuture),
-                                BasicTypeInfo.STRING_TYPE_INFO)
-                        .addInput(BasicTypeInfo.STRING_TYPE_INFO)
-                        .addInput(BasicTypeInfo.INT_TYPE_INFO)
-                        .addInput(BasicTypeInfo.DOUBLE_TYPE_INFO)
-                        .modifyStreamConfig(config -> config.setCheckpointingEnabled(true))
-                        .setupOperatorChain(new MapToStringMultipleInputOperatorFactory(3))
-                        .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
-                        .build()) {
+            try (StreamTaskMailboxTestHarness<String> testHarness =
+                    new StreamTaskMailboxTestHarnessBuilder<>(
+                                    MultipleInputStreamTask::new, BasicTypeInfo.STRING_TYPE_INFO)
+                            .addInput(BasicTypeInfo.STRING_TYPE_INFO)
+                            .addInput(BasicTypeInfo.INT_TYPE_INFO)
+                            .addInput(BasicTypeInfo.DOUBLE_TYPE_INFO)
+                            .modifyStreamConfig(config -> config.setCheckpointingEnabled(true))
+                            .setupOperatorChain(new MapToStringMultipleInputOperatorFactory(3))
+                            .setNumberOfNonChainedOutputs(1 + partitionWriters.length)
+                            .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
+                            .addAdditionalOutput(partitionWriters)
+                            .build()) {
 
-            testHarness
-                    .getStreamTask()
-                    .getCheckpointCoordinator()
-                    .setEnableCheckpointAfterTasksFinished(true);
+                testHarness
+                        .getStreamTask()
+                        .getCheckpointCoordinator()
+                        .setEnableCheckpointAfterTasksFinished(true);
 
-            // Tests triggering checkpoint when all the inputs are alive.
-            Future<Boolean> checkpointFuture = triggerCheckpoint(testHarness, 2);
-            processMailTillCheckpointSuccess(testHarness, checkpointFuture);
-            assertEquals(2, testHarness.getTaskStateManager().getReportedCheckpointId());
+                // Tests triggering checkpoint when all the inputs are alive.
+                Future<Boolean> checkpointFuture = triggerCheckpoint(testHarness, 2);
+                processMailTillCheckpointSuccess(testHarness, checkpointFuture);
+                assertEquals(2, testHarness.getTaskStateManager().getReportedCheckpointId());
 
-            // Tests trigger checkpoint after some inputs have received EndOfPartition
-            testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 0, 0);
-            checkpointFuture = triggerCheckpoint(testHarness, 4);
-            processMailTillCheckpointSuccess(testHarness, checkpointFuture);
-            assertEquals(4, testHarness.getTaskStateManager().getReportedCheckpointId());
+                // Tests triggering checkpoint after some inputs have received EndOfPartition.
+                testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 0, 0);
+                checkpointFuture = triggerCheckpoint(testHarness, 4);
+                processMailTillCheckpointSuccess(testHarness, checkpointFuture);
+                assertEquals(4, testHarness.getTaskStateManager().getReportedCheckpointId());
 
-            // Tests trigger checkpoint after all the inputs have received EndOfPartition.
-            testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 1, 0);
-            testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 2, 0);
-            checkpointFuture = triggerCheckpoint(testHarness, 6);
-            lastCheckpointTriggerFuture.set(checkpointFuture);
+                // Simulates the netty thread reports the downstream tasks have processed all the
+                // records.
+                new Thread(
+                                () -> {
+                                    for (ResultPartition partitionWriter : partitionWriters) {
+                                        waitTillResultPartitionHasEnoughBuffers(partitionWriter, 4);
+                                    }
 
-            // The checkpoint 6 would be triggered successfully.
-            // TODO: Would also check the checkpoint succeed after we also waiting
-            // for the asynchronous step to finish on finish.
-            testHarness.finishProcessing();
-            assertTrue(checkpointFuture.isDone());
+                                    for (ResultPartition partitionWriter : partitionWriters) {
+                                        partitionWriter.onSubpartitionAllRecordsProcessed(0);
+                                    }
+                                })
+                        .start();
+
+                // Tests triggering checkpoint after all the inputs have received EndOfPartition.
+                testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 1, 0);
+                testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 2, 0);
+                checkpointFuture = triggerCheckpoint(testHarness, 6);
+
+                // The checkpoint 6 would be triggered successfully.
+                // TODO: Would also check the checkpoint succeed after we also waiting
+                // for the asynchronous step to finish on finish.
+                testHarness.finishProcessing();
+                assertTrue(checkpointFuture.isDone());
+            }
+        } finally {
+            for (ResultPartitionWriter writer : partitionWriters) {
+                if (writer != null) {
+                    writer.close();
+                }
+            }
         }
     }
 
@@ -1236,35 +1263,5 @@ public class MultipleInputStreamTaskTest {
 
         @Override
         public void onPeriodicEmit(WatermarkOutput output) {}
-    }
-
-    /**
-     * Special stream task implementation that would waits till all checkpoints get triggered before
-     * actually finish.
-     *
-     * <p>TODO: It would be removed after we introduce the mechanism that make the upstream tasks
-     * wait for the downstream tasks to process all the records before finished.
-     */
-    static class HoldingOnAfterInvokeMultipleInputStreamTask
-            extends MultipleInputStreamTask<String> {
-
-        private final AtomicReference<Future<?>> lastCheckpointTriggerFuture;
-
-        public HoldingOnAfterInvokeMultipleInputStreamTask(
-                Environment env, AtomicReference<Future<?>> lastCheckpointTriggerFuture)
-                throws Exception {
-            super(env);
-            this.lastCheckpointTriggerFuture = checkNotNull(lastCheckpointTriggerFuture);
-        }
-
-        @Override
-        protected void afterInvoke() throws Exception {
-            while (!lastCheckpointTriggerFuture.get().isDone()) {
-                Thread.sleep(200);
-                mainMailboxExecutor.tryYield();
-            }
-
-            super.afterInvoke();
-        }
     }
 }
