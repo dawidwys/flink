@@ -191,6 +191,9 @@ public class TestInputChannel extends InputChannel {
     }
 
     @Override
+    public void acknowledgeAllRecordsProcessed() throws IOException {}
+
+    @Override
     protected void notifyChannelNonEmpty() {
         inputGate.notifyChannelNonEmpty(this);
     }
