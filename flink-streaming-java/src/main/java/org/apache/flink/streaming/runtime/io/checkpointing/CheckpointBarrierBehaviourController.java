@@ -22,9 +22,9 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
+import org.apache.flink.util.function.ThrowingConsumer;
 
 import java.io.IOException;
-import java.util.Optional;
 
 /** Controls when the checkpoint should be actually triggered. */
 @Internal
@@ -39,28 +39,32 @@ public interface CheckpointBarrierBehaviourController {
             throws IOException;
 
     /** Invoked per every received {@link CheckpointBarrier}. */
-    Optional<CheckpointBarrier> barrierReceived(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier)
+    void barrierReceived(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
             throws IOException, CheckpointException;
 
     /**
      * Invoked once per checkpoint, before the first invocation of {@link
-     * #barrierReceived(InputChannelInfo, CheckpointBarrier)} for that given checkpoint.
-     *
-     * @return {@code true} if checkpoint should be triggered.
+     * #barrierReceived(InputChannelInfo, CheckpointBarrier, ThrowingConsumer)} for that given
+     * checkpoint.
      */
-    Optional<CheckpointBarrier> preProcessFirstBarrier(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier)
+    void preProcessFirstBarrier(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
             throws IOException, CheckpointException;
 
     /**
      * Invoked once per checkpoint, after the last invocation of {@link
-     * #barrierReceived(InputChannelInfo, CheckpointBarrier)} for that given checkpoint.
-     *
-     * @return {@code true} if checkpoint should be triggered.
+     * #barrierReceived(InputChannelInfo, CheckpointBarrier, ThrowingConsumer)} for that given
+     * checkpoint.
      */
-    Optional<CheckpointBarrier> postProcessLastBarrier(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier)
+    void postProcessLastBarrier(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
             throws IOException, CheckpointException;
 
     void abortPendingCheckpoint(long cancelledId, CheckpointException exception) throws IOException;

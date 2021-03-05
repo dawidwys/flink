@@ -166,7 +166,7 @@ public class AlignedControllerTest {
         alignedController.barrierAnnouncement(
                 barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent(), 0);
         alignedController.barrierReceived(
-                barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent());
+                barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent(), b -> {});
         alignedController.barrierAnnouncement(
                 barrier1.getChannelInfo(), (CheckpointBarrier) barrier1.getEvent(), 1);
         alignedController.barrierAnnouncement(

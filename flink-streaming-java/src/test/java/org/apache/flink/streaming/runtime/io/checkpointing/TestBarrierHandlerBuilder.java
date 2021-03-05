@@ -26,9 +26,11 @@ import org.apache.flink.streaming.runtime.tasks.TestSubtaskCheckpointCoordinator
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.clock.SystemClock;
 
-/** A builder for creating instances of {@link SingleCheckpointBarrierHandler} for tests. */
+/** /** A builder for creating instances of {@link SingleCheckpointBarrierHandler} for tests. */
 public class TestBarrierHandlerBuilder {
     private final AbstractInvokable target;
+    private AlternatingController.DelayedActionRegistration actionRegistration =
+            (callable, delay) -> {};
     private Clock clock = SystemClock.getInstance();
 
     private TestBarrierHandlerBuilder(AbstractInvokable target) {
@@ -37,6 +39,12 @@ public class TestBarrierHandlerBuilder {
 
     public static TestBarrierHandlerBuilder builder(AbstractInvokable target) {
         return new TestBarrierHandlerBuilder(target);
+    }
+
+    public TestBarrierHandlerBuilder withActionRegistration(
+            AlternatingController.DelayedActionRegistration actionRegistration) {
+        this.actionRegistration = actionRegistration;
+        return this;
     }
 
     public TestBarrierHandlerBuilder withClock(Clock clock) {
@@ -60,6 +68,7 @@ public class TestBarrierHandlerBuilder {
                         new AlignedController(inputGate),
                         new UnalignedController(
                                 new TestSubtaskCheckpointCoordinator(stateWriter), inputGate),
-                        clock));
+                        clock,
+                        actionRegistration));
     }
 }

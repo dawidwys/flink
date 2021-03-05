@@ -152,7 +152,8 @@ public class InputProcessorUtil {
                                 ? new AlternatingController(
                                         new AlignedController(inputs),
                                         new UnalignedController(checkpointCoordinator, inputs),
-                                        clock)
+                                        clock,
+                                        (callable, delay) -> {})
                                 : new AlignedController(inputs);
                 return new SingleCheckpointBarrierHandler(
                         taskName, toNotifyOnCheckpoint, clock, numberOfChannels, controller);

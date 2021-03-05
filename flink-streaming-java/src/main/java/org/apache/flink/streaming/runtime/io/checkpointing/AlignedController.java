@@ -23,13 +23,14 @@ import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
+import org.apache.flink.util.function.ThrowingConsumer;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -43,10 +44,11 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
 
     /**
      * {@link #blockedChannels} are the ones for which we have already processed {@link
-     * CheckpointBarrier} (via {@link #barrierReceived(InputChannelInfo, CheckpointBarrier)}. {@link
-     * #sequenceNumberInAnnouncedChannels} on the other hand, are the ones that we have processed
-     * {@link #barrierAnnouncement(InputChannelInfo, CheckpointBarrier, int)} but not yet {@link
-     * #barrierReceived(InputChannelInfo, CheckpointBarrier)}.
+     * CheckpointBarrier} (via {@link #barrierReceived(InputChannelInfo, CheckpointBarrier,
+     * ThrowingConsumer)}. {@link #sequenceNumberInAnnouncedChannels} on the other hand, are the
+     * ones that we have processed {@link #barrierAnnouncement(InputChannelInfo, CheckpointBarrier,
+     * int)} but not yet {@link #barrierReceived(InputChannelInfo, CheckpointBarrier,
+     * ThrowingConsumer)}.
      */
     private final Map<InputChannelInfo, Boolean> blockedChannels;
 
@@ -79,33 +81,38 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
     }
 
     @Override
-    public Optional<CheckpointBarrier> barrierReceived(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier) {
+    public void barrierReceived(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint) {
         checkState(
                 !blockedChannels.put(channelInfo, true),
                 "Stream corrupt: Repeated barrier for same checkpoint on input " + channelInfo);
         sequenceNumberInAnnouncedChannels.remove(channelInfo);
         CheckpointableInput input = inputs[channelInfo.getGateIdx()];
         input.blockConsumption(channelInfo);
-        return Optional.empty();
     }
 
     @Override
-    public Optional<CheckpointBarrier> preProcessFirstBarrier(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier) {
+    public void preProcessFirstBarrier(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint) {
         checkArgument(
                 !barrier.getCheckpointOptions().isUnalignedCheckpoint(),
                 "Unaligned barrier is not expected");
-        return Optional.empty();
     }
 
     @Override
-    public Optional<CheckpointBarrier> postProcessLastBarrier(
-            InputChannelInfo channelInfo, CheckpointBarrier barrier) throws IOException {
+    public void postProcessLastBarrier(
+            InputChannelInfo channelInfo,
+            CheckpointBarrier barrier,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
+            throws IOException {
         checkState(!barrier.getCheckpointOptions().isUnalignedCheckpoint());
         resetPendingCheckpoint(barrier.getId());
         resumeConsumption();
-        return Optional.of(barrier);
+        triggerCheckpoint.accept(barrier);
     }
 
     @Override
@@ -134,8 +141,8 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
                 .collect(Collectors.toSet());
     }
 
-    public Map<InputChannelInfo, Integer> getSequenceNumberInAnnouncedChannels() {
-        return new HashMap<>(sequenceNumberInAnnouncedChannels);
+    Map<InputChannelInfo, Integer> getSequenceNumberInAnnouncedChannels() {
+        return Collections.unmodifiableMap(sequenceNumberInAnnouncedChannels);
     }
 
     public void resumeConsumption() throws IOException {
