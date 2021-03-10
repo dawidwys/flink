@@ -31,6 +31,7 @@ import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
 import org.apache.flink.streaming.runtime.io.StreamTwoInputProcessor;
 import org.apache.flink.streaming.runtime.tasks.SubtaskCheckpointCoordinator;
+import org.apache.flink.streaming.runtime.tasks.TimerService;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.clock.SystemClock;
 
@@ -57,7 +58,8 @@ public class InputProcessorUtil {
             IndexedInputGate[] inputGates,
             TaskIOMetricGroup taskIOMetricGroup,
             String taskName,
-            MailboxExecutor mailboxExecutor) {
+            MailboxExecutor mailboxExecutor,
+            TimerService timerService) {
         CheckpointedInputGate[] checkpointedInputGates =
                 createCheckpointedMultipleInputGate(
                         toNotifyOnCheckpoint,
@@ -67,7 +69,8 @@ public class InputProcessorUtil {
                         taskName,
                         mailboxExecutor,
                         new List[] {Arrays.asList(inputGates)},
-                        Collections.emptyList());
+                        Collections.emptyList(),
+                        timerService);
         return Iterables.getOnlyElement(Arrays.asList(checkpointedInputGates));
     }
 
@@ -83,7 +86,8 @@ public class InputProcessorUtil {
             String taskName,
             MailboxExecutor mailboxExecutor,
             List<IndexedInputGate>[] inputGates,
-            List<StreamTaskSourceInput<?>> sourceInputs) {
+            List<StreamTaskSourceInput<?>> sourceInputs,
+            TimerService timerService) {
         CheckpointBarrierHandler barrierHandler =
                 createCheckpointBarrierHandler(
                         toNotifyOnCheckpoint,
@@ -91,7 +95,9 @@ public class InputProcessorUtil {
                         checkpointCoordinator,
                         taskName,
                         inputGates,
-                        sourceInputs);
+                        sourceInputs,
+                        mailboxExecutor,
+                        timerService);
         return createCheckpointedMultipleInputGate(
                 mailboxExecutor, inputGates, taskIOMetricGroup, barrierHandler, config);
     }
@@ -130,7 +136,9 @@ public class InputProcessorUtil {
             SubtaskCheckpointCoordinator checkpointCoordinator,
             String taskName,
             List<IndexedInputGate>[] inputGates,
-            List<StreamTaskSourceInput<?>> sourceInputs) {
+            List<StreamTaskSourceInput<?>> sourceInputs,
+            MailboxExecutor mailboxExecutor,
+            TimerService timerService) {
 
         CheckpointableInput[] inputs =
                 Stream.<CheckpointableInput>concat(
@@ -153,7 +161,14 @@ public class InputProcessorUtil {
                                         new AlignedController(inputs),
                                         new UnalignedController(checkpointCoordinator, inputs),
                                         clock,
-                                        (callable, delay) -> {})
+                                        (callable, delay) ->
+                                                timerService.registerTimer(
+                                                        timerService.getCurrentProcessingTime()
+                                                                + delay.toMillis(),
+                                                        timestamp ->
+                                                                mailboxExecutor.submit(
+                                                                        callable,
+                                                                        "Execute checkpoint barrier handler delayed action")))
                                 : new AlignedController(inputs);
                 return new SingleCheckpointBarrierHandler(
                         taskName, toNotifyOnCheckpoint, clock, numberOfChannels, controller);

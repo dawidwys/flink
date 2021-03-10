@@ -271,7 +271,7 @@ public class AlternatingController implements CheckpointBarrierBehaviourControll
 
     /** A provider for a method to register a delayed action. */
     @FunctionalInterface
-    interface DelayedActionRegistration {
+    public interface DelayedActionRegistration {
         void schedule(Callable<?> callable, Duration delay);
     }
 }
