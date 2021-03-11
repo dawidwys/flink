@@ -25,6 +25,9 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.function.ThrowingConsumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
@@ -37,6 +40,9 @@ import static org.apache.flink.util.Preconditions.checkState;
 /** Controller that can alternate between aligned and unaligned checkpoints. */
 @Internal
 public class AlternatingController implements CheckpointBarrierBehaviourController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AlternatingController.class);
+
     private final AlignedController alignedController;
     private final UnalignedController unalignedController;
     private final DelayedActionRegistration delayedActionRegistration;
@@ -99,6 +105,10 @@ public class AlternatingController implements CheckpointBarrierBehaviourControll
                             && lastCompletedBarrier < barrierId
                             && activeController == alignedController) {
                         // Let's timeout this barrier
+                        LOG.info(
+                                "Checkpoint alignment for barrier {} actively timed out. Switching"
+                                        + " over to unaligned checkpoints.",
+                                barrierId);
                         unalignedController.barrierAnnouncement(
                                 channelInfo, announcedBarrier, sequenceNumber);
                     }
@@ -140,6 +150,10 @@ public class AlternatingController implements CheckpointBarrierBehaviourControll
 
         if (maybeTimedOut.isPresent()) {
             if (activeController == alignedController) {
+                LOG.info(
+                        "Received a barrier for a checkpoint {} with timed out alignment. Switching"
+                                + " over to unaligned checkpoints.",
+                        barrier.getId());
                 switchToUnaligned(channelInfo, maybeTimedOut.get(), b -> {});
                 triggerCheckpoint.accept(maybeTimedOut.get());
             } else {
@@ -179,6 +193,10 @@ public class AlternatingController implements CheckpointBarrierBehaviourControll
                     if (lastSeenBarrier == barrierId
                             && lastCompletedBarrier < barrierId
                             && activeController == alignedController) {
+                        LOG.info(
+                                "Checkpoint alignment for barrier {} actively timed out. Switching"
+                                        + " over to unaligned checkpoints.",
+                                barrierId);
                         switchToUnaligned(channelInfo, barrier.asUnaligned(), triggerCheckpoint);
                     }
                     return null;
