@@ -353,7 +353,7 @@ public class AlternatingControllerTest {
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
                                 numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
-                        .withTestChannels()
+                        .withRemoteChannels()
                         .withSyncExecutor()
                         .build();
 
@@ -610,7 +610,7 @@ public class AlternatingControllerTest {
         InputChannelInfo channelInfo = channel0.getChannelInfo();
 
         controller.preProcessFirstBarrierOrAnnouncement(barrier);
-        controller.barrierAnnouncement(channelInfo, barrier, 1);
+        controller.barrierAnnouncement(channelInfo, barrier, 1, b -> {});
 
         if (sleepBeforePreProcess) {
             clock.advanceTime(alignmentTimeout * 2, TimeUnit.MILLISECONDS);

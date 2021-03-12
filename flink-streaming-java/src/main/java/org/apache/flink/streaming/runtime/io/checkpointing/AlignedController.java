@@ -27,9 +27,9 @@ import org.apache.flink.util.function.ThrowingConsumer;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -46,9 +46,10 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
      * {@link #blockedChannels} are the ones for which we have already processed {@link
      * CheckpointBarrier} (via {@link #barrierReceived(InputChannelInfo, CheckpointBarrier,
      * ThrowingConsumer)}. {@link #sequenceNumberInAnnouncedChannels} on the other hand, are the
-     * ones that we have processed {@link #barrierAnnouncement(InputChannelInfo, CheckpointBarrier,
-     * int)} but not yet {@link #barrierReceived(InputChannelInfo, CheckpointBarrier,
-     * ThrowingConsumer)}.
+     * ones that we have processed {@link
+     * CheckpointBarrierBehaviourController#barrierAnnouncement(InputChannelInfo, CheckpointBarrier,
+     * int, ThrowingConsumer)} but not yet {@link #barrierReceived(InputChannelInfo,
+     * CheckpointBarrier, ThrowingConsumer)}.
      */
     private final Map<InputChannelInfo, Boolean> blockedChannels;
 
@@ -65,7 +66,10 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
 
     @Override
     public void barrierAnnouncement(
-            InputChannelInfo channelInfo, CheckpointBarrier announcedBarrier, int sequenceNumber) {
+            InputChannelInfo channelInfo,
+            CheckpointBarrier announcedBarrier,
+            int sequenceNumber,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint) {
         Integer previousValue = sequenceNumberInAnnouncedChannels.put(channelInfo, sequenceNumber);
         checkState(
                 previousValue == null,
@@ -134,11 +138,11 @@ public class AlignedController implements CheckpointBarrierBehaviourController {
         }
     }
 
-    public Collection<InputChannelInfo> getBlockedChannels() {
+    public List<InputChannelInfo> getBlockedChannels() {
         return blockedChannels.entrySet().stream()
-                .filter(entry -> entry.getValue())
-                .map(entry -> entry.getKey())
-                .collect(Collectors.toSet());
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
     Map<InputChannelInfo, Integer> getSequenceNumberInAnnouncedChannels() {

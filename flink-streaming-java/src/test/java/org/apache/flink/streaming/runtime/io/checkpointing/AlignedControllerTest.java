@@ -164,13 +164,13 @@ public class AlignedControllerTest {
         BufferOrEvent barrier1 = createBarrier(1, 1);
         BufferOrEvent barrier3 = createBarrier(1, 3);
         alignedController.barrierAnnouncement(
-                barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent(), 0);
+                barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent(), 0, b -> {});
         alignedController.barrierReceived(
                 barrier0.getChannelInfo(), (CheckpointBarrier) barrier0.getEvent(), b -> {});
         alignedController.barrierAnnouncement(
-                barrier1.getChannelInfo(), (CheckpointBarrier) barrier1.getEvent(), 1);
+                barrier1.getChannelInfo(), (CheckpointBarrier) barrier1.getEvent(), 1, b -> {});
         alignedController.barrierAnnouncement(
-                barrier3.getChannelInfo(), (CheckpointBarrier) barrier3.getEvent(), 42);
+                barrier3.getChannelInfo(), (CheckpointBarrier) barrier3.getEvent(), 42, b -> {});
 
         Collection<InputChannelInfo> blockedChannels = alignedController.getBlockedChannels();
         Map<InputChannelInfo, Integer> announcedChannels =

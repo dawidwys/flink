@@ -35,8 +35,11 @@ public interface CheckpointBarrierBehaviourController {
 
     /** Invoked per every {@link CheckpointBarrier} announcement. */
     void barrierAnnouncement(
-            InputChannelInfo channelInfo, CheckpointBarrier announcedBarrier, int sequenceNumber)
-            throws IOException;
+            InputChannelInfo channelInfo,
+            CheckpointBarrier announcedBarrier,
+            int sequenceNumber,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
+            throws IOException, CheckpointException;
 
     /** Invoked per every received {@link CheckpointBarrier}. */
     void barrierReceived(

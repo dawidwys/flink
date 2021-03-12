@@ -209,7 +209,17 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             return;
         }
 
-        controller.barrierAnnouncement(channelInfo, announcedBarrier, sequenceNumber);
+        try {
+            controller.barrierAnnouncement(
+                    channelInfo, announcedBarrier, sequenceNumber, this::triggerCheckpoint);
+        } catch (CheckpointException e) {
+            LOG.debug(
+                    "{}: Aborting checkpoint {} after exception {}.",
+                    taskName,
+                    currentCheckpointId,
+                    e);
+            abortInternal(announcedBarrier.getId(), e);
+        }
     }
 
     private void checkSubsumedCheckpoint(CheckpointBarrier barrier) throws IOException {

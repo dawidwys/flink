@@ -56,7 +56,10 @@ public class UnalignedController implements CheckpointBarrierBehaviourController
 
     @Override
     public void barrierAnnouncement(
-            InputChannelInfo channelInfo, CheckpointBarrier announcedBarrier, int sequenceNumber)
+            InputChannelInfo channelInfo,
+            CheckpointBarrier announcedBarrier,
+            int sequenceNumber,
+            ThrowingConsumer<CheckpointBarrier, IOException> triggerCheckpoint)
             throws IOException {
         Preconditions.checkState(announcedBarrier.isCheckpoint());
         Integer previousValue = sequenceNumberInAnnouncedChannels.put(channelInfo, sequenceNumber);
