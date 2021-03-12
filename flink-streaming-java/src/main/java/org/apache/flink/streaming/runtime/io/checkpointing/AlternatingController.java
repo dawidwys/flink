@@ -260,6 +260,9 @@ public class AlternatingController implements CheckpointBarrierBehaviourControll
     public void abortPendingCheckpoint(long cancelledId, CheckpointException exception)
             throws IOException {
         activeController.abortPendingCheckpoint(cancelledId, exception);
+        if (lastCompletedBarrier < cancelledId) {
+            lastCompletedBarrier = cancelledId;
+        }
     }
 
     @Override

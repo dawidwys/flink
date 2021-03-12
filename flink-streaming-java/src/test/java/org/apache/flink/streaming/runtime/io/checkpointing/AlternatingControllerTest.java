@@ -23,6 +23,7 @@ import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.checkpoint.channel.RecordingChannelStateWriter;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.event.RuntimeEvent;
+import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.EventAnnouncement;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -384,6 +385,28 @@ public class AlternatingControllerTest {
         clock.advanceTime(alignmentTimeout + 1, TimeUnit.MILLISECONDS);
 
         assertThat(target.getTriggeredCheckpointOptions(), not(contains(unaligned(getDefault()))));
+    }
+
+    @Test
+    public void testNoActiveTimeoutAlignmentAfterAbort() throws Exception {
+        int numberOfChannels = 2;
+        ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
+        CheckpointedInputGate gate =
+                TestCheckpointedInputGateBuilder.builder(
+                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                        .withTestChannels()
+                        .withSyncExecutor()
+                        .build();
+
+        long alignmentTimeout = 100;
+        Buffer checkpointBarrier = withTimeout(alignmentTimeout);
+
+        send(checkpointBarrier, 0, gate);
+        send(toBuffer(new CancelCheckpointMarker(1L), true), 0, gate);
+        send(toBuffer(new CancelCheckpointMarker(1L), true), 1, gate);
+        clock.advanceTime(alignmentTimeout + 1, TimeUnit.MILLISECONDS);
+
+        assertThat(target.getTriggeredCheckpointOptions().size(), equalTo(0));
     }
 
     @Test
