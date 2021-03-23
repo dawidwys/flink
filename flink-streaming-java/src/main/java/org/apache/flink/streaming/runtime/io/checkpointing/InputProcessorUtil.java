@@ -156,44 +156,16 @@ public class InputProcessorUtil {
                                 Arrays.stream(inputs)
                                         .mapToLong(gate -> gate.getChannelInfos().size())
                                         .sum();
-                if (config.isUnalignedCheckpointsEnabled()) {
-                    return SingleCheckpointBarrierHandler.alternating(
-                            taskName,
-                            toNotifyOnCheckpoint,
-                            checkpointCoordinator,
-                            clock,
-                            numberOfChannels,
-                            (callable, delay) -> {
-                                ScheduledFuture<?> scheduledFuture =
-                                        timerService.registerTimer(
-                                                timerService.getCurrentProcessingTime()
-                                                        + delay.toMillis(),
-                                                timestamp ->
-                                                        mailboxExecutor.submit(
-                                                                callable,
-                                                                "Execute checkpoint barrier handler delayed action"));
-                                return () -> scheduledFuture.cancel(false);
-                            },
-                            inputs);
-                } else {
-                    return SingleCheckpointBarrierHandler.aligned(
-                            taskName,
-                            toNotifyOnCheckpoint,
-                            clock,
-                            numberOfChannels,
-                            (callable, delay) -> {
-                                ScheduledFuture<?> scheduledFuture =
-                                        timerService.registerTimer(
-                                                timerService.getCurrentProcessingTime()
-                                                        + delay.toMillis(),
-                                                timestamp ->
-                                                        mailboxExecutor.submit(
-                                                                callable,
-                                                                "Execute checkpoint barrier handler delayed action"));
-                                return () -> scheduledFuture.cancel(false);
-                            },
-                            inputs);
-                }
+                return createBarrierHandler(
+                        toNotifyOnCheckpoint,
+                        config,
+                        checkpointCoordinator,
+                        taskName,
+                        mailboxExecutor,
+                        timerService,
+                        inputs,
+                        clock,
+                        numberOfChannels);
             case AT_LEAST_ONCE:
                 if (config.isUnalignedCheckpointsEnabled()) {
                     throw new IllegalStateException(
@@ -208,6 +180,54 @@ public class InputProcessorUtil {
             default:
                 throw new UnsupportedOperationException(
                         "Unrecognized Checkpointing Mode: " + config.getCheckpointMode());
+        }
+    }
+
+    private static SingleCheckpointBarrierHandler createBarrierHandler(
+            AbstractInvokable toNotifyOnCheckpoint,
+            StreamConfig config,
+            SubtaskCheckpointCoordinator checkpointCoordinator,
+            String taskName,
+            MailboxExecutor mailboxExecutor,
+            TimerService timerService,
+            CheckpointableInput[] inputs,
+            Clock clock,
+            int numberOfChannels) {
+        if (config.isUnalignedCheckpointsEnabled()) {
+            return SingleCheckpointBarrierHandler.alternating(
+                    taskName,
+                    toNotifyOnCheckpoint,
+                    checkpointCoordinator,
+                    clock,
+                    numberOfChannels,
+                    (callable, delay) -> {
+                        ScheduledFuture<?> scheduledFuture =
+                                timerService.registerTimer(
+                                        timerService.getCurrentProcessingTime() + delay.toMillis(),
+                                        timestamp ->
+                                                mailboxExecutor.submit(
+                                                        callable,
+                                                        "Execute checkpoint barrier handler delayed action"));
+                        return () -> scheduledFuture.cancel(false);
+                    },
+                    inputs);
+        } else {
+            return SingleCheckpointBarrierHandler.aligned(
+                    taskName,
+                    toNotifyOnCheckpoint,
+                    clock,
+                    numberOfChannels,
+                    (callable, delay) -> {
+                        ScheduledFuture<?> scheduledFuture =
+                                timerService.registerTimer(
+                                        timerService.getCurrentProcessingTime() + delay.toMillis(),
+                                        timestamp ->
+                                                mailboxExecutor.submit(
+                                                        callable,
+                                                        "Execute checkpoint barrier handler delayed action"));
+                        return () -> scheduledFuture.cancel(false);
+                    },
+                    inputs);
         }
     }
 

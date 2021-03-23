@@ -145,7 +145,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
                 getEnvironment().getMetricGroup().getIOMetricGroup(),
                 getTaskNameWithSubtaskAndId(),
                 mainMailboxExecutor,
-                timerService);
+                systemTimerService);
     }
 
     private DataOutput<IN> createDataOutput(Counter numRecordsIn) {
