@@ -142,23 +142,19 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             return;
         }
 
-        if (currentCheckpointId == barrierId) {
-            if (++numBarriersReceived == numOpenChannels) {
-                if (getNumOpenChannels() > 1) {
-                    markAlignmentEnd();
-                }
-                numBarriersReceived = 0;
-                lastCancelledOrCompletedCheckpointId = currentCheckpointId;
-                LOG.debug(
-                        "{}: Received all barriers for checkpoint {}.",
-                        taskName,
-                        currentCheckpointId);
-                handleBarrier(
-                        barrier,
-                        channelInfo,
-                        CheckpointBarrierBehaviourController::postProcessLastBarrier);
-                allBarriersReceivedFuture.complete(null);
+        if (++numBarriersReceived == numOpenChannels) {
+            if (getNumOpenChannels() > 1) {
+                markAlignmentEnd();
             }
+            numBarriersReceived = 0;
+            lastCancelledOrCompletedCheckpointId = currentCheckpointId;
+            LOG.debug(
+                    "{}: Received all barriers for checkpoint {}.", taskName, currentCheckpointId);
+            handleBarrier(
+                    barrier,
+                    channelInfo,
+                    CheckpointBarrierBehaviourController::postProcessLastBarrier);
+            allBarriersReceivedFuture.complete(null);
         }
     }
 
