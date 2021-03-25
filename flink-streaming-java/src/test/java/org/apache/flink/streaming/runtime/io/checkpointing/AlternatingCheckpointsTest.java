@@ -26,6 +26,7 @@ import org.apache.flink.runtime.event.RuntimeEvent;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.EventAnnouncement;
+import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputChannel;
@@ -390,6 +391,36 @@ public class AlternatingCheckpointsTest {
 
         clock.advanceTime(alignmentTimeout + 1, TimeUnit.MILLISECONDS);
         assertThat(target.getTriggeredCheckpointOptions(), contains(unaligned(getDefault())));
+    }
+
+    @Test
+    public void testAllChannelsUnblockedAfterAlignmentTimeout() throws Exception {
+        int numberOfChannels = 2;
+        ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
+        CheckpointedInputGate gate =
+                TestCheckpointedInputGateBuilder.builder(
+                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                        .withTestChannels()
+                        .withSyncExecutor()
+                        .build();
+
+        long alignmentTimeout = 100;
+        CheckpointBarrier checkpointBarrier =
+                new CheckpointBarrier(
+                        1,
+                        clock.relativeTimeMillis(),
+                        alignedWithTimeout(getDefault(), alignmentTimeout));
+        Buffer checkpointBarrierBuffer = toBuffer(checkpointBarrier, false);
+
+        // we set timer on announcement and test channels do not produce announcements by themselves
+        send(EventSerializer.toBuffer(new EventAnnouncement(checkpointBarrier, 0), true), 0, gate);
+        send(checkpointBarrierBuffer, 0, gate);
+        // emulate blocking channels on aligned barriers
+        ((TestInputChannel) gate.getChannel(0)).setBlocked(true);
+
+        clock.advanceTime(alignmentTimeout + 1, TimeUnit.MILLISECONDS);
+        assertThat(target.getTriggeredCheckpointOptions(), contains(unaligned(getDefault())));
+        assertFalse(((TestInputChannel) gate.getChannel(0)).isBlocked());
     }
 
     @Test
@@ -876,7 +907,7 @@ public class AlternatingCheckpointsTest {
     private void send(Buffer buffer, InputChannel channel, CheckpointedInputGate checkpointedGate)
             throws IOException, InterruptedException {
         if (channel instanceof TestInputChannel) {
-            ((TestInputChannel) channel).read(buffer);
+            ((TestInputChannel) channel).read(buffer, buffer.getDataType());
         } else if (channel instanceof RemoteInputChannel) {
             ((RemoteInputChannel) channel).onBuffer(buffer, 0, 0);
         } else {

@@ -42,6 +42,7 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
             Context context, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         state.prioritizeAllAnnouncements();
+        state.unblockAllChannels();
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
         context.triggerTaskCheckpoint(unalignedBarrier);
         for (CheckpointableInput input : state.getInputs()) {
