@@ -214,6 +214,14 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             allBarriersReceivedFuture = new CompletableFuture<>();
         }
 
+        // we must mark alignment end before calling currentState.barrierReceived which might
+        // trigger a checkpoint with unfinished future for alignment duration
+        if (numBarriersReceived == numOpenChannels) {
+            if (getNumOpenChannels() > 1) {
+                markAlignmentEnd();
+            }
+        }
+
         try {
             currentState = currentState.barrierReceived(context, channelInfo, barrier);
         } catch (CheckpointException e) {
@@ -221,9 +229,6 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         }
 
         if (numBarriersReceived == numOpenChannels) {
-            if (getNumOpenChannels() > 1) {
-                markAlignmentEnd();
-            }
             numBarriersReceived = 0;
             lastCancelledOrCompletedCheckpointId = currentCheckpointId;
             LOG.debug(
