@@ -78,7 +78,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
 
     private int numOpenChannels;
 
-    private CompletableFuture<Void> allBarriersReceivedFuture = FutureUtils.completedVoidFuture();
+    private CompletableFuture<Void> allBarriersReceivedFuture = new CompletableFuture<>();
 
     private BarrierHandlerAction currentState;
     private long firstBarrierArrivalTime;

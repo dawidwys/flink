@@ -63,14 +63,18 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
         context.triggerTaskCheckpoint(unalignedBarrier);
         for (CheckpointableInput input : inputs) {
-            input.checkpointStarted(checkpointBarrier);
+            input.checkpointStarted(unalignedBarrier);
         }
         context.triggerGlobalCheckpoint(unalignedBarrier);
         if (context.allBarriersReceived()) {
             for (CheckpointableInput input : inputs) {
-                input.checkpointStopped(checkpointBarrier.getId());
+                input.checkpointStopped(unalignedBarrier.getId());
             }
-            return this;
+            if (alternating) {
+                return new AlternatingWaitingForFirstBarrier(inputs);
+            } else {
+                return this;
+            }
         }
         return new CollectingBarriersUnaligned(alternating, inputs);
     }

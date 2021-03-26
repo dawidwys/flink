@@ -228,6 +228,47 @@ public class AlternatingCheckpointsTest {
     }
 
     @Test
+    public void testAlignedAfterTimedOut() throws Exception {
+        int numChannels = 1;
+        ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
+        long alignmentTimeOut = 100L;
+        try (CheckpointedInputGate gate =
+                TestCheckpointedInputGateBuilder.builder(
+                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                        .withRemoteChannels()
+                        .withMailboxExecutor()
+                        .build()) {
+
+            Buffer barrier1 =
+                    barrier(
+                            1,
+                            clock.relativeTimeMillis(),
+                            alignedWithTimeout(getDefault(), alignmentTimeOut));
+            ((RemoteInputChannel) gate.getChannel(0)).onBuffer(barrier1.retainBuffer(), 0, 0);
+            assertAnnouncement(gate);
+            clock.advanceTime(alignmentTimeOut + 1, TimeUnit.MILLISECONDS);
+            assertBarrier(gate);
+
+            assertEquals(1, target.getTriggeredCheckpointCounter());
+            Buffer barrier2 =
+                    barrier(
+                            2,
+                            clock.relativeTimeMillis(),
+                            alignedWithTimeout(getDefault(), alignmentTimeOut));
+            ((RemoteInputChannel) gate.getChannel(0)).onBuffer(barrier2.retainBuffer(), 1, 0);
+            assertAnnouncement(gate);
+            assertBarrier(gate);
+
+            assertEquals(2, target.getTriggeredCheckpointCounter());
+            assertThat(
+                    target.getTriggeredCheckpointOptions(),
+                    contains(
+                            unaligned(getDefault()),
+                            alignedWithTimeout(getDefault(), alignmentTimeOut)));
+        }
+    }
+
+    @Test
     public void testAlignedNeverTimeoutableCheckpoint() throws Exception {
         int numChannels = 2;
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
