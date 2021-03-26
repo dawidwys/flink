@@ -28,4 +28,9 @@ final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarr
     protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
         return this;
     }
+
+    @Override
+    protected BarrierHandlerAction transitionAfterTimeout(AlignedCheckpointState state) {
+        return new CollectingBarriersUnaligned(true, state.getInputs());
+    }
 }

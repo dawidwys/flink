@@ -467,6 +467,40 @@ public class AlternatingCheckpointsTest {
     }
 
     @Test
+    public void testNoActiveTimeoutAlignmentAfterClose() throws Exception {
+        int numberOfChannels = 2;
+        ClockWithDelayedActions clockWithDelayedActions =
+                new ClockWithDelayedActions() {
+                    @Override
+                    public Cancellable apply(Callable<?> callable, Duration delay) {
+                        super.apply(callable, delay);
+                        // do not unregister timers on cancel
+                        return () -> {};
+                    }
+                };
+        ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
+        CheckpointedInputGate gate =
+                TestCheckpointedInputGateBuilder.builder(
+                                numberOfChannels,
+                                TestBarrierHandlerBuilder.builder(target)
+                                                .withActionRegistration(clockWithDelayedActions)
+                                                .withClock(clockWithDelayedActions)
+                                        ::build)
+                        .withRemoteChannels()
+                        .withSyncExecutor()
+                        .build();
+
+        long alignmentTimeout = 100;
+        Buffer checkpointBarrier = withTimeout(alignmentTimeout);
+
+        send(checkpointBarrier, 0, gate);
+        gate.close();
+        clockWithDelayedActions.advanceTime(alignmentTimeout + 1, TimeUnit.MILLISECONDS);
+
+        assertThat(target.getTriggeredCheckpointOptions().size(), equalTo(0));
+    }
+
+    @Test
     public void testActiveTimeoutAlignmentOnAnnouncement() throws Exception {
         int numChannels = 2;
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();

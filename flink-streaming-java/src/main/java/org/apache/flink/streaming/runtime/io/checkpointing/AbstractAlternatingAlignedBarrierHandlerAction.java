@@ -46,7 +46,7 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
         context.triggerTaskCheckpoint(unalignedBarrier);
         for (CheckpointableInput input : state.getInputs()) {
-            input.checkpointStarted(checkpointBarrier);
+            input.checkpointStarted(unalignedBarrier);
         }
         context.triggerGlobalCheckpoint(unalignedBarrier);
         return new CollectingBarriersUnaligned(true, state.getInputs());
@@ -84,6 +84,8 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
 
     protected abstract BarrierHandlerAction transitionAfterBarrierReceived(
             AlignedCheckpointState state);
+
+    protected abstract BarrierHandlerAction transitionAfterTimeout(AlignedCheckpointState state);
 
     @Override
     public final BarrierHandlerAction abort(long cancelledId) throws IOException {

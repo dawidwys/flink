@@ -226,6 +226,10 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             currentState = currentState.barrierReceived(context, channelInfo, barrier);
         } catch (CheckpointException e) {
             abortInternal(barrier.getId(), e);
+        } catch (RuntimeException | IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
         }
 
         if (numBarriersReceived == numOpenChannels) {
@@ -233,8 +237,8 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             lastCancelledOrCompletedCheckpointId = currentCheckpointId;
             LOG.debug(
                     "{}: Received all barriers for checkpoint {}.", taskName, currentCheckpointId);
-            allBarriersReceivedFuture.complete(null);
             resetAlignmentTimer();
+            allBarriersReceivedFuture.complete(null);
         }
     }
 
@@ -276,11 +280,20 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         this.currentAlignmentTimer =
                 registerTimer.apply(
                         () -> {
+                            long barrierId = announcedBarrier.getId();
                             try {
-                                currentState =
-                                        currentState.alignmentTimeout(context, announcedBarrier);
+                                if (currentCheckpointId == barrierId
+                                        && !getAllBarriersReceivedFuture(barrierId).isDone()) {
+                                    currentState =
+                                            currentState.alignmentTimeout(
+                                                    context, announcedBarrier);
+                                }
                             } catch (CheckpointException ex) {
-                                this.abortInternal(announcedBarrier.getId(), ex);
+                                this.abortInternal(barrierId, ex);
+                            } catch (RuntimeException | IOException e) {
+                                throw e;
+                            } catch (Exception e) {
+                                throw new IOException(e);
                             }
                             currentAlignmentTimer = null;
                             return null;
@@ -333,7 +346,6 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         lastCancelledOrCompletedCheckpointId =
                 Math.max(lastCancelledOrCompletedCheckpointId, cancelledId);
         numBarriersReceived = 0;
-        //        context.reset(cancelledId);
         resetAlignmentTimer();
         currentState = currentState.abort(cancelledId);
         notifyAbort(cancelledId, exception);
@@ -367,6 +379,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
 
     @Override
     public void close() throws IOException {
+        resetAlignmentTimer();
         allBarriersReceivedFuture.cancel(false);
         super.close();
     }
@@ -434,8 +447,9 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         public void triggerTaskCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws CheckpointException {
             checkState(subTaskCheckpointCoordinator != null);
+            long barrierId = checkpointBarrier.getId();
             subTaskCheckpointCoordinator.initCheckpoint(
-                    checkpointBarrier.getId(), checkpointBarrier.getCheckpointOptions());
+                    barrierId, checkpointBarrier.getCheckpointOptions());
         }
     }
 }

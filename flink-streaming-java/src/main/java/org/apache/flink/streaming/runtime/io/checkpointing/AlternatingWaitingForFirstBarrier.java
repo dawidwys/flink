@@ -31,4 +31,9 @@ final class AlternatingWaitingForFirstBarrier
     protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
         return new AlternatingCollectingBarriers(state);
     }
+
+    @Override
+    protected BarrierHandlerAction transitionAfterTimeout(AlignedCheckpointState state) {
+        return new WaitingForFirstBarrierUnaligned(true, state.getInputs());
+    }
 }
