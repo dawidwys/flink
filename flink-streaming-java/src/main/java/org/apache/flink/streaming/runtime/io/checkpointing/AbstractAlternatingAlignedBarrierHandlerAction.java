@@ -21,7 +21,6 @@ package org.apache.flink.streaming.runtime.io.checkpointing;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
-import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
 
 import java.io.IOException;
 
@@ -31,25 +30,10 @@ import java.io.IOException;
  */
 abstract class AbstractAlternatingAlignedBarrierHandlerAction implements BarrierHandlerAction {
 
-    private final AlignedCheckpointState state;
+    protected final AlignedCheckpointState state;
 
     protected AbstractAlternatingAlignedBarrierHandlerAction(AlignedCheckpointState state) {
         this.state = state;
-    }
-
-    @Override
-    public final BarrierHandlerAction alignmentTimeout(
-            Context context, CheckpointBarrier checkpointBarrier)
-            throws IOException, CheckpointException {
-        state.prioritizeAllAnnouncements();
-        state.unblockAllChannels();
-        CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
-        context.triggerTaskCheckpoint(unalignedBarrier);
-        for (CheckpointableInput input : state.getInputs()) {
-            input.checkpointStarted(unalignedBarrier);
-        }
-        context.triggerGlobalCheckpoint(unalignedBarrier);
-        return new CollectingBarriersUnaligned(true, state.getInputs());
     }
 
     @Override
@@ -74,9 +58,10 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
             context.triggerGlobalCheckpoint(checkpointBarrier);
             state.unblockAllChannels();
             return new AlternatingWaitingForFirstBarrier(state.getInputs());
-        } else if (context.isTimedOut(checkpointBarrier)
-                || checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-            return alignmentTimeout(context, checkpointBarrier);
+        } else if (context.isTimedOut(checkpointBarrier)) {
+            state.removeFromBlocked(channelInfo);
+            return alignmentTimeout(context, checkpointBarrier)
+                    .barrierReceived(context, channelInfo, checkpointBarrier);
         }
 
         return transitionAfterBarrierReceived(state);
@@ -84,8 +69,6 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
 
     protected abstract BarrierHandlerAction transitionAfterBarrierReceived(
             AlignedCheckpointState state);
-
-    protected abstract BarrierHandlerAction transitionAfterTimeout(AlignedCheckpointState state);
 
     @Override
     public final BarrierHandlerAction abort(long cancelledId) throws IOException {

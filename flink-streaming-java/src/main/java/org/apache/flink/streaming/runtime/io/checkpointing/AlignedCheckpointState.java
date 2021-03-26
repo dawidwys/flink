@@ -79,4 +79,8 @@ final class AlignedCheckpointState {
     public void removeSeenAnnouncement(InputChannelInfo channelInfo) {
         this.sequenceNumberInAnnouncedChannels.remove(channelInfo);
     }
+
+    public void removeFromBlocked(InputChannelInfo channelInfo) {
+        blockedChannels.remove(channelInfo);
+    }
 }

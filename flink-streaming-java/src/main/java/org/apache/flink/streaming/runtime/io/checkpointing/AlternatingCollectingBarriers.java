@@ -18,6 +18,12 @@
 
 package org.apache.flink.streaming.runtime.io.checkpointing;
 
+import org.apache.flink.runtime.checkpoint.CheckpointException;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
+import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
+
+import java.io.IOException;
+
 final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarrierHandlerAction {
 
     AlternatingCollectingBarriers(AlignedCheckpointState context) {
@@ -25,12 +31,22 @@ final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarr
     }
 
     @Override
-    protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
-        return this;
+    public BarrierHandlerAction alignmentTimeout(
+            Context context, CheckpointBarrier checkpointBarrier)
+            throws IOException, CheckpointException {
+        state.prioritizeAllAnnouncements();
+        state.unblockAllChannels();
+        CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
+        context.triggerTaskCheckpoint(unalignedBarrier);
+        for (CheckpointableInput input : state.getInputs()) {
+            input.checkpointStarted(unalignedBarrier);
+        }
+        context.triggerGlobalCheckpoint(unalignedBarrier);
+        return new CollectingBarriersUnaligned(true, state.getInputs());
     }
 
     @Override
-    protected BarrierHandlerAction transitionAfterTimeout(AlignedCheckpointState state) {
-        return new CollectingBarriersUnaligned(true, state.getInputs());
+    protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
+        return this;
     }
 }
