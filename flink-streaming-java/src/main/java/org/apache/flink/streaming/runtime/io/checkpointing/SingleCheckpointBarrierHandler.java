@@ -204,6 +204,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         }
 
         checkNewCheckpoint(barrier);
+        checkState(currentCheckpointId == barrierId);
 
         if (numBarriersReceived++ == 0) {
             if (getNumOpenChannels() == 1) {
