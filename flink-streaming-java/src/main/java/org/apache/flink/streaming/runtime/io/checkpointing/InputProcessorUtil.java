@@ -30,6 +30,7 @@ import org.apache.flink.streaming.runtime.io.InputGateUtil;
 import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
 import org.apache.flink.streaming.runtime.io.StreamTwoInputProcessor;
+import org.apache.flink.streaming.runtime.io.checkpointing.CheckpointBarrierHandler.Cancellable;
 import org.apache.flink.streaming.runtime.tasks.SubtaskCheckpointCoordinator;
 import org.apache.flink.streaming.runtime.tasks.TimerService;
 import org.apache.flink.util.clock.Clock;
@@ -37,12 +38,15 @@ import org.apache.flink.util.clock.SystemClock;
 
 import org.apache.flink.shaded.guava18.com.google.common.collect.Iterables;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 /**
@@ -200,16 +204,7 @@ public class InputProcessorUtil {
                     checkpointCoordinator,
                     clock,
                     numberOfChannels,
-                    (callable, delay) -> {
-                        ScheduledFuture<?> scheduledFuture =
-                                timerService.registerTimer(
-                                        timerService.getCurrentProcessingTime() + delay.toMillis(),
-                                        timestamp ->
-                                                mailboxExecutor.submit(
-                                                        callable,
-                                                        "Execute checkpoint barrier handler delayed action"));
-                        return () -> scheduledFuture.cancel(false);
-                    },
+                    createRegisterTimerCallback(mailboxExecutor, timerService),
                     inputs);
         } else {
             return SingleCheckpointBarrierHandler.aligned(
@@ -217,18 +212,23 @@ public class InputProcessorUtil {
                     toNotifyOnCheckpoint,
                     clock,
                     numberOfChannels,
-                    (callable, delay) -> {
-                        ScheduledFuture<?> scheduledFuture =
-                                timerService.registerTimer(
-                                        timerService.getCurrentProcessingTime() + delay.toMillis(),
-                                        timestamp ->
-                                                mailboxExecutor.submit(
-                                                        callable,
-                                                        "Execute checkpoint barrier handler delayed action"));
-                        return () -> scheduledFuture.cancel(false);
-                    },
+                    createRegisterTimerCallback(mailboxExecutor, timerService),
                     inputs);
         }
+    }
+
+    private static BiFunction<Callable<?>, Duration, Cancellable> createRegisterTimerCallback(
+            MailboxExecutor mailboxExecutor, TimerService timerService) {
+        return (callable, delay) -> {
+            ScheduledFuture<?> scheduledFuture =
+                    timerService.registerTimer(
+                            timerService.getCurrentProcessingTime() + delay.toMillis(),
+                            timestamp ->
+                                    mailboxExecutor.submit(
+                                            callable,
+                                            "Execute checkpoint barrier handler delayed action"));
+            return () -> scheduledFuture.cancel(false);
+        };
     }
 
     private static void registerCheckpointMetrics(
