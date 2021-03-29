@@ -24,6 +24,8 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 
 import java.io.IOException;
 
+import static org.apache.flink.util.Preconditions.checkState;
+
 /** Actions to be taken when processing aligned checkpoints. */
 abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerAction {
 
@@ -51,7 +53,7 @@ abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerActi
     public final BarrierHandlerAction barrierReceived(
             Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
-        assert !checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint();
+        checkState(!checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint());
         state.blockChannel(channelInfo);
         if (context.allBarriersReceived()) {
             context.triggerGlobalCheckpoint(checkpointBarrier);
