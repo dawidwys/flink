@@ -28,29 +28,29 @@ import java.io.IOException;
  * Actions to be taken when processing aligned checkpoints and possibly switching to unaligned
  * checkpoints.
  */
-abstract class AbstractAlternatingAlignedBarrierHandlerAction implements BarrierHandlerAction {
+abstract class AbstractAlternatingAlignedBarrierHandlerState implements BarrierHandlerState {
 
-    protected final AlignedCheckpointState state;
+    protected final ChannelState state;
 
-    protected AbstractAlternatingAlignedBarrierHandlerAction(AlignedCheckpointState state) {
+    protected AbstractAlternatingAlignedBarrierHandlerState(ChannelState state) {
         this.state = state;
     }
 
     @Override
-    public final BarrierHandlerAction announcementReceived(
+    public final BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber) {
         state.addSeenAnnouncement(channelInfo, sequenceNumber);
         return this;
     }
 
     @Override
-    public final BarrierHandlerAction barrierReceived(
+    public final BarrierHandlerState barrierReceived(
             Controller controller,
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         if (checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-            BarrierHandlerAction unalignedState = alignmentTimeout(controller, checkpointBarrier);
+            BarrierHandlerState unalignedState = alignmentTimeout(controller, checkpointBarrier);
             return unalignedState.barrierReceived(controller, channelInfo, checkpointBarrier);
         }
 
@@ -69,11 +69,10 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
         return transitionAfterBarrierReceived(state);
     }
 
-    protected abstract BarrierHandlerAction transitionAfterBarrierReceived(
-            AlignedCheckpointState state);
+    protected abstract BarrierHandlerState transitionAfterBarrierReceived(ChannelState state);
 
     @Override
-    public final BarrierHandlerAction abort(long cancelledId) throws IOException {
+    public final BarrierHandlerState abort(long cancelledId) throws IOException {
         state.unblockAllChannels();
         return new AlternatingWaitingForFirstBarrier(state.getInputs());
     }

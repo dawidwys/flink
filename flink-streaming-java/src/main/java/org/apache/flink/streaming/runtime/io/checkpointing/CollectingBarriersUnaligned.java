@@ -25,7 +25,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
-final class CollectingBarriersUnaligned implements BarrierHandlerAction {
+final class CollectingBarriersUnaligned implements BarrierHandlerState {
 
     private final boolean alternating;
     private final CheckpointableInput[] inputs;
@@ -36,14 +36,14 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction alignmentTimeout(
+    public BarrierHandlerState alignmentTimeout(
             Controller controller, CheckpointBarrier checkpointBarrier) {
         // ignore already processing unaligned checkpoints
         return this;
     }
 
     @Override
-    public BarrierHandlerAction announcementReceived(
+    public BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException {
         inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
@@ -52,7 +52,7 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction barrierReceived(
+    public BarrierHandlerState barrierReceived(
             Controller controller,
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
@@ -70,11 +70,11 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction abort(long cancelledId) throws IOException {
+    public BarrierHandlerState abort(long cancelledId) throws IOException {
         return stopCheckpoint(cancelledId);
     }
 
-    private BarrierHandlerAction stopCheckpoint(long cancelledId) {
+    private BarrierHandlerState stopCheckpoint(long cancelledId) {
         for (CheckpointableInput input : inputs) {
             input.checkpointStopped(cancelledId);
         }

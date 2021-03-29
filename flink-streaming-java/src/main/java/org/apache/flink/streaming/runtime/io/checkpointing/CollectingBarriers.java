@@ -18,14 +18,14 @@
 
 package org.apache.flink.streaming.runtime.io.checkpointing;
 
-final class CollectingBarriers extends AbstractAlignedBarrierHandlerAction {
+final class CollectingBarriers extends AbstractAlignedBarrierHandlerState {
 
-    CollectingBarriers(AlignedCheckpointState context) {
+    CollectingBarriers(ChannelState context) {
         super(context);
     }
 
     @Override
-    protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
+    protected BarrierHandlerState convertAfterBarrierReceived(ChannelState state) {
         return this;
     }
 }

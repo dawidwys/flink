@@ -20,14 +20,14 @@ package org.apache.flink.streaming.runtime.io.checkpointing;
 
 import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
 
-final class WaitingForFirstBarrier extends AbstractAlignedBarrierHandlerAction {
+final class WaitingForFirstBarrier extends AbstractAlignedBarrierHandlerState {
 
     WaitingForFirstBarrier(CheckpointableInput[] inputs) {
-        super(new AlignedCheckpointState(inputs));
+        super(new ChannelState(inputs));
     }
 
     @Override
-    protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
+    protected BarrierHandlerState convertAfterBarrierReceived(ChannelState state) {
         return new CollectingBarriers(state);
     }
 }

@@ -24,14 +24,14 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
-final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarrierHandlerAction {
+final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarrierHandlerState {
 
-    AlternatingCollectingBarriers(AlignedCheckpointState context) {
+    AlternatingCollectingBarriers(ChannelState context) {
         super(context);
     }
 
     @Override
-    public BarrierHandlerAction alignmentTimeout(
+    public BarrierHandlerState alignmentTimeout(
             Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         state.prioritizeAllAnnouncements();
@@ -46,7 +46,7 @@ final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarr
     }
 
     @Override
-    protected BarrierHandlerAction transitionAfterBarrierReceived(AlignedCheckpointState state) {
+    protected BarrierHandlerState transitionAfterBarrierReceived(ChannelState state) {
         return this;
     }
 }

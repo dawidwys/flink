@@ -37,25 +37,24 @@ import java.io.IOException;
  * <p>Additionally depending on the configuration we can switch between aligned and unaligned
  * actions.
  */
-interface BarrierHandlerAction {
-    BarrierHandlerAction alignmentTimeout(
-            Controller controller, CheckpointBarrier checkpointBarrier)
+interface BarrierHandlerState {
+    BarrierHandlerState alignmentTimeout(Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException;
 
-    BarrierHandlerAction announcementReceived(
+    BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException;
 
-    BarrierHandlerAction barrierReceived(
+    BarrierHandlerState barrierReceived(
             Controller controller,
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException;
 
-    BarrierHandlerAction abort(long cancelledId) throws IOException;
+    BarrierHandlerState abort(long cancelledId) throws IOException;
 
     /**
-     * An entry point for communication between {@link BarrierHandlerAction} and {@link
+     * An entry point for communication between {@link BarrierHandlerState} and {@link
      * SingleCheckpointBarrierHandler}.
      */
     interface Controller {

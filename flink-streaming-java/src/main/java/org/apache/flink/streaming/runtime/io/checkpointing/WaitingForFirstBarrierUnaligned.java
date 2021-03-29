@@ -25,7 +25,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
-final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
+final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
 
     private final boolean alternating;
     private final CheckpointableInput[] inputs;
@@ -36,14 +36,14 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction alignmentTimeout(
+    public BarrierHandlerState alignmentTimeout(
             Controller controller, CheckpointBarrier checkpointBarrier) {
         // ignore already processing unaligned checkpoints
         return this;
     }
 
     @Override
-    public BarrierHandlerAction announcementReceived(
+    public BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException {
         inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
@@ -52,7 +52,7 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction barrierReceived(
+    public BarrierHandlerState barrierReceived(
             Controller controller,
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
@@ -83,7 +83,7 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
     }
 
     @Override
-    public BarrierHandlerAction abort(long cancelledId) {
+    public BarrierHandlerState abort(long cancelledId) {
         if (alternating) {
             return new AlternatingWaitingForFirstBarrier(inputs);
         } else {

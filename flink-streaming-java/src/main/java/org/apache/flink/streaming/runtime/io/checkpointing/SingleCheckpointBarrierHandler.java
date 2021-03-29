@@ -54,7 +54,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  * barrier and keeping track of the number of received barriers and consumed barriers. It can
  * handle/track just single checkpoint at a time. The behaviour when to actually trigger the
  * checkpoint and what the {@link CheckpointableInput} should do is controlled by {@link
- * BarrierHandlerAction}.
+ * BarrierHandlerState}.
  */
 @Internal
 @NotThreadSafe
@@ -81,7 +81,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
 
     private CompletableFuture<Void> allBarriersReceivedFuture = new CompletableFuture<>();
 
-    private BarrierHandlerAction currentState;
+    private BarrierHandlerState currentState;
     private long firstBarrierArrivalTime;
     private Cancellable currentAlignmentTimer;
     private final boolean alternating;
@@ -174,7 +174,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             @Nullable SubtaskCheckpointCoordinator subTaskCheckpointCoordinator,
             Clock clock,
             int numOpenChannels,
-            BarrierHandlerAction currentState,
+            BarrierHandlerState currentState,
             boolean alternating,
             BiFunction<Callable<?>, Duration, Cancellable> registerTimer,
             CheckpointableInput[] inputs) {
@@ -421,7 +421,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
                 taskName, currentCheckpointId, numBarriersReceived, numOpenChannels);
     }
 
-    private final class ControllerImpl implements BarrierHandlerAction.Controller {
+    private final class ControllerImpl implements BarrierHandlerState.Controller {
         @Override
         public void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws IOException {

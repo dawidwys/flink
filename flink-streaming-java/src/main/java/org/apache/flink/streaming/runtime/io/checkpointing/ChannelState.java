@@ -28,8 +28,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** A state pojo for {@link AbstractAlignedBarrierHandlerAction}. */
-final class AlignedCheckpointState {
+/** A state pojo for {@link AbstractAlignedBarrierHandlerState}. */
+final class ChannelState {
     private final Map<InputChannelInfo, Integer> sequenceNumberInAnnouncedChannels =
             new HashMap<>();
 
@@ -42,7 +42,7 @@ final class AlignedCheckpointState {
 
     private final CheckpointableInput[] inputs;
 
-    public AlignedCheckpointState(CheckpointableInput[] inputs) {
+    public ChannelState(CheckpointableInput[] inputs) {
         this.inputs = inputs;
     }
 

@@ -27,16 +27,16 @@ import java.io.IOException;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /** Actions to be taken when processing aligned checkpoints. */
-abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerAction {
+abstract class AbstractAlignedBarrierHandlerState implements BarrierHandlerState {
 
-    private final AlignedCheckpointState state;
+    private final ChannelState state;
 
-    protected AbstractAlignedBarrierHandlerAction(AlignedCheckpointState state) {
+    protected AbstractAlignedBarrierHandlerState(ChannelState state) {
         this.state = state;
     }
 
     @Override
-    public final BarrierHandlerAction alignmentTimeout(
+    public final BarrierHandlerState alignmentTimeout(
             Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         throw new IllegalStateException(
@@ -44,13 +44,13 @@ abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerActi
     }
 
     @Override
-    public final BarrierHandlerAction announcementReceived(
+    public final BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber) {
         return this;
     }
 
     @Override
-    public final BarrierHandlerAction barrierReceived(
+    public final BarrierHandlerState barrierReceived(
             Controller controller,
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
@@ -63,14 +63,13 @@ abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerActi
             return new WaitingForFirstBarrier(state.getInputs());
         }
 
-        return transitionAfterBarrierReceived(state);
+        return convertAfterBarrierReceived(state);
     }
 
-    protected abstract BarrierHandlerAction transitionAfterBarrierReceived(
-            AlignedCheckpointState state);
+    protected abstract BarrierHandlerState convertAfterBarrierReceived(ChannelState state);
 
     @Override
-    public final BarrierHandlerAction abort(long cancelledId) throws IOException {
+    public final BarrierHandlerState abort(long cancelledId) throws IOException {
         state.unblockAllChannels();
         return new WaitingForFirstBarrier(state.getInputs());
     }
