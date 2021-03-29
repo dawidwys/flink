@@ -62,7 +62,7 @@ interface BarrierHandlerState {
 
         void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException;
 
-        void triggerTaskCheckpoint(CheckpointBarrier checkpointBarrier) throws CheckpointException;
+        void initInputsCheckpoint(CheckpointBarrier checkpointBarrier) throws CheckpointException;
 
         boolean isTimedOut(CheckpointBarrier barrier);
     }

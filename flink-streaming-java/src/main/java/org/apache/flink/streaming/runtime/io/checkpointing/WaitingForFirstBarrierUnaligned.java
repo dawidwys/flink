@@ -64,7 +64,7 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
         }
 
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
-        controller.triggerTaskCheckpoint(unalignedBarrier);
+        controller.initInputsCheckpoint(unalignedBarrier);
         for (CheckpointableInput input : inputs) {
             input.checkpointStarted(unalignedBarrier);
         }

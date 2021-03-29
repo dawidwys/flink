@@ -929,7 +929,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                             .setAlignmentDurationNanos(0L)
                             .setBytesProcessedDuringAlignment(0L);
 
-            subtaskCheckpointCoordinator.initCheckpoint(
+            subtaskCheckpointCoordinator.initInputsCheckpoint(
                     checkpointMetaData.getCheckpointId(), checkpointOptions);
 
             boolean success =

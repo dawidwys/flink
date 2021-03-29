@@ -442,11 +442,11 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         }
 
         @Override
-        public void triggerTaskCheckpoint(CheckpointBarrier checkpointBarrier)
+        public void initInputsCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws CheckpointException {
             checkState(subTaskCheckpointCoordinator != null);
             long barrierId = checkpointBarrier.getId();
-            subTaskCheckpointCoordinator.initCheckpoint(
+            subTaskCheckpointCoordinator.initInputsCheckpoint(
                     barrierId, checkpointBarrier.getCheckpointOptions());
         }
     }
