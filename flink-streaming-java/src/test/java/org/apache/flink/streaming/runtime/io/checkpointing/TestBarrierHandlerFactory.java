@@ -32,36 +32,36 @@ import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
 
 /** A builder for creating instances of {@link SingleCheckpointBarrierHandler} for tests. */
-public class TestBarrierHandlerBuilder {
+public class TestBarrierHandlerFactory {
     private final AbstractInvokable target;
     private BiFunction<Callable<?>, Duration, Cancellable> actionRegistration =
             (callable, delay) -> () -> {};
     private Clock clock = SystemClock.getInstance();
 
-    private TestBarrierHandlerBuilder(AbstractInvokable target) {
+    private TestBarrierHandlerFactory(AbstractInvokable target) {
         this.target = target;
     }
 
-    public static TestBarrierHandlerBuilder builder(AbstractInvokable target) {
-        return new TestBarrierHandlerBuilder(target);
+    public static TestBarrierHandlerFactory forTarget(AbstractInvokable target) {
+        return new TestBarrierHandlerFactory(target);
     }
 
-    public TestBarrierHandlerBuilder withActionRegistration(
+    public TestBarrierHandlerFactory withActionRegistration(
             BiFunction<Callable<?>, Duration, Cancellable> actionRegistration) {
         this.actionRegistration = actionRegistration;
         return this;
     }
 
-    public TestBarrierHandlerBuilder withClock(Clock clock) {
+    public TestBarrierHandlerFactory withClock(Clock clock) {
         this.clock = clock;
         return this;
     }
 
-    public SingleCheckpointBarrierHandler build(SingleInputGate inputGate) {
-        return build(inputGate, new RecordingChannelStateWriter());
+    public SingleCheckpointBarrierHandler create(SingleInputGate inputGate) {
+        return create(inputGate, new RecordingChannelStateWriter());
     }
 
-    public SingleCheckpointBarrierHandler build(
+    public SingleCheckpointBarrierHandler create(
             SingleInputGate inputGate, ChannelStateWriter stateWriter) {
         String taskName = "test";
         return SingleCheckpointBarrierHandler.alternating(

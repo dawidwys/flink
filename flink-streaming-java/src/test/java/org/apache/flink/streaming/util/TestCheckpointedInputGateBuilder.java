@@ -28,28 +28,24 @@ import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGateBui
 import org.apache.flink.runtime.io.network.partition.consumer.TestInputChannel;
 import org.apache.flink.streaming.api.operators.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.SyncMailboxExecutor;
-import org.apache.flink.streaming.runtime.io.checkpointing.CheckpointBarrierHandler;
 import org.apache.flink.streaming.runtime.io.checkpointing.CheckpointedInputGate;
+import org.apache.flink.streaming.runtime.io.checkpointing.TestBarrierHandlerFactory;
 import org.apache.flink.streaming.runtime.tasks.mailbox.MailboxProcessor;
 import org.apache.flink.util.function.SupplierWithException;
 
 import java.io.IOException;
-import java.util.function.BiFunction;
 
 /** A builder for creating instances of {@link CheckpointedInputGate} for tests. */
 public class TestCheckpointedInputGateBuilder {
     private final int numChannels;
-    private final BiFunction<SingleInputGate, ChannelStateWriter, CheckpointBarrierHandler>
-            barrierHandlerFactory;
+    private final TestBarrierHandlerFactory barrierHandlerFactory;
 
     private ChannelStateWriter channelStateWriter = new RecordingChannelStateWriter();
     private SupplierWithException<SingleInputGate, IOException> gateBuilder = this::buildTestGate;
     private MailboxExecutor mailboxExecutor;
 
     private TestCheckpointedInputGateBuilder(
-            int numChannels,
-            BiFunction<SingleInputGate, ChannelStateWriter, CheckpointBarrierHandler>
-                    barrierHandler) {
+            int numChannels, TestBarrierHandlerFactory barrierHandler) {
         this.numChannels = numChannels;
         this.barrierHandlerFactory = barrierHandler;
 
@@ -57,9 +53,7 @@ public class TestCheckpointedInputGateBuilder {
     }
 
     public static TestCheckpointedInputGateBuilder builder(
-            int numChannels,
-            BiFunction<SingleInputGate, ChannelStateWriter, CheckpointBarrierHandler>
-                    barrierHandlerFactory) {
+            int numChannels, TestBarrierHandlerFactory barrierHandlerFactory) {
         return new TestCheckpointedInputGateBuilder(numChannels, barrierHandlerFactory);
     }
 
@@ -69,7 +63,7 @@ public class TestCheckpointedInputGateBuilder {
      */
     public TestCheckpointedInputGateBuilder withRemoteChannels() {
         this.gateBuilder = this::buildRemoteGate;
-        return withMailboxExecutor();
+        return this;
     }
 
     /** Uses {@link TestInputChannel TestInputChannels}. */
@@ -101,7 +95,7 @@ public class TestCheckpointedInputGateBuilder {
         SingleInputGate gate = gateBuilder.get();
 
         return new CheckpointedInputGate(
-                gate, barrierHandlerFactory.apply(gate, channelStateWriter), mailboxExecutor);
+                gate, barrierHandlerFactory.create(gate, channelStateWriter), mailboxExecutor);
     }
 
     private SingleInputGate buildTestGate() {

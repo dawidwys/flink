@@ -83,9 +83,7 @@ public class AlternatingCheckpointsTest {
     public void testChannelUnblockedAfterDifferentBarriers() throws Exception {
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                3,
-                                getTestBarrierHandlerBuilder(new ValidatingCheckpointHandler())
-                                        ::build)
+                                3, getTestBarrierHandlerBuilder(new ValidatingCheckpointHandler()))
                         .build();
         long barrierId = 1L;
         long ts = clock.relativeTimeNanos();
@@ -111,9 +109,9 @@ public class AlternatingCheckpointsTest {
         assertFalse(acChannelWithTimeout.isBlocked());
     }
 
-    private TestBarrierHandlerBuilder getTestBarrierHandlerBuilder(
+    private TestBarrierHandlerFactory getTestBarrierHandlerBuilder(
             ValidatingCheckpointHandler target) {
-        return TestBarrierHandlerBuilder.builder(target)
+        return TestBarrierHandlerFactory.forTarget(target)
                 .withActionRegistration(clock)
                 .withClock(clock);
     }
@@ -128,9 +126,7 @@ public class AlternatingCheckpointsTest {
         RecordingChannelStateWriter stateWriter = new RecordingChannelStateWriter();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                2,
-                                getTestBarrierHandlerBuilder(new ValidatingCheckpointHandler())
-                                        ::build)
+                                2, getTestBarrierHandlerBuilder(new ValidatingCheckpointHandler()))
                         .withChannelStateWriter(stateWriter)
                         .withRemoteChannels()
                         .withMailboxExecutor()
@@ -164,8 +160,7 @@ public class AlternatingCheckpointsTest {
     public void testSwitchToUnalignedByUpstream() throws Exception {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
-                TestCheckpointedInputGateBuilder.builder(
-                                2, getTestBarrierHandlerBuilder(target)::build)
+                TestCheckpointedInputGateBuilder.builder(2, getTestBarrierHandlerBuilder(target))
                         .build()) {
 
             CheckpointBarrier aligned =
@@ -205,7 +200,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .build()) {
 
             List<Long> barriers = new ArrayList<>();
@@ -234,7 +229,7 @@ public class AlternatingCheckpointsTest {
         long alignmentTimeOut = 100L;
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -274,7 +269,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .build()) {
 
             Buffer neverTimeoutableCheckpoint = withTimeout(Integer.MAX_VALUE);
@@ -291,8 +286,7 @@ public class AlternatingCheckpointsTest {
     public void testTimeoutAlignment() throws Exception {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
-                TestCheckpointedInputGateBuilder.builder(
-                                2, getTestBarrierHandlerBuilder(target)::build)
+                TestCheckpointedInputGateBuilder.builder(2, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -306,7 +300,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -364,7 +358,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build();
@@ -394,7 +388,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build();
@@ -420,7 +414,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numberOfChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withSyncExecutor()
                         .build();
@@ -440,7 +434,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numberOfChannels, getTestBarrierHandlerBuilder(target))
                         .withTestChannels()
                         .withSyncExecutor()
                         .build();
@@ -470,7 +464,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numberOfChannels, getTestBarrierHandlerBuilder(target))
                         .withTestChannels()
                         .withSyncExecutor()
                         .build();
@@ -491,7 +485,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numberOfChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numberOfChannels, getTestBarrierHandlerBuilder(target))
                         .withTestChannels()
                         .withSyncExecutor()
                         .build();
@@ -523,10 +517,9 @@ public class AlternatingCheckpointsTest {
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
                                 numberOfChannels,
-                                TestBarrierHandlerBuilder.builder(target)
-                                                .withActionRegistration(clockWithDelayedActions)
-                                                .withClock(clockWithDelayedActions)
-                                        ::build)
+                                TestBarrierHandlerFactory.forTarget(target)
+                                        .withActionRegistration(clockWithDelayedActions)
+                                        .withClock(clockWithDelayedActions))
                         .withRemoteChannels()
                         .withSyncExecutor()
                         .build();
@@ -547,7 +540,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -582,7 +575,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -620,7 +613,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         try (CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .withRemoteChannels()
                         .withMailboxExecutor()
                         .build()) {
@@ -663,8 +656,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         RecordingChannelStateWriter channelStateWriter = new RecordingChannelStateWriter();
         CheckpointedInputGate gate =
-                TestCheckpointedInputGateBuilder.builder(
-                                3, getTestBarrierHandlerBuilder(target)::build)
+                TestCheckpointedInputGateBuilder.builder(3, getTestBarrierHandlerBuilder(target))
                         .withChannelStateWriter(channelStateWriter)
                         .withRemoteChannels()
                         .withMailboxExecutor()
@@ -711,7 +703,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .build();
 
         long startNanos = clock.relativeTimeNanos();
@@ -784,7 +776,7 @@ public class AlternatingCheckpointsTest {
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         CheckpointedInputGate gate =
                 TestCheckpointedInputGateBuilder.builder(
-                                numChannels, getTestBarrierHandlerBuilder(target)::build)
+                                numChannels, getTestBarrierHandlerBuilder(target))
                         .build();
 
         long checkpoint1CreationTime = clock.relativeTimeMillis() - 10;
@@ -838,7 +830,7 @@ public class AlternatingCheckpointsTest {
         inputGate.setInputChannels(channels);
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         SingleCheckpointBarrierHandler barrierHandler =
-                getTestBarrierHandlerBuilder(target).build(inputGate);
+                getTestBarrierHandlerBuilder(target).create(inputGate);
 
         for (int i = 0; i < 4; i++) {
             int channel = i % 2;
@@ -877,7 +869,7 @@ public class AlternatingCheckpointsTest {
                 new TestInputChannel(inputGate, 0), new TestInputChannel(inputGate, 1));
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         SingleCheckpointBarrierHandler barrierHandler =
-                getTestBarrierHandlerBuilder(target).build(inputGate);
+                getTestBarrierHandlerBuilder(target).create(inputGate);
 
         final long id = 1;
         barrierHandler.processBarrier(
@@ -898,7 +890,7 @@ public class AlternatingCheckpointsTest {
         inputGate.setInputChannels(firstChannel, secondChannel);
         ValidatingCheckpointHandler target = new ValidatingCheckpointHandler();
         SingleCheckpointBarrierHandler barrierHandler =
-                getTestBarrierHandlerBuilder(target).build(inputGate);
+                getTestBarrierHandlerBuilder(target).create(inputGate);
 
         long checkpointId = 10;
         long outOfOrderSavepointId = 5;
@@ -929,7 +921,7 @@ public class AlternatingCheckpointsTest {
         TestInputChannel slow = new TestInputChannel(gate, 1, false, true);
         gate.setInputChannels(fast, slow);
         SingleCheckpointBarrierHandler barrierHandler =
-                getTestBarrierHandlerBuilder(target).build(gate);
+                getTestBarrierHandlerBuilder(target).create(gate);
         CheckpointedInputGate checkpointedGate =
                 new CheckpointedInputGate(gate, barrierHandler, new SyncMailboxExecutor());
 
