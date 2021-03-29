@@ -29,6 +29,7 @@ import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.streaming.runtime.tasks.SubtaskCheckpointCoordinator;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.clock.Clock;
 
 import org.slf4j.Logger;
@@ -227,10 +228,8 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             currentState = currentState.barrierReceived(context, channelInfo, barrier);
         } catch (CheckpointException e) {
             abortInternal(barrier.getId(), e);
-        } catch (RuntimeException | IOException e) {
-            throw e;
         } catch (Exception e) {
-            throw new IOException(e);
+            ExceptionUtils.rethrowIOException(e);
         }
 
         if (numBarriersReceived == numOpenChannels) {
@@ -291,10 +290,8 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
                                 }
                             } catch (CheckpointException ex) {
                                 this.abortInternal(barrierId, ex);
-                            } catch (RuntimeException | IOException e) {
-                                throw e;
                             } catch (Exception e) {
-                                throw new IOException(e);
+                                ExceptionUtils.rethrowIOException(e);
                             }
                             currentAlignmentTimer = null;
                             return null;
