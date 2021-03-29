@@ -62,7 +62,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
     private static final Logger LOG = LoggerFactory.getLogger(SingleCheckpointBarrierHandler.class);
 
     private final String taskName;
-    private final ContextImpl context;
+    private final ControllerImpl context;
     private final BiFunction<Callable<?>, Duration, Cancellable> registerTimer;
     private final SubtaskCheckpointCoordinator subTaskCheckpointCoordinator;
     private final CheckpointableInput[] inputs;
@@ -185,7 +185,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         this.alternating = alternating;
         this.registerTimer = registerTimer;
         this.subTaskCheckpointCoordinator = subTaskCheckpointCoordinator;
-        this.context = new ContextImpl();
+        this.context = new ControllerImpl();
         this.inputs = inputs;
     }
 
@@ -424,7 +424,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
                 taskName, currentCheckpointId, numBarriersReceived, numOpenChannels);
     }
 
-    private final class ContextImpl implements BarrierHandlerAction.Context {
+    private final class ControllerImpl implements BarrierHandlerAction.Controller {
         @Override
         public void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws IOException {

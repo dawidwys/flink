@@ -37,14 +37,15 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
 
     @Override
     public BarrierHandlerAction alignmentTimeout(
-            Context context, CheckpointBarrier checkpointBarrier) {
+            Controller controller, CheckpointBarrier checkpointBarrier) {
         // ignore already processing unaligned checkpoints
         return this;
     }
 
     @Override
     public BarrierHandlerAction announcementReceived(
-            Context context, InputChannelInfo channelInfo, int sequenceNumber) throws IOException {
+            Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
+            throws IOException {
         inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
                 channelInfo.getInputChannelIdx(), sequenceNumber);
         return this;
@@ -52,7 +53,9 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
 
     @Override
     public BarrierHandlerAction barrierReceived(
-            Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
+            Controller controller,
+            InputChannelInfo channelInfo,
+            CheckpointBarrier checkpointBarrier)
             throws CheckpointException, IOException {
         // we received an out of order aligned barrier, we should resume consumption for the
         // channel, as it is being blocked by the credit-based network
@@ -60,7 +63,7 @@ final class CollectingBarriersUnaligned implements BarrierHandlerAction {
             inputs[channelInfo.getGateIdx()].resumeConsumption(channelInfo);
         }
 
-        if (context.allBarriersReceived()) {
+        if (controller.allBarriersReceived()) {
             return stopCheckpoint(checkpointBarrier.getId());
         }
         return this;

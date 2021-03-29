@@ -37,7 +37,7 @@ abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerActi
 
     @Override
     public final BarrierHandlerAction alignmentTimeout(
-            Context context, CheckpointBarrier checkpointBarrier)
+            Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         throw new IllegalStateException(
                 "Alignment should not be timed out if we are not alternating.");
@@ -45,18 +45,20 @@ abstract class AbstractAlignedBarrierHandlerAction implements BarrierHandlerActi
 
     @Override
     public final BarrierHandlerAction announcementReceived(
-            Context context, InputChannelInfo channelInfo, int sequenceNumber) {
+            Controller controller, InputChannelInfo channelInfo, int sequenceNumber) {
         return this;
     }
 
     @Override
     public final BarrierHandlerAction barrierReceived(
-            Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
+            Controller controller,
+            InputChannelInfo channelInfo,
+            CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         checkState(!checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint());
         state.blockChannel(channelInfo);
-        if (context.allBarriersReceived()) {
-            context.triggerGlobalCheckpoint(checkpointBarrier);
+        if (controller.allBarriersReceived()) {
+            controller.triggerGlobalCheckpoint(checkpointBarrier);
             state.unblockAllChannels();
             return new WaitingForFirstBarrier(state.getInputs());
         }

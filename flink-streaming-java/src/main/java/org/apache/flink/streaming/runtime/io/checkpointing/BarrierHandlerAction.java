@@ -38,14 +38,18 @@ import java.io.IOException;
  * actions.
  */
 interface BarrierHandlerAction {
-    BarrierHandlerAction alignmentTimeout(Context context, CheckpointBarrier checkpointBarrier)
+    BarrierHandlerAction alignmentTimeout(
+            Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException;
 
     BarrierHandlerAction announcementReceived(
-            Context context, InputChannelInfo channelInfo, int sequenceNumber) throws IOException;
+            Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
+            throws IOException;
 
     BarrierHandlerAction barrierReceived(
-            Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
+            Controller controller,
+            InputChannelInfo channelInfo,
+            CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException;
 
     BarrierHandlerAction abort(long cancelledId) throws IOException;
@@ -54,7 +58,7 @@ interface BarrierHandlerAction {
      * An entry point for communication between {@link BarrierHandlerAction} and {@link
      * SingleCheckpointBarrierHandler}.
      */
-    interface Context {
+    interface Controller {
         boolean allBarriersReceived();
 
         void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException;

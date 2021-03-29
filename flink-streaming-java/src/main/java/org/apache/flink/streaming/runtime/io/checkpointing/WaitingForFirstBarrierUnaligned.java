@@ -37,14 +37,15 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
 
     @Override
     public BarrierHandlerAction alignmentTimeout(
-            Context context, CheckpointBarrier checkpointBarrier) {
+            Controller controller, CheckpointBarrier checkpointBarrier) {
         // ignore already processing unaligned checkpoints
         return this;
     }
 
     @Override
     public BarrierHandlerAction announcementReceived(
-            Context context, InputChannelInfo channelInfo, int sequenceNumber) throws IOException {
+            Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
+            throws IOException {
         inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
                 channelInfo.getInputChannelIdx(), sequenceNumber);
         return this;
@@ -52,7 +53,9 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
 
     @Override
     public BarrierHandlerAction barrierReceived(
-            Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
+            Controller controller,
+            InputChannelInfo channelInfo,
+            CheckpointBarrier checkpointBarrier)
             throws CheckpointException, IOException {
         // we received an out of order aligned barrier, we should resume consumption for the
         // channel, as it is being blocked by the credit-based network
@@ -61,12 +64,12 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerAction {
         }
 
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
-        context.triggerTaskCheckpoint(unalignedBarrier);
+        controller.triggerTaskCheckpoint(unalignedBarrier);
         for (CheckpointableInput input : inputs) {
             input.checkpointStarted(unalignedBarrier);
         }
-        context.triggerGlobalCheckpoint(unalignedBarrier);
-        if (context.allBarriersReceived()) {
+        controller.triggerGlobalCheckpoint(unalignedBarrier);
+        if (controller.allBarriersReceived()) {
             for (CheckpointableInput input : inputs) {
                 input.checkpointStopped(unalignedBarrier.getId());
             }

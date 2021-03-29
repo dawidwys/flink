@@ -38,30 +38,32 @@ abstract class AbstractAlternatingAlignedBarrierHandlerAction implements Barrier
 
     @Override
     public final BarrierHandlerAction announcementReceived(
-            Context context, InputChannelInfo channelInfo, int sequenceNumber) {
+            Controller controller, InputChannelInfo channelInfo, int sequenceNumber) {
         state.addSeenAnnouncement(channelInfo, sequenceNumber);
         return this;
     }
 
     @Override
     public final BarrierHandlerAction barrierReceived(
-            Context context, InputChannelInfo channelInfo, CheckpointBarrier checkpointBarrier)
+            Controller controller,
+            InputChannelInfo channelInfo,
+            CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         if (checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-            BarrierHandlerAction unalignedState = alignmentTimeout(context, checkpointBarrier);
-            return unalignedState.barrierReceived(context, channelInfo, checkpointBarrier);
+            BarrierHandlerAction unalignedState = alignmentTimeout(controller, checkpointBarrier);
+            return unalignedState.barrierReceived(controller, channelInfo, checkpointBarrier);
         }
 
         state.removeSeenAnnouncement(channelInfo);
         state.blockChannel(channelInfo);
-        if (context.allBarriersReceived()) {
-            context.triggerGlobalCheckpoint(checkpointBarrier);
+        if (controller.allBarriersReceived()) {
+            controller.triggerGlobalCheckpoint(checkpointBarrier);
             state.unblockAllChannels();
             return new AlternatingWaitingForFirstBarrier(state.getInputs());
-        } else if (context.isTimedOut(checkpointBarrier)) {
+        } else if (controller.isTimedOut(checkpointBarrier)) {
             state.removeFromBlocked(channelInfo);
-            return alignmentTimeout(context, checkpointBarrier)
-                    .barrierReceived(context, channelInfo, checkpointBarrier);
+            return alignmentTimeout(controller, checkpointBarrier)
+                    .barrierReceived(controller, channelInfo, checkpointBarrier);
         }
 
         return transitionAfterBarrierReceived(state);

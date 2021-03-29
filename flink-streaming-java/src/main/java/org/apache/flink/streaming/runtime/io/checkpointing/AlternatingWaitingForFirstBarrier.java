@@ -33,7 +33,7 @@ final class AlternatingWaitingForFirstBarrier
 
     @Override
     public BarrierHandlerAction alignmentTimeout(
-            Context context, CheckpointBarrier checkpointBarrier)
+            Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         state.prioritizeAllAnnouncements();
         return new WaitingForFirstBarrierUnaligned(true, state.getInputs());
