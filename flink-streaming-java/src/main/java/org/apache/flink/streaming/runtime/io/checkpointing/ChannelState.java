@@ -28,7 +28,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** A state pojo for {@link AbstractAlignedBarrierHandlerState}. */
+/**
+ * A controller for keeping track of channels state in {@link AbstractAlignedBarrierHandlerState}
+ * and {@link AbstractAlternatingAlignedBarrierHandlerState}.
+ */
 final class ChannelState {
     private final Map<InputChannelInfo, Integer> sequenceNumberInAnnouncedChannels =
             new HashMap<>();
