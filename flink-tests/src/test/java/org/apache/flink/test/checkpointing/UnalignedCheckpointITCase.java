@@ -183,9 +183,12 @@ public class UnalignedCheckpointITCase extends UnalignedCheckpointTestBase {
         this.settings = settings;
     }
 
-    @Test(timeout = 60_000)
+    @Test
     public void execute() throws Exception {
-        execute(settings);
+        for (int i = 0; i < 100; i++) {
+            LOG.info("Running UC IT case iteration {} for {}", i, settings);
+            execute(settings);
+        }
     }
 
     protected void checkCounters(JobExecutionResult result) {
