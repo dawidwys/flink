@@ -28,11 +28,11 @@ import java.io.IOException;
 final class CollectingBarriersUnaligned implements BarrierHandlerState {
 
     private final boolean alternating;
-    private final CheckpointableInput[] inputs;
+    private final ChannelState channelState;
 
-    CollectingBarriersUnaligned(boolean alternating, CheckpointableInput[] inputs) {
+    CollectingBarriersUnaligned(boolean alternating, ChannelState channelState) {
         this.alternating = alternating;
-        this.inputs = inputs;
+        this.channelState = channelState;
     }
 
     @Override
@@ -46,7 +46,7 @@ final class CollectingBarriersUnaligned implements BarrierHandlerState {
     public BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException {
-        inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
+        channelState.getInputs()[channelInfo.getGateIdx()].convertToPriorityEvent(
                 channelInfo.getInputChannelIdx(), sequenceNumber);
         return this;
     }
@@ -60,7 +60,7 @@ final class CollectingBarriersUnaligned implements BarrierHandlerState {
         // we received an out of order aligned barrier, we should resume consumption for the
         // channel, as it is being blocked by the credit-based network
         if (!checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-            inputs[channelInfo.getGateIdx()].resumeConsumption(channelInfo);
+            channelState.blockChannel(channelInfo);
         }
 
         if (controller.allBarriersReceived()) {
@@ -74,14 +74,15 @@ final class CollectingBarriersUnaligned implements BarrierHandlerState {
         return stopCheckpoint(cancelledId);
     }
 
-    private BarrierHandlerState stopCheckpoint(long cancelledId) {
-        for (CheckpointableInput input : inputs) {
+    private BarrierHandlerState stopCheckpoint(long cancelledId) throws IOException {
+        for (CheckpointableInput input : channelState.getInputs()) {
             input.checkpointStopped(cancelledId);
         }
+        channelState.unblockAllChannels();
         if (alternating) {
-            return new AlternatingWaitingForFirstBarrier(inputs);
+            return new AlternatingWaitingForFirstBarrier(channelState.getInputs());
         } else {
-            return new WaitingForFirstBarrierUnaligned(false, inputs);
+            return new WaitingForFirstBarrierUnaligned(false, channelState);
         }
     }
 }
