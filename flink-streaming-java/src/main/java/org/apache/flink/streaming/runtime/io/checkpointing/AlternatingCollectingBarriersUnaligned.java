@@ -25,13 +25,16 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
+/**
+ * The difference between the alternating and {@link CollectingBarriersUnaligned} is that the
+ * alternating state unblocks channels only when a checkpoints completes. We assume the upstream
+ * operators are also blocked on alignment and thus it does not make sense to process more data from
+ * the subsequent checkpoint.
+ */
 final class AlternatingCollectingBarriersUnaligned implements BarrierHandlerState {
-
-    private final boolean alternating;
     private final ChannelState channelState;
 
-    AlternatingCollectingBarriersUnaligned(boolean alternating, ChannelState channelState) {
-        this.alternating = alternating;
+    AlternatingCollectingBarriersUnaligned(ChannelState channelState) {
         this.channelState = channelState;
     }
 
@@ -79,10 +82,6 @@ final class AlternatingCollectingBarriersUnaligned implements BarrierHandlerStat
             input.checkpointStopped(cancelledId);
         }
         channelState.unblockAllChannels();
-        if (alternating) {
-            return new AlternatingWaitingForFirstBarrier(channelState.emptyState());
-        } else {
-            return new AlternatingWaitingForFirstBarrierUnaligned(false, channelState);
-        }
+        return new AlternatingWaitingForFirstBarrier(channelState.emptyState());
     }
 }

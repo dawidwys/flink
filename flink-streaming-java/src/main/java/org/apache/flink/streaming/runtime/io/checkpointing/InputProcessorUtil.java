@@ -197,22 +197,34 @@ public class InputProcessorUtil {
             CheckpointableInput[] inputs,
             Clock clock,
             int numberOfChannels) {
-        if (config.isUnalignedCheckpointsEnabled()) {
+        BiFunction<Callable<?>, Duration, Cancellable> timerRegistrationCallback =
+                createRegisterTimerCallback(mailboxExecutor, timerService);
+        if (!config.isUnalignedCheckpointsEnabled()) {
+            return SingleCheckpointBarrierHandler.aligned(
+                    taskName,
+                    toNotifyOnCheckpoint,
+                    clock,
+                    numberOfChannels,
+                    timerRegistrationCallback,
+                    inputs);
+
+        } else if (config.getAlignmentTimeout().isZero()) {
+            return SingleCheckpointBarrierHandler.unaligned(
+                    taskName,
+                    toNotifyOnCheckpoint,
+                    checkpointCoordinator,
+                    clock,
+                    numberOfChannels,
+                    timerRegistrationCallback,
+                    inputs);
+        } else {
             return SingleCheckpointBarrierHandler.alternating(
                     taskName,
                     toNotifyOnCheckpoint,
                     checkpointCoordinator,
                     clock,
                     numberOfChannels,
-                    createRegisterTimerCallback(mailboxExecutor, timerService),
-                    inputs);
-        } else {
-            return SingleCheckpointBarrierHandler.aligned(
-                    taskName,
-                    toNotifyOnCheckpoint,
-                    clock,
-                    numberOfChannels,
-                    createRegisterTimerCallback(mailboxExecutor, timerService),
+                    timerRegistrationCallback,
                     inputs);
         }
     }

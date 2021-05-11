@@ -34,7 +34,7 @@ final class AlternatingWaitingForFirstBarrier
             Controller controller, CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException {
         state.prioritizeAllAnnouncements();
-        return new AlternatingWaitingForFirstBarrierUnaligned(true, state);
+        return new AlternatingWaitingForFirstBarrierUnaligned(state);
     }
 
     @Override

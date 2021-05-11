@@ -41,7 +41,7 @@ final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarr
             input.checkpointStarted(unalignedBarrier);
         }
         controller.triggerGlobalCheckpoint(unalignedBarrier);
-        return new AlternatingCollectingBarriersUnaligned(true, state);
+        return new AlternatingCollectingBarriersUnaligned(state);
     }
 
     @Override

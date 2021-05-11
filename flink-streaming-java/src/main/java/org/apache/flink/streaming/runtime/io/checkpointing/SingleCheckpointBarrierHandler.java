@@ -123,7 +123,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
                 checkpointCoordinator,
                 clock,
                 numOpenChannels,
-                new AlternatingWaitingForFirstBarrierUnaligned(false, new ChannelState(inputs)),
+                new WaitingForFirstBarrierUnaligned(inputs),
                 false,
                 registerTimer,
                 inputs);

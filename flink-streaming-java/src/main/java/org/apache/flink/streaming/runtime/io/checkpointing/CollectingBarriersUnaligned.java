@@ -25,31 +25,28 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
-/**
- * The difference between the alternating and {@link WaitingForFirstBarrierUnaligned} is that the
- * alternating state unblocks channels only when a checkpoints completes. We assume the upstream
- * operators are also blocked on alignment and thus it does not make sense to process more data from
- * the subsequent checkpoint.
- */
-final class AlternatingWaitingForFirstBarrierUnaligned implements BarrierHandlerState {
-    private final ChannelState channelState;
+import static org.apache.flink.util.Preconditions.checkState;
 
-    AlternatingWaitingForFirstBarrierUnaligned(ChannelState channelState) {
-        this.channelState = channelState;
+/** @see AlternatingCollectingBarriersUnaligned */
+final class CollectingBarriersUnaligned implements BarrierHandlerState {
+    private final CheckpointableInput[] inputs;
+
+    CollectingBarriersUnaligned(CheckpointableInput[] inputs) {
+        this.inputs = inputs;
     }
 
     @Override
     public BarrierHandlerState alignmentTimeout(
             Controller controller, CheckpointBarrier checkpointBarrier) {
-        // ignore already processing unaligned checkpoints
-        return this;
+        throw new IllegalStateException(
+                "We are running in an unaligned mode only. We should never receive alignment timeout");
     }
 
     @Override
     public BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException {
-        channelState.getInputs()[channelInfo.getGateIdx()].convertToPriorityEvent(
+        inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
                 channelInfo.getInputChannelIdx(), sequenceNumber);
         return this;
     }
@@ -60,35 +57,23 @@ final class AlternatingWaitingForFirstBarrierUnaligned implements BarrierHandler
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
             throws CheckpointException, IOException {
+        checkState(checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint());
 
-        // we received an out of order aligned barrier, we should resume consumption for the
-        // channel, as it is being blocked by the credit-based network
-        if (!checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-            channelState.blockChannel(channelInfo);
-        }
-
-        CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
-        controller.initInputsCheckpoint(unalignedBarrier);
-        for (CheckpointableInput input : channelState.getInputs()) {
-            input.checkpointStarted(unalignedBarrier);
-        }
-        controller.triggerGlobalCheckpoint(unalignedBarrier);
         if (controller.allBarriersReceived()) {
-            for (CheckpointableInput input : channelState.getInputs()) {
-                input.checkpointStopped(unalignedBarrier.getId());
-            }
-            return stopCheckpoint();
+            return stopCheckpoint(checkpointBarrier.getId());
         }
-        return new AlternatingCollectingBarriersUnaligned(channelState);
+        return this;
     }
 
     @Override
     public BarrierHandlerState abort(long cancelledId) throws IOException {
-        return stopCheckpoint();
+        return stopCheckpoint(cancelledId);
     }
 
-    private BarrierHandlerState stopCheckpoint() throws IOException {
-        channelState.unblockAllChannels();
-        return new AlternatingWaitingForFirstBarrier(channelState.emptyState());
+    private BarrierHandlerState stopCheckpoint(long checkpointId) {
+        for (CheckpointableInput input : inputs) {
+            input.checkpointStopped(checkpointId);
+        }
+        return new WaitingForFirstBarrierUnaligned(inputs);
     }
 }
