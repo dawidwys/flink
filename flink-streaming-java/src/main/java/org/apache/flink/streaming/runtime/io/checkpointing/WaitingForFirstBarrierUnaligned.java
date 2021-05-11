@@ -25,6 +25,8 @@ import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInpu
 
 import java.io.IOException;
 
+import static org.apache.flink.util.Preconditions.checkState;
+
 /** @see AlternatingWaitingForFirstBarrierUnaligned */
 final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
     private final CheckpointableInput[] inputs;
@@ -55,15 +57,7 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
             InputChannelInfo channelInfo,
             CheckpointBarrier checkpointBarrier)
             throws CheckpointException, IOException {
-        // we received an out of order aligned barrier, we should resume consumption for the
-        // channel, as it is being blocked by the credit-based network
-        if (!checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint()) {
-<<<<<<< HEAD
-            channelState.blockChannel(channelInfo);
-=======
-            inputs[channelInfo.getGateIdx()].resumeConsumption(channelInfo);
->>>>>>> b8ebaa3ec63... Revert the blocking behaviour for fully unaligned checkpoints
-        }
+        checkState(checkpointBarrier.getCheckpointOptions().isUnalignedCheckpoint());
 
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
         controller.initInputsCheckpoint(unalignedBarrier);
