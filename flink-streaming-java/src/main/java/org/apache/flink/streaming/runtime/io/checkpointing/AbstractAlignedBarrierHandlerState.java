@@ -60,7 +60,7 @@ abstract class AbstractAlignedBarrierHandlerState implements BarrierHandlerState
         if (controller.allBarriersReceived()) {
             controller.triggerGlobalCheckpoint(checkpointBarrier);
             state.unblockAllChannels();
-            return new WaitingForFirstBarrier(state.getInputs());
+            return new WaitingForFirstBarrier(state.emptyState());
         }
 
         return convertAfterBarrierReceived(state);
@@ -71,6 +71,6 @@ abstract class AbstractAlignedBarrierHandlerState implements BarrierHandlerState
     @Override
     public final BarrierHandlerState abort(long cancelledId) throws IOException {
         state.unblockAllChannels();
-        return new WaitingForFirstBarrier(state.getInputs());
+        return new WaitingForFirstBarrier(state.emptyState());
     }
 }
