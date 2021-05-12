@@ -29,10 +29,10 @@ import static org.apache.flink.util.Preconditions.checkState;
 
 /** @see AlternatingWaitingForFirstBarrierUnaligned */
 final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
-    private final CheckpointableInput[] inputs;
+    private final ChannelState channelState;
 
     WaitingForFirstBarrierUnaligned(CheckpointableInput[] inputs) {
-        this.inputs = inputs;
+        this.channelState = new ChannelState(inputs);
     }
 
     @Override
@@ -46,8 +46,7 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
     public BarrierHandlerState announcementReceived(
             Controller controller, InputChannelInfo channelInfo, int sequenceNumber)
             throws IOException {
-        inputs[channelInfo.getGateIdx()].convertToPriorityEvent(
-                channelInfo.getInputChannelIdx(), sequenceNumber);
+        channelState.addSeenAnnouncement(channelInfo, sequenceNumber);
         return this;
     }
 
@@ -61,17 +60,18 @@ final class WaitingForFirstBarrierUnaligned implements BarrierHandlerState {
 
         CheckpointBarrier unalignedBarrier = checkpointBarrier.asUnaligned();
         controller.initInputsCheckpoint(unalignedBarrier);
-        for (CheckpointableInput input : inputs) {
+        for (CheckpointableInput input : channelState.getInputs()) {
             input.checkpointStarted(unalignedBarrier);
         }
         controller.triggerGlobalCheckpoint(unalignedBarrier);
         if (controller.allBarriersReceived()) {
-            for (CheckpointableInput input : inputs) {
+            for (CheckpointableInput input : channelState.getInputs()) {
                 input.checkpointStopped(unalignedBarrier.getId());
             }
             return this;
         }
-        return new CollectingBarriersUnaligned(inputs);
+        channelState.prioritizeAllAnnouncements();
+        return new CollectingBarriersUnaligned(channelState.getInputs());
     }
 
     @Override
