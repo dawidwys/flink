@@ -56,6 +56,8 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
 
     private final WatermarkGauge watermarkGauge = new WatermarkGauge();
 
+    private StreamStatus announcedStatus = StreamStatus.ACTIVE;
+
     @SuppressWarnings("unchecked")
     public RecordWriterOutput(
             RecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
@@ -101,32 +103,51 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
     }
 
     private <X> void pushToRecordWriter(StreamRecord<X> record) {
-        serializationDelegate.setInstance(record);
+        if (announcedStatus.isIdle()) {
+            writeStreamStatus(StreamStatus.ACTIVE);
+        }
 
+        serializationDelegate.setInstance(record);
         try {
             recordWriter.emit(serializationDelegate);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+
+        if (announcedStatus.isIdle()) {
+            writeStreamStatus(StreamStatus.IDLE);
+        }
     }
 
     @Override
     public void emitWatermark(Watermark mark) {
+        if (announcedStatus.isIdle()) {
+            writeStreamStatus(StreamStatus.ACTIVE);
+        }
+
         watermarkGauge.setCurrentWatermark(mark.getTimestamp());
         serializationDelegate.setInstance(mark);
+        try {
+            recordWriter.broadcastEmit(serializationDelegate);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
 
-        if (streamStatusProvider.getStreamStatus().isActive()) {
-            try {
-                recordWriter.broadcastEmit(serializationDelegate);
-            } catch (Exception e) {
-                throw new RuntimeException(e.getMessage(), e);
-            }
+        if (announcedStatus.isIdle()) {
+            writeStreamStatus(StreamStatus.IDLE);
         }
     }
 
+    @Override
     public void emitStreamStatus(StreamStatus streamStatus) {
-        serializationDelegate.setInstance(streamStatus);
+        if (!announcedStatus.equals(streamStatus)) {
+            announcedStatus = streamStatus;
+            writeStreamStatus(streamStatus);
+        }
+    }
 
+    private void writeStreamStatus(StreamStatus streamStatus) {
+        serializationDelegate.setInstance(streamStatus);
         try {
             recordWriter.broadcastEmit(serializationDelegate);
         } catch (Exception e) {

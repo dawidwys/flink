@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.eventtime.CombinedWatermark;
 import org.apache.flink.api.common.state.KeyedStateStore;
 import org.apache.flink.api.common.state.State;
 import org.apache.flink.api.common.state.StateDescriptor;
@@ -50,6 +51,7 @@ import org.apache.flink.streaming.api.operators.StreamOperatorStateHandler.Check
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.streaming.util.LatencyStats;
@@ -88,7 +90,6 @@ public abstract class AbstractStreamOperator<OUT>
                 SetupableStreamOperator<OUT>,
                 CheckpointedStreamOperator,
                 Serializable {
-
     private static final long serialVersionUID = 1L;
 
     /** The logger used by the operator class and its subclasses. */
@@ -107,6 +108,8 @@ public abstract class AbstractStreamOperator<OUT>
     protected transient StreamConfig config;
 
     protected transient Output<StreamRecord<OUT>> output;
+
+    private transient CombinedWatermark combinedWatermark;
 
     /** The runtime context for UDFs. */
     private transient StreamingRuntimeContext runtimeContext;
@@ -144,14 +147,6 @@ public abstract class AbstractStreamOperator<OUT>
 
     protected transient ProcessingTimeService processingTimeService;
 
-    // ---------------- two-input operator watermarks ------------------
-
-    // We keep track of watermarks from both inputs, the combined input is the minimum
-    // Once the minimum advances we emit a new watermark for downstream operators
-    private long combinedWatermark = Long.MIN_VALUE;
-    private long input1Watermark = Long.MIN_VALUE;
-    private long input2Watermark = Long.MIN_VALUE;
-
     // ------------------------------------------------------------------------
     //  Life Cycle
     // ------------------------------------------------------------------------
@@ -182,6 +177,8 @@ public abstract class AbstractStreamOperator<OUT>
             this.metrics = UnregisteredMetricGroups.createUnregisteredOperatorMetricGroup();
             this.output = output;
         }
+
+        this.combinedWatermark = setupCombinedWatermark();
 
         try {
             Configuration taskManagerConfig = environment.getTaskManagerInfo().getConfiguration();
@@ -241,6 +238,13 @@ public abstract class AbstractStreamOperator<OUT>
 
         stateKeySelector1 = config.getStatePartitioner(0, getUserCodeClassloader());
         stateKeySelector2 = config.getStatePartitioner(1, getUserCodeClassloader());
+    }
+
+    private CombinedWatermark setupCombinedWatermark() {
+        CombinedWatermark combinedWatermark = new CombinedWatermark();
+        combinedWatermark.add(new CombinedWatermark.PartialWatermark());
+        combinedWatermark.add(new CombinedWatermark.PartialWatermark());
+        return combinedWatermark;
     }
 
     /**
@@ -628,22 +632,42 @@ public abstract class AbstractStreamOperator<OUT>
         output.emitWatermark(mark);
     }
 
-    public void processWatermark1(Watermark mark) throws Exception {
-        input1Watermark = mark.getTimestamp();
-        long newMin = Math.min(input1Watermark, input2Watermark);
-        if (newMin > combinedWatermark) {
-            combinedWatermark = newMin;
-            processWatermark(new Watermark(combinedWatermark));
+    private void processWatermark(Watermark mark, int index) throws Exception {
+        combinedWatermark.get(index).setWatermark(mark.getTimestamp());
+        if (combinedWatermark.updateCombinedWatermark()) {
+            processWatermark(new Watermark(combinedWatermark.getCombinedWatermark()));
         }
     }
 
+    public void processWatermark1(Watermark mark) throws Exception {
+        processWatermark(mark, 0);
+    }
+
     public void processWatermark2(Watermark mark) throws Exception {
-        input2Watermark = mark.getTimestamp();
-        long newMin = Math.min(input1Watermark, input2Watermark);
-        if (newMin > combinedWatermark) {
-            combinedWatermark = newMin;
-            processWatermark(new Watermark(combinedWatermark));
+        processWatermark(mark, 1);
+    }
+
+    public final void emitStreamStatus(StreamStatus streamStatus) throws Exception {
+        output.emitStreamStatus(streamStatus);
+    }
+
+    private void emitStreamStatus(StreamStatus streamStatus, int index) {
+        boolean wasIdle = combinedWatermark.isIdle();
+        combinedWatermark.get(index).setIdle(streamStatus.isIdle());
+        if (combinedWatermark.updateCombinedWatermark()) {
+            output.emitWatermark(new Watermark(combinedWatermark.getCombinedWatermark()));
         }
+        if (wasIdle != combinedWatermark.isIdle()) {
+            output.emitStreamStatus(streamStatus);
+        }
+    }
+
+    public final void emitStreamStatus1(StreamStatus streamStatus) throws Exception {
+        emitStreamStatus(streamStatus, 0);
+    }
+
+    public final void emitStreamStatus2(StreamStatus streamStatus) throws Exception {
+        emitStreamStatus(streamStatus, 1);
     }
 
     @Override
