@@ -32,7 +32,6 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElementSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
-import org.apache.flink.streaming.runtime.streamstatus.StreamStatusProvider;
 import org.apache.flink.streaming.runtime.tasks.WatermarkGaugeExposingOutput;
 import org.apache.flink.util.OutputTag;
 
@@ -48,8 +47,6 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
 
     private SerializationDelegate<StreamElement> serializationDelegate;
 
-    private final StreamStatusProvider streamStatusProvider;
-
     private final boolean supportsUnalignedCheckpoints;
 
     private final OutputTag outputTag;
@@ -63,7 +60,6 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
             RecordWriter<SerializationDelegate<StreamRecord<OUT>>> recordWriter,
             TypeSerializer<OUT> outSerializer,
             OutputTag outputTag,
-            StreamStatusProvider streamStatusProvider,
             boolean supportsUnalignedCheckpoints) {
 
         checkNotNull(recordWriter);
@@ -79,8 +75,6 @@ public class RecordWriterOutput<OUT> implements WatermarkGaugeExposingOutput<Str
         if (outSerializer != null) {
             serializationDelegate = new SerializationDelegate<StreamElement>(outRecordSerializer);
         }
-
-        this.streamStatusProvider = checkNotNull(streamStatusProvider);
 
         this.supportsUnalignedCheckpoints = supportsUnalignedCheckpoints;
     }
