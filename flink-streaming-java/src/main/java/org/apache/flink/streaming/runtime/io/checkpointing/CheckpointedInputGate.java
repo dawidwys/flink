@@ -144,6 +144,16 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
         return inputGate.getAvailableFuture();
     }
 
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        checkState(
+                inputGate.isFinished(),
+                "We should not inject barriers directly if we have not received"
+                        + " an end of partition.");
+        for (InputChannelInfo channelInfo : getChannelInfos()) {
+            barrierHandler.processBarrier(barrier, channelInfo);
+        }
+    }
+
     @Override
     public Optional<BufferOrEvent> pollNext() throws IOException, InterruptedException {
         Optional<BufferOrEvent> next = inputGate.pollNext();

@@ -30,6 +30,7 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.io.AvailabilityProvider;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.operators.testutils.DummyInvokable;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
@@ -290,6 +291,9 @@ public class LargeSortingDataInputITCase {
                 throws CheckpointException {
             return CompletableFuture.completedFuture(null);
         }
+
+        @Override
+        public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
 
         @Override
         public void close() throws IOException {}

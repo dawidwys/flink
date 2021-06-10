@@ -48,6 +48,7 @@ import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.NettyShuffleEnvironment;
 import org.apache.flink.runtime.io.network.NettyShuffleEnvironmentBuilder;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.writer.AvailabilityTestResultPartitionWriter;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
@@ -1871,6 +1872,9 @@ public class StreamTaskTest extends TestLogger {
         }
 
         @Override
+        public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
+
+        @Override
         public CompletableFuture<Void> prepareSnapshot(
                 ChannelStateWriter channelStateWriter, final long checkpointId)
                 throws CheckpointException {
@@ -1899,6 +1903,9 @@ public class StreamTaskTest extends TestLogger {
                     ? InputStatus.END_OF_INPUT
                     : InputStatus.NOTHING_AVAILABLE;
         }
+
+        @Override
+        public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
 
         @Override
         public CompletableFuture<Void> prepareSnapshot(
@@ -2088,6 +2095,9 @@ public class StreamTaskTest extends TestLogger {
         public InputStatus processInput() throws Exception {
             return isFinished ? InputStatus.END_OF_INPUT : InputStatus.NOTHING_AVAILABLE;
         }
+
+        @Override
+        public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
 
         @Override
         public CompletableFuture<Void> prepareSnapshot(
@@ -2709,6 +2719,9 @@ public class StreamTaskTest extends TestLogger {
                 public InputStatus processInput() {
                     return InputStatus.NOTHING_AVAILABLE;
                 }
+
+                @Override
+                public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
 
                 @Override
                 public CompletableFuture<Void> prepareSnapshot(

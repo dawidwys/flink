@@ -30,6 +30,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.memory.MemoryAllocationException;
 import org.apache.flink.runtime.memory.MemoryManager;
@@ -134,7 +135,13 @@ public final class SortingDataInput<T, K> implements StreamTaskInput<T> {
     public CompletableFuture<Void> prepareSnapshot(
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
         throw new UnsupportedOperationException(
-                "Checkpoints are not supported with sorted inputs" + " in the BATCH runtime.");
+                "Checkpoints are not supported with sorted inputs in the BATCH runtime.");
+    }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        throw new UnsupportedOperationException(
+                "Checkpoints are not supported with sorted inputs in the BATCH runtime.");
     }
 
     @Override

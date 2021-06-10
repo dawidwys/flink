@@ -98,6 +98,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
@@ -966,28 +967,12 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             throws Exception {
         FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
         try {
-            latestAsyncCheckpointStartDelayNanos =
-                    1_000_000
-                            * Math.max(
-                                    0,
-                                    System.currentTimeMillis() - checkpointMetaData.getTimestamp());
-
-            // No alignment if we inject a checkpoint
-            CheckpointMetricsBuilder checkpointMetrics =
-                    new CheckpointMetricsBuilder()
-                            .setAlignmentDurationNanos(0L)
-                            .setBytesProcessedDuringAlignment(0L)
-                            .setCheckpointStartDelayNanos(latestAsyncCheckpointStartDelayNanos);
-
-            subtaskCheckpointCoordinator.initInputsCheckpoint(
-                    checkpointMetaData.getCheckpointId(), checkpointOptions);
-
-            boolean success =
-                    performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
-            if (!success) {
-                declineCheckpoint(checkpointMetaData.getCheckpointId());
+            if (allInputsFinished()) {
+                return triggerCheckpointInRootNode(checkpointMetaData, checkpointOptions);
+            } else {
+                throw new UnsupportedOperationException(
+                        "We do not support triggering non root nodes yet.");
             }
-            return success;
         } catch (Exception e) {
             // propagate exceptions only if the task is still in "running" state
             if (isRunning) {
@@ -1010,6 +995,38 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         } finally {
             FlinkSecurityManager.unmonitorUserSystemExitForCurrentThread();
         }
+    }
+
+    private boolean allInputsFinished() {
+        return getEnvironment().getAllInputGates().length == 0
+                || Arrays.stream(getEnvironment().getAllInputGates())
+                        .allMatch(InputGate::isFinished);
+    }
+
+    private boolean triggerCheckpointInRootNode(
+            CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions)
+            throws Exception {
+        latestAsyncCheckpointStartDelayNanos =
+                1_000_000
+                        * Math.max(
+                                0, System.currentTimeMillis() - checkpointMetaData.getTimestamp());
+
+        // No alignment if we inject a checkpoint
+        CheckpointMetricsBuilder checkpointMetrics =
+                new CheckpointMetricsBuilder()
+                        .setAlignmentDurationNanos(0L)
+                        .setBytesProcessedDuringAlignment(0L)
+                        .setCheckpointStartDelayNanos(latestAsyncCheckpointStartDelayNanos);
+
+        subtaskCheckpointCoordinator.initInputsCheckpoint(
+                checkpointMetaData.getCheckpointId(), checkpointOptions);
+
+        boolean success =
+                performCheckpoint(checkpointMetaData, checkpointOptions, checkpointMetrics);
+        if (!success) {
+            declineCheckpoint(checkpointMetaData.getCheckpointId());
+        }
+        return success;
     }
 
     @Override

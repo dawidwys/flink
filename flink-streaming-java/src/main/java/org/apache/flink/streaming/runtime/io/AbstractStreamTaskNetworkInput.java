@@ -21,6 +21,7 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.event.AbstractEvent;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
@@ -145,6 +146,11 @@ public abstract class AbstractStreamTaskNetworkInput<
         } else {
             throw new UnsupportedOperationException("Unknown type of StreamElement");
         }
+    }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        checkpointedInputGate.injectCheckpointBarrier(barrier);
     }
 
     protected InputStatus processEvent(BufferOrEvent bufferOrEvent) {

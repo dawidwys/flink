@@ -21,6 +21,7 @@ package org.apache.flink.streaming.api.operators.sort;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.runtime.io.StreamTaskInput;
 
@@ -60,6 +61,11 @@ class ObservableStreamTaskInput<T> implements StreamTaskInput<T> {
     public CompletableFuture<Void> prepareSnapshot(
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
         return wrappedInput.prepareSnapshot(channelStateWriter, checkpointId);
+    }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        wrappedInput.injectCheckpointBarrier(barrier);
     }
 
     @Override

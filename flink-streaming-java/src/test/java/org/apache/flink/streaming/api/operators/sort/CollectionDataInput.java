@@ -21,6 +21,7 @@ package org.apache.flink.streaming.api.operators.sort;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.StreamTaskInput;
 import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
@@ -74,6 +75,9 @@ final class CollectionDataInput<E> implements StreamTaskInput<E> {
             ChannelStateWriter channelStateWriter, long checkpointId) throws CheckpointException {
         return null;
     }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {}
 
     @Override
     public void close() throws IOException {}

@@ -23,6 +23,7 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.io.AvailabilityProvider;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.streaming.api.operators.InputSelection;
 import org.apache.flink.streaming.runtime.tasks.TwoInputStreamTask;
 import org.apache.flink.util.ExceptionUtils;
@@ -100,6 +101,12 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
         inputSelectionHandler.nextSelection();
 
         return getInputStatus();
+    }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        processor1.injectCheckpointBarrier(barrier);
+        processor2.injectCheckpointBarrier(barrier);
     }
 
     @Override

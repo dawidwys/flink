@@ -151,6 +151,11 @@ public class StreamTaskSourceInput<T> implements StreamTaskInput<T>, Checkpointa
         return CompletableFuture.completedFuture(null);
     }
 
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        throw new UnsupportedOperationException("Cannot inject barrier into source input");
+    }
+
     public OperatorID getOperatorID() {
         return operator.getOperatorID();
     }

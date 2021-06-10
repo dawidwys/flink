@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
 
@@ -75,6 +76,11 @@ public final class StreamOneInputProcessor<IN> implements StreamInputProcessor {
         }
 
         return status;
+    }
+
+    @Override
+    public void injectCheckpointBarrier(CheckpointBarrier barrier) throws IOException {
+        input.injectCheckpointBarrier(barrier);
     }
 
     @Override
