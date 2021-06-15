@@ -19,12 +19,15 @@
 package org.apache.flink.connector.base.source.reader;
 
 import org.apache.flink.api.common.accumulators.ListAccumulator;
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
+import org.apache.flink.api.connector.source.lib.NumberSequenceSource;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.mocks.MockBaseSource;
@@ -32,7 +35,12 @@ import org.apache.flink.connector.base.source.reader.mocks.MockSplitEnumerator;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
+import org.apache.flink.util.Collector;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import org.junit.Test;
@@ -47,6 +55,58 @@ import static org.junit.Assert.assertEquals;
 
 /** IT case for the {@link Source} with a coordinator. */
 public class CoordinatedSourceITCase extends AbstractTestBase {
+
+    @Test
+    public void testAlignment() throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.getConfig().setAutoWatermarkInterval(2000);
+        env.setParallelism(2);
+        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(Integer.MAX_VALUE, 10));
+
+        DataStream<Long> eventStream =
+                env.fromSource(
+                                new NumberSequenceSource(0, Long.MAX_VALUE),
+                                WatermarkStrategy.<Long>forMonotonousTimestamps()
+                                        .withTimestampAssigner(new LongTimestampAssigner()),
+                                "NumberSequenceSource")
+                        .map(
+                                new RichMapFunction<Long, Long>() {
+                                    @Override
+                                    public Long map(Long value) throws Exception {
+                                        if (getRuntimeContext().getIndexOfThisSubtask() == 0) {
+                                            Thread.sleep(1);
+                                        }
+                                        return 1L;
+                                    }
+                                });
+
+        eventStream
+                .windowAll(TumblingEventTimeWindows.of(Time.seconds(1)))
+                .process(
+                        new ProcessAllWindowFunction<Long, Long, TimeWindow>() {
+                            @Override
+                            public void process(
+                                    Context context, Iterable<Long> elements, Collector<Long> out)
+                                    throws Exception {
+                                long count = 0;
+                                for (Long ignored : elements) {
+                                    count++;
+                                }
+                                out.collect(count);
+                            }
+                        })
+                .print();
+        env.execute("Even time alignment test job");
+    }
+
+    private static class LongTimestampAssigner implements SerializableTimestampAssigner<Long> {
+        private long counter = 0;
+
+        @Override
+        public long extractTimestamp(Long record, long recordTimeStamp) {
+            return counter++;
+        }
+    }
 
     @Test
     public void testEnumeratorReaderCommunication() throws Exception {
