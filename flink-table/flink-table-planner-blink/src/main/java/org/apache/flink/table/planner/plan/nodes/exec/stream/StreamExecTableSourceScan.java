@@ -63,10 +63,6 @@ public class StreamExecTableSourceScan extends CommonExecTableSourceScan
             String name) {
         // It's better to use StreamExecutionEnvironment.createInput()
         // rather than addLegacySource() for streaming, because it take care of checkpoint.
-        Transformation<RowData> transformation =
-                env.createInput(inputFormat, outputTypeInfo).name(name).getTransformation();
-
-        transformation.setPluginId("hbase-1");
-        return transformation;
+        return env.createInput(inputFormat, outputTypeInfo).name(name).getTransformation();
     }
 }

@@ -35,6 +35,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.flink.connector.hbase.options.HBaseOptions.LOOKUP_CACHE_MAX_ROWS;
@@ -60,6 +61,7 @@ public class HBase1DynamicTableFactory
         implements DynamicTableSourceFactory, DynamicTableSinkFactory {
 
     private static final String IDENTIFIER = "hbase-1.4";
+    private String pluginId;
 
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
@@ -78,6 +80,15 @@ public class HBase1DynamicTableFactory
         String nullStringLiteral = tableOptions.get(NULL_STRING_LITERAL);
         HBaseTableSchema hbaseSchema = HBaseTableSchema.fromTableSchema(tableSchema);
 
+        if (this.getPluginId().isPresent()) {
+            return new HBaseDynamicTableSource(
+                    hbaseClientConf,
+                    tableName,
+                    hbaseSchema,
+                    nullStringLiteral,
+                    getHBaseLookupOptions(tableOptions),
+                    this.getPluginId().get());
+        }
         return new HBaseDynamicTableSource(
                 hbaseClientConf,
                 tableName,
@@ -134,5 +145,15 @@ public class HBase1DynamicTableFactory
         set.add(LOOKUP_CACHE_TTL);
         set.add(LOOKUP_MAX_RETRIES);
         return set;
+    }
+
+    @Override
+    public void setPluginId(String pluginId) {
+        this.pluginId = pluginId;
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return Optional.of(pluginId);
     }
 }

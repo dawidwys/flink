@@ -142,7 +142,7 @@ public class DynamicTableSourceSpecSerdeTest {
                 new DynamicTableSourceSpec(
                         ObjectIdentifier.of("default_catalog", "default_db", "MyTable"),
                         new ResolvedCatalogTable(catalogTable1, resolvedSchema1),
-                        Collections.emptyList());
+                        Collections.emptyList(), null);
 
         Map<String, String> properties2 = new HashMap<>();
         properties2.put("connector", "values");
@@ -259,7 +259,7 @@ public class DynamicTableSourceSpecSerdeTest {
                                                     {
                                                         put("p", "B");
                                                     }
-                                                }))));
+                                                }))), null);
         return Arrays.asList(spec1, spec2);
     }
 }

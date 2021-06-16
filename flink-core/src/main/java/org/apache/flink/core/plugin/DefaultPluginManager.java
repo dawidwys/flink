@@ -28,6 +28,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
@@ -87,6 +88,18 @@ public class DefaultPluginManager implements PluginManager {
                             });
         }
         return Iterators.concat(combinedIterators.iterator());
+    }
+
+    @Override
+    public <P> Map<PluginDescriptor, Iterator<P>> loadMap(Class<P> service) {
+        Map<PluginDescriptor, Iterator<P>> combinedIterators = new HashMap<>();
+        for (PluginDescriptor pluginDescriptor : pluginDescriptors) {
+            PluginLoader pluginLoader =
+                    PluginLoader.create(
+                            pluginDescriptor, parentClassLoader, alwaysParentFirstPatterns);
+            combinedIterators.put(pluginDescriptor, pluginLoader.load(service));
+        }
+        return combinedIterators;
     }
 
     @Override

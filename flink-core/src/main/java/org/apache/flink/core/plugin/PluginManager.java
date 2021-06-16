@@ -18,7 +18,9 @@
 
 package org.apache.flink.core.plugin;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -37,6 +39,10 @@ public interface PluginManager {
      *     known plugins.
      */
     <P> Iterator<P> load(Class<P> service);
+
+    default <P> Map<PluginDescriptor, Iterator<P>> loadMap(Class<P> service) {
+        return new HashMap<>();
+    }
 
     Optional<ClassLoader> getPluginClassloader(String pluginId);
 }

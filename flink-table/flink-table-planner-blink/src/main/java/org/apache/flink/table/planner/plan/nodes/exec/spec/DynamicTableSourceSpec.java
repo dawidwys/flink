@@ -51,6 +51,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class DynamicTableSourceSpec extends CatalogTableSpecBase {
 
     public static final String FIELD_NAME_SOURCE_ABILITY_SPECS = "sourceAbilitySpecs";
+    public static final String FIELD_NAME_PLUGIN_ID = "pluginId";
+    private final String pluginId;
 
     @JsonIgnore private DynamicTableSource tableSource;
 
@@ -62,9 +64,11 @@ public class DynamicTableSourceSpec extends CatalogTableSpecBase {
             @JsonProperty(FIELD_NAME_IDENTIFIER) ObjectIdentifier objectIdentifier,
             @JsonProperty(FIELD_NAME_CATALOG_TABLE) ResolvedCatalogTable catalogTable,
             @Nullable @JsonProperty(FIELD_NAME_SOURCE_ABILITY_SPECS)
-                    List<SourceAbilitySpec> sourceAbilitySpecs) {
+                    List<SourceAbilitySpec> sourceAbilitySpecs,
+            @Nullable @JsonProperty(FIELD_NAME_PLUGIN_ID) String pluginId) {
         super(objectIdentifier, catalogTable);
         this.sourceAbilitySpecs = sourceAbilitySpecs;
+        this.pluginId = pluginId;
     }
 
     @JsonIgnore
@@ -135,5 +139,11 @@ public class DynamicTableSourceSpec extends CatalogTableSpecBase {
     @Nullable
     public List<SourceAbilitySpec> getSourceAbilitySpecs() {
         return sourceAbilitySpecs;
+    }
+
+    @JsonIgnore
+    @Nullable
+    public String getPluginId() {
+        return pluginId;
     }
 }

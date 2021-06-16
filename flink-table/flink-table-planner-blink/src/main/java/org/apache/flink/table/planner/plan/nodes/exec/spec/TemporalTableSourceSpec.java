@@ -69,7 +69,8 @@ public class TemporalTableSourceSpec {
                     new DynamicTableSourceSpec(
                             tableSourceTable.tableIdentifier(),
                             tableSourceTable.catalogTable(),
-                            Arrays.asList(tableSourceTable.abilitySpecs()));
+                            Arrays.asList(tableSourceTable.abilitySpecs()),
+                            null);
             tableSourceSpec.setTableSource(tableSourceTable.tableSource());
             tableSourceSpec.setReadableConfig(tableConfig.getConfiguration());
         }

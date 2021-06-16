@@ -47,6 +47,7 @@ public abstract class AbstractHBaseDynamicTableSource
     protected HBaseTableSchema hbaseSchema;
     protected final String nullStringLiteral;
     protected final HBaseLookupOptions lookupOptions;
+    protected final String pluginId;
 
     public AbstractHBaseDynamicTableSource(
             Configuration conf,
@@ -54,11 +55,22 @@ public abstract class AbstractHBaseDynamicTableSource
             HBaseTableSchema hbaseSchema,
             String nullStringLiteral,
             HBaseLookupOptions lookupOptions) {
+        this(conf, tableName, hbaseSchema, nullStringLiteral, lookupOptions, null);
+    }
+
+    public AbstractHBaseDynamicTableSource(
+            Configuration conf,
+            String tableName,
+            HBaseTableSchema hbaseSchema,
+            String nullStringLiteral,
+            HBaseLookupOptions lookupOptions,
+            String pluginId) {
         this.conf = conf;
         this.tableName = tableName;
         this.hbaseSchema = hbaseSchema;
         this.nullStringLiteral = nullStringLiteral;
         this.lookupOptions = lookupOptions;
+        this.pluginId = pluginId;
     }
 
     @Override

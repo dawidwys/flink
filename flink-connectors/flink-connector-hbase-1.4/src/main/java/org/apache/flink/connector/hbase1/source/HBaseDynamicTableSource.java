@@ -29,6 +29,8 @@ import org.apache.flink.table.data.RowData;
 
 import org.apache.hadoop.conf.Configuration;
 
+import java.util.Optional;
+
 /** HBase table source implementation. */
 @Internal
 public class HBaseDynamicTableSource extends AbstractHBaseDynamicTableSource {
@@ -40,6 +42,16 @@ public class HBaseDynamicTableSource extends AbstractHBaseDynamicTableSource {
             String nullStringLiteral,
             HBaseLookupOptions lookupOptions) {
         super(conf, tableName, hbaseSchema, nullStringLiteral, lookupOptions);
+    }
+
+    public HBaseDynamicTableSource(
+            Configuration conf,
+            String tableName,
+            HBaseTableSchema hbaseSchema,
+            String nullStringLiteral,
+            HBaseLookupOptions lookupOptions,
+            String pluginId) {
+        super(conf, tableName, hbaseSchema, nullStringLiteral, lookupOptions, pluginId);
     }
 
     @Override
@@ -56,5 +68,10 @@ public class HBaseDynamicTableSource extends AbstractHBaseDynamicTableSource {
     @VisibleForTesting
     public HBaseLookupOptions getLookupOptions() {
         return this.lookupOptions;
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return Optional.of(this.pluginId);
     }
 }

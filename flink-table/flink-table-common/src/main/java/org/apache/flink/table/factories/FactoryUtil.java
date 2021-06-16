@@ -24,6 +24,7 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DelegatingConfiguration;
 import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.core.plugin.PluginDescriptor;
 import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
 import org.apache.flink.table.api.TableException;
@@ -45,7 +46,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,10 +58,8 @@ import java.util.Optional;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /** Utility for working with {@link Factory}s. */
 @PublicEvolving
@@ -377,6 +379,74 @@ public final class FactoryUtil {
         return (T) matchingFactories.get(0);
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T extends Factory> T filterFactoriesByIdentifier(
+            Class<T> factoryClass,
+            String factoryIdentifier,
+            Map<PluginDescriptor, List<Factory>> foundFactories) {
+        if (foundFactories.isEmpty()) {
+            throw new ValidationException(
+                    String.format(
+                            "Could not find any factories that implement '%s' in the classpath.",
+                            factoryClass.getName()));
+        }
+
+        final Map<String, List<Factory>> matchingFactories = new HashMap<>();
+
+        for (final Map.Entry<PluginDescriptor, List<Factory>> entry : foundFactories.entrySet()) {
+            final String pluginId = entry.getKey().getPluginId();
+            for (final Factory factory : entry.getValue()) {
+                if (!factory.factoryIdentifier().equals(factoryIdentifier)) {
+                    continue;
+                }
+                if (matchingFactories.containsKey(pluginId)) {
+                    matchingFactories.get(pluginId).add(factory);
+                } else {
+
+                    final List<Factory> factories = new ArrayList<>();
+                    factories.add(factory);
+                    matchingFactories.put(pluginId, factories);
+                }
+            }
+        }
+
+        if (matchingFactories.isEmpty()) {
+            throw new ValidationException(
+                    String.format(
+                            "Could not find any factory for identifier '%s' that implements '%s' in the classpath.\n\n"
+                                    + "Available factory identifiers are:\n\n"
+                                    + "%s",
+                            factoryIdentifier,
+                            factoryClass.getName(),
+                            foundFactories.values().stream()
+                                    .flatMap(Collection::stream)
+                                    .map(Factory::factoryIdentifier)
+                                    .distinct()
+                                    .sorted()
+                                    .collect(Collectors.joining("\n"))));
+        }
+
+        if (matchingFactories.size() > 1
+                || matchingFactories.entrySet().iterator().next().getValue().size() > 1) {
+            throw new ValidationException(
+                    String.format(
+                            "Multiple factories for identifier '%s' that implement '%s' found in the classpath.\n\n"
+                                    + "Ambiguous factory classes are:\n\n"
+                                    + "%s",
+                            factoryIdentifier,
+                            factoryClass.getName(),
+                            matchingFactories.values().stream()
+                                    .flatMap(Collection::stream)
+                                    .map(f -> f.getClass().getName())
+                                    .sorted()
+                                    .collect(Collectors.joining("\n"))));
+        }
+        final String factoryPluginId = matchingFactories.keySet().iterator().next();
+        final Factory factory = matchingFactories.get(factoryPluginId).get(0);
+        factory.setPluginId(factoryPluginId);
+        return (T) factory;
+    }
+
     /**
      * Validates the required and optional {@link ConfigOption}s of a factory.
      *
@@ -472,12 +542,16 @@ public final class FactoryUtil {
         }
         try {
             if (pluginManager != null) {
-                List<Factory> factories =
-                        StreamSupport.stream(
-                                        Spliterators.spliteratorUnknownSize(
-                                                pluginManager.load(Factory.class), -1),
-                                        false)
-                                .collect(Collectors.toList());
+                Map<PluginDescriptor, List<Factory>> factories =
+                        pluginManager.loadMap(Factory.class).entrySet().stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                Map.Entry::getKey,
+                                                entry -> {
+                                                    final List<Factory> collect = new ArrayList<>();
+                                                    entry.getValue().forEachRemaining(collect::add);
+                                                    return collect;
+                                                }));
                 return filterFactoriesByIdentifier(factoryClass, connectorOption, factories);
             } else {
                 return discoverFactory(context.getClassLoader(), factoryClass, connectorOption);

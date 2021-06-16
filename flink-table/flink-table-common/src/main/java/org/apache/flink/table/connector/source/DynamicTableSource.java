@@ -32,6 +32,7 @@ import org.apache.flink.types.Row;
 import javax.annotation.Nullable;
 
 import java.io.Serializable;
+import java.util.Optional;
 
 /**
  * Source of a dynamic table from an external storage system.
@@ -70,6 +71,10 @@ public interface DynamicTableSource {
 
     /** Returns a string that summarizes this source for printing to a console or log. */
     String asSummaryString();
+
+    default Optional<String> getPluginId() {
+        return Optional.empty();
+    }
 
     // --------------------------------------------------------------------------------------------
     // Helper interfaces
