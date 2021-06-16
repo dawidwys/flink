@@ -81,7 +81,7 @@ public class UpsertKafkaDynamicTableFactory
 
     @Override
     public Optional<String> getPluginId() {
-        return Optional.of(pluginId);
+        return Optional.ofNullable(pluginId);
     }
 
     @Override

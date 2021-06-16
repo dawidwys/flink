@@ -375,6 +375,6 @@ public class KafkaDynamicTableFactory
 
     @Override
     public Optional<String> getPluginId() {
-        return Optional.of(pluginId);
+        return Optional.ofNullable(pluginId);
     }
 }
