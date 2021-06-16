@@ -82,7 +82,9 @@ public abstract class CommonExecTableSourceScan extends ExecNodeBase<RowData>
                     ((SourceFunctionProvider) provider).createSourceFunction();
             Transformation<RowData> transformation =
                     env.addSource(sourceFunction, operatorName, outputTypeInfo).getTransformation();
-            transformation.setPluginId("hbase-1");
+            if (tableSourceSpec.getPluginId() != null) {
+                transformation.setPluginId(tableSourceSpec.getPluginId());
+            }
             return transformation;
         } else if (provider instanceof InputFormatProvider) {
             InputFormat<RowData, ?> inputFormat =

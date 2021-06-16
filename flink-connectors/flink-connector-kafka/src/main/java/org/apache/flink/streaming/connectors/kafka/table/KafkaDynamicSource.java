@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -137,6 +138,8 @@ public class KafkaDynamicSource
     /** Flag to determine source mode. In upsert mode, it will keep the tombstone message. * */
     protected final boolean upsertMode;
 
+    protected final String pluginId;
+
     public KafkaDynamicSource(
             DataType physicalDataType,
             @Nullable DecodingFormat<DeserializationSchema<RowData>> keyDecodingFormat,
@@ -150,7 +153,8 @@ public class KafkaDynamicSource
             StartupMode startupMode,
             Map<KafkaTopicPartition, Long> specificStartupOffsets,
             long startupTimestampMillis,
-            boolean upsertMode) {
+            boolean upsertMode,
+            String pluginId) {
         // Format attributes
         this.physicalDataType =
                 Preconditions.checkNotNull(
@@ -166,6 +170,7 @@ public class KafkaDynamicSource
         this.keyPrefix = keyPrefix;
         // Mutable attributes
         this.producedDataType = physicalDataType;
+        this.pluginId = pluginId;
         this.metadataKeys = Collections.emptyList();
         this.watermarkStrategy = null;
         // Kafka-specific attributes
@@ -272,7 +277,8 @@ public class KafkaDynamicSource
                         startupMode,
                         specificStartupOffsets,
                         startupTimestampMillis,
-                        upsertMode);
+                        upsertMode,
+                        pluginId);
         copy.producedDataType = producedDataType;
         copy.metadataKeys = metadataKeys;
         copy.watermarkStrategy = watermarkStrategy;
@@ -330,6 +336,11 @@ public class KafkaDynamicSource
                 startupTimestampMillis,
                 upsertMode,
                 watermarkStrategy);
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return Optional.of(pluginId);
     }
 
     // --------------------------------------------------------------------------------------------

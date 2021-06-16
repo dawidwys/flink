@@ -333,7 +333,8 @@ public class KafkaDynamicTableFactory
                 startupMode,
                 specificStartupOffsets,
                 startupTimestampMillis,
-                false);
+                false,
+                pluginId);
     }
 
     protected KafkaDynamicSink createKafkaTableSink(
@@ -363,5 +364,17 @@ public class KafkaDynamicTableFactory
                 false,
                 SinkBufferFlushMode.DISABLED,
                 parallelism);
+    }
+
+    private String pluginId;
+
+    @Override
+    public void setPluginId(String pluginId) {
+        this.pluginId = pluginId;
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return Optional.of(pluginId);
     }
 }

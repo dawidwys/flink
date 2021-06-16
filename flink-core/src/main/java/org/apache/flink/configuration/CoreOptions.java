@@ -150,7 +150,7 @@ public class CoreOptions {
                     .stringType()
                     .defaultValue(
                             "java.;scala.;org.apache.flink.;javax.annotation.;org.slf4j;org.apache.log4j;org.apache"
-                                    + ".logging;org.apache.commons.logging;ch.qos.logback")
+                                    + ".logging;org.apache.commons.logging;ch.qos.logback;com.esotericsoftware")
                     .withDescription(
                             "A (semicolon-separated) list of patterns that specifies which classes should always be"
                                     + " resolved through the plugin parent ClassLoader first. A pattern is a simple prefix that is checked "

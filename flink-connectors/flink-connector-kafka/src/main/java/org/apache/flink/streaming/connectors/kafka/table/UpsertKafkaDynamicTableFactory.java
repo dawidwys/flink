@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
@@ -70,6 +71,18 @@ public class UpsertKafkaDynamicTableFactory
         implements DynamicTableSourceFactory, DynamicTableSinkFactory {
 
     public static final String IDENTIFIER = "upsert-kafka";
+
+    private String pluginId;
+
+    @Override
+    public void setPluginId(String pluginId) {
+        this.pluginId = pluginId;
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return Optional.of(pluginId);
+    }
 
     @Override
     public String factoryIdentifier() {
@@ -132,7 +145,8 @@ public class UpsertKafkaDynamicTableFactory
                 earliest,
                 Collections.emptyMap(),
                 0,
-                true);
+                true,
+                pluginId);
     }
 
     @Override

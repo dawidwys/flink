@@ -160,7 +160,19 @@ public final class FactoryUtil {
             final DynamicTableSourceFactory factory =
                     getDynamicTableFactory(
                             DynamicTableSourceFactory.class, catalog, context, pluginManager);
-            return factory.createDynamicTableSource(context);
+            DefaultDynamicTableContext loadContext =
+                    factory.getPluginId()
+                            .flatMap(pluginManager::getPluginClassloader)
+                            .map(
+                                    pluginClassloader ->
+                                            new DefaultDynamicTableContext(
+                                                    objectIdentifier,
+                                                    catalogTable,
+                                                    configuration,
+                                                    pluginClassloader,
+                                                    isTemporary))
+                            .orElse(context);
+            return factory.createDynamicTableSource(loadContext);
         } catch (Throwable t) {
             throw new ValidationException(
                     String.format(
