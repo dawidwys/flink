@@ -158,6 +158,9 @@ public class SourceStreamTask<
         // compatibility reasons with the current source interface (source functions run as a loop,
         // not in steps).
         sourceThread.setTaskDescription(getName());
+        getPluginId()
+                .flatMap(getEnvironment().getPluginManager()::getPluginClassloader)
+                .ifPresent(sourceThread::setContextClassLoader);
         sourceThread.start();
         sourceThread
                 .getCompletionFuture()

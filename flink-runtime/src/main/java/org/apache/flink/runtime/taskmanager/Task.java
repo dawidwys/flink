@@ -28,6 +28,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
+import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.blob.PermanentBlobKey;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
@@ -294,6 +296,8 @@ public class Task
      */
     private UserCodeClassLoader userCodeClassLoader;
 
+    private final PluginManager pluginManager;
+
     /**
      * <b>IMPORTANT:</b> This constructor may not start any work that would need to be undone in the
      * case of a failing task deployment.
@@ -386,6 +390,7 @@ public class Task
         this.partitionProducerStateChecker =
                 Preconditions.checkNotNull(partitionProducerStateChecker);
         this.executor = Preconditions.checkNotNull(executor);
+        this.pluginManager = PluginUtils.createPluginManagerFromRootFolder(getTaskConfiguration());
 
         // create the reader and writer structures
 
@@ -697,6 +702,7 @@ public class Task
                             jobConfiguration,
                             taskConfiguration,
                             userCodeClassLoader,
+                            pluginManager,
                             memoryManager,
                             ioManager,
                             broadcastVariableManager,
@@ -751,7 +757,12 @@ public class Task
                     new TaskExecutionState(executionId, ExecutionState.INITIALIZING));
 
             // make sure the user code classloader is accessible thread-locally
-            executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
+            ClassLoader taskClassloader =
+                    invokable
+                            .getPluginId()
+                            .flatMap(pluginManager::getPluginClassloader)
+                            .orElseGet(userCodeClassLoader::asClassLoader);
+            executingThread.setContextClassLoader(taskClassloader);
 
             FlinkSecurityManager.monitorUserSystemExitForCurrentThread();
             try {

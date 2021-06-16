@@ -140,8 +140,15 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Bound
         final ClassLoader userCodeClassloader = containingTask.getUserCodeClassLoader();
         final StreamConfig configuration = containingTask.getConfiguration();
 
+        ClassLoader operatorClassloader =
+                configuration
+                        .getPluginId()
+                        .flatMap(
+                                containingTask.getEnvironment().getPluginManager()
+                                        ::getPluginClassloader)
+                        .orElse(userCodeClassloader);
         StreamOperatorFactory<OUT> operatorFactory =
-                configuration.getStreamOperatorFactory(userCodeClassloader);
+                configuration.getStreamOperatorFactory(operatorClassloader);
 
         // we read the chained configs, and the order of record writer registrations by output name
         Map<Integer, StreamConfig> chainedConfigs =

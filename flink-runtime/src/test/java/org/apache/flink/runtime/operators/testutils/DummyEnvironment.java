@@ -23,6 +23,8 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
+import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
@@ -70,6 +72,7 @@ public class DummyEnvironment implements Environment {
     private final AccumulatorRegistry accumulatorRegistry =
             new AccumulatorRegistry(jobId, executionId);
     private UserCodeClassLoader userClassLoader;
+    private final PluginManager pluginManager;
 
     public DummyEnvironment() {
         this("Test Job", 1, 0, 1);
@@ -90,6 +93,7 @@ public class DummyEnvironment implements Environment {
         this.taskInfo = new TaskInfo(taskName, maxParallelism, subTaskIndex, numSubTasks, 0);
         this.taskStateManager = new TestTaskStateManager();
         this.aggregateManager = new TestGlobalAggregateManager();
+        this.pluginManager = PluginUtils.createPluginManagerFromRootFolder(new Configuration());
     }
 
     public void setKvStateRegistry(KvStateRegistry kvStateRegistry) {
@@ -222,6 +226,11 @@ public class DummyEnvironment implements Environment {
     public void failExternally(Throwable cause) {
         throw new UnsupportedOperationException(
                 "DummyEnvironment does not support external task failure.");
+    }
+
+    @Override
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     @Override

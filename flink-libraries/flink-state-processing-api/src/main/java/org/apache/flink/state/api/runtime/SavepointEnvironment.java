@@ -26,6 +26,8 @@ import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
+import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
@@ -98,6 +100,8 @@ public class SavepointEnvironment implements Environment {
 
     private final UserCodeClassLoader userCodeClassLoader;
 
+    private final PluginManager pluginManager;
+
     private SavepointEnvironment(
             RuntimeContext ctx,
             Configuration configuration,
@@ -121,6 +125,7 @@ public class SavepointEnvironment implements Environment {
         this.accumulatorRegistry = new AccumulatorRegistry(jobID, attemptID);
 
         this.userCodeClassLoader = UserCodeClassLoaderRuntimeContextAdapter.from(ctx);
+        this.pluginManager = PluginUtils.createPluginManagerFromRootFolder(configuration);
     }
 
     @Override
@@ -258,6 +263,11 @@ public class SavepointEnvironment implements Environment {
     @Override
     public void failExternally(Throwable cause) {
         ExceptionUtils.rethrow(cause);
+    }
+
+    @Override
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     @Override

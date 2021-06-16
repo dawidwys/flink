@@ -24,6 +24,8 @@ import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
+import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
@@ -124,6 +126,7 @@ public class StreamMockEnvironment implements Environment {
             UnregisteredMetricGroups.createUnregisteredTaskMetricGroup();
 
     private CheckpointResponder checkpointResponder = NoOpCheckpointResponder.INSTANCE;
+    private PluginManager pluginManager;
 
     public StreamMockEnvironment(
             Configuration jobConfig,
@@ -184,6 +187,7 @@ public class StreamMockEnvironment implements Environment {
 
         KvStateRegistry registry = new KvStateRegistry();
         this.kvStateRegistry = registry.createTaskRegistry(jobID, getJobVertexId());
+        this.pluginManager = PluginUtils.createPluginManagerFromRootFolder(taskConfiguration);
     }
 
     public StreamMockEnvironment(
@@ -366,6 +370,11 @@ public class StreamMockEnvironment implements Environment {
         if (externalExceptionHandler != null) {
             externalExceptionHandler.accept(cause);
         }
+    }
+
+    @Override
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     @Override

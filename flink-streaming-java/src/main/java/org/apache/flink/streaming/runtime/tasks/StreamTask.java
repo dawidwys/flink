@@ -99,6 +99,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -1418,6 +1419,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         } catch (Throwable t) {
             handleAsyncException("Caught exception while processing timer.", new TimerException(t));
         }
+    }
+
+    @Override
+    public Optional<String> getPluginId() {
+        return configuration.getPluginId();
     }
 
     protected long getAsyncCheckpointStartDelayNanos() {

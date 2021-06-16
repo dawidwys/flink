@@ -31,33 +31,22 @@ public class HbasePlugin {
         TableEnvironment tableEnvironment = TableEnvironment.create(configuration);
 
         tableEnvironment.executeSql(
-                "CREATE TABLE `hTable-1` (\n"
-                        + " rowkey INT,\n"
-                        + " family1 ROW<q1 INT>,\n"
-                        + " family2 ROW<q2 STRING, q3 BIGINT>,\n"
-                        + " family3 ROW<q4 DOUBLE, q5 BOOLEAN, q6 STRING>,\n"
-                        + " PRIMARY KEY (rowkey) NOT ENFORCED\n"
+                "CREATE TABLE KafkaTable (\n"
+                        + "  `event_time` TIMESTAMP(3) METADATA FROM 'timestamp',\n"
+                        + "  `partition` BIGINT METADATA VIRTUAL,\n"
+                        + "  `offset` BIGINT METADATA VIRTUAL,\n"
+                        + "  `user_id` BIGINT,\n"
+                        + "  `item_id` BIGINT,\n"
+                        + "  `behavior` STRING\n"
                         + ") WITH (\n"
-                        + " 'connector' = 'hbase-1.4',\n"
-                        + " 'table-name' = 'mytable',\n"
-                        + " 'zookeeper.quorum' = 'localhost:2181'\n"
-                        + ")");
+                        + "  'connector' = 'kafka',\n"
+                        + "  'topic' = 'user_behavior',\n"
+                        + "  'properties.bootstrap.servers' = 'localhost:9092',\n"
+                        + "  'properties.group.id' = 'testGroup',\n"
+                        + "  'scan.startup.mode' = 'earliest-offset',\n"
+                        + "  'format' = 'avro'\n"
+                        + ")\n");
 
-        tableEnvironment.executeSql(
-                "CREATE TABLE `hTable-2` (\n"
-                        + " rowkey INT,\n"
-                        + " family1 ROW<q1 INT>,\n"
-                        + " family2 ROW<q2 STRING, q3 BIGINT>,\n"
-                        + " family3 ROW<q4 DOUBLE, q5 BOOLEAN, q6 STRING>,\n"
-                        + " PRIMARY KEY (rowkey) NOT ENFORCED\n"
-                        + ") WITH (\n"
-                        + " 'connector' = 'hbase-2.2',\n"
-                        + " 'table-name' = 'mytable',\n"
-                        + " 'zookeeper.quorum' = 'localhost:2181'\n"
-                        + ")");
-
-        tableEnvironment.from("`hTable-1`").execute().print();
-
-        tableEnvironment.from("`hTable-2`").execute().print();
+        tableEnvironment.from("`KafkaTable`").execute().print();
     }
 }

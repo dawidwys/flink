@@ -32,6 +32,7 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
@@ -315,5 +316,9 @@ public abstract class AbstractInvokable {
      */
     public boolean isUsingNonBlockingInput() {
         return false;
+    }
+
+    public Optional<String> getPluginId() {
+        return Optional.empty();
     }
 }

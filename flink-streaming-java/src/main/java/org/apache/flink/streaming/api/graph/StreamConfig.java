@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -106,6 +107,7 @@ public class StreamConfig implements Serializable {
     private static final String STATE_KEY_SERIALIZER = "statekeyser";
 
     private static final String TIME_CHARACTERISTIC = "timechar";
+    private static final String PLUGIN_ID = "pluginId";
 
     private static final String MANAGED_MEMORY_FRACTION_PREFIX = "managedMemFraction.";
     private static final ConfigOption<Boolean> STATE_BACKEND_USE_MANAGED_MEMORY =
@@ -148,6 +150,14 @@ public class StreamConfig implements Serializable {
 
     public Integer getVertexID() {
         return config.getInteger(VERTEX_NAME, -1);
+    }
+
+    public void setPluginId(String pluginId) {
+        config.setString(PLUGIN_ID, pluginId);
+    }
+
+    public Optional<String> getPluginId() {
+        return Optional.ofNullable(config.getString(PLUGIN_ID, null));
     }
 
     /** Fraction of managed memory reserved for the given use case that this operator should use. */

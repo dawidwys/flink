@@ -23,6 +23,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
@@ -91,6 +92,7 @@ public class RuntimeEnvironment implements Environment {
     private final TaskMetricGroup metrics;
 
     private final Task containingTask;
+    private final PluginManager pluginManger;
 
     // ------------------------------------------------------------------------
 
@@ -103,6 +105,7 @@ public class RuntimeEnvironment implements Environment {
             Configuration jobConfiguration,
             Configuration taskConfiguration,
             UserCodeClassLoader userCodeClassLoader,
+            PluginManager pluginManager,
             MemoryManager memManager,
             IOManager ioManager,
             BroadcastVariableManager bcVarManager,
@@ -130,6 +133,7 @@ public class RuntimeEnvironment implements Environment {
         this.jobConfiguration = checkNotNull(jobConfiguration);
         this.taskConfiguration = checkNotNull(taskConfiguration);
         this.userCodeClassLoader = checkNotNull(userCodeClassLoader);
+        this.pluginManger = checkNotNull(pluginManager);
         this.memManager = checkNotNull(memManager);
         this.ioManager = checkNotNull(ioManager);
         this.bcVarManager = checkNotNull(bcVarManager);
@@ -306,5 +310,10 @@ public class RuntimeEnvironment implements Environment {
     @Override
     public void failExternally(Throwable cause) {
         this.containingTask.failExternally(cause);
+    }
+
+    @Override
+    public PluginManager getPluginManager() {
+        return pluginManger;
     }
 }

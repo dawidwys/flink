@@ -23,6 +23,8 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.core.plugin.PluginManager;
+import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
@@ -111,7 +113,7 @@ public class MockEnvironment implements Environment, AutoCloseable {
     private final UserCodeClassLoader userCodeClassLoader;
 
     private final TaskEventDispatcher taskEventDispatcher = new TaskEventDispatcher();
-
+    private final PluginManager pluginManager;
     private Optional<Class<? extends Throwable>> expectedExternalFailureCause = Optional.empty();
 
     private Optional<? extends Throwable> actualExternalFailureCause = Optional.empty();
@@ -168,6 +170,7 @@ public class MockEnvironment implements Environment, AutoCloseable {
         this.taskKvStateRegistry = kvStateRegistry.createTaskRegistry(jobID, getJobVertexId());
 
         this.userCodeClassLoader = Preconditions.checkNotNull(userCodeClassLoader);
+        this.pluginManager = PluginUtils.createPluginManagerFromRootFolder(taskConfiguration);
         this.taskStateManager = Preconditions.checkNotNull(taskStateManager);
         this.aggregateManager = Preconditions.checkNotNull(aggregateManager);
 
@@ -370,6 +373,11 @@ public class MockEnvironment implements Environment, AutoCloseable {
         checkArgument(expectedExternalFailureCause.get().isInstance(checkNotNull(cause)));
         checkState(!actualExternalFailureCause.isPresent());
         actualExternalFailureCause = Optional.of(cause);
+    }
+
+    @Override
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     @Override
