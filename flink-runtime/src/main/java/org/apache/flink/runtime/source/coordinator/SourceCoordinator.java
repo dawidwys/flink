@@ -87,6 +87,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
 
     private static final Logger LOG = LoggerFactory.getLogger(SourceCoordinator.class);
     private static final String WATERMARK_GROUP = "watermark-group-1";
+    private static final boolean WATERMARK_ALIGNMENT_ENABLED = true;
 
     private final WatermarkAggregator<Integer> combinedWatermark = new WatermarkAggregator<>();
 
@@ -128,11 +129,13 @@ public class SourceCoordinator<SplitT extends SourceSplit, EnumChkT>
 
         coordinatorStore.putIfAbsent(WATERMARK_GROUP, new WatermarkAggregator<>());
 
-        coordinatorExecutor.scheduleAtFixedRate(
-                this::announceCombinedWatermark,
-                maxAllowedWatemarkUpdateInterval,
-                maxAllowedWatemarkUpdateInterval,
-                TimeUnit.MILLISECONDS);
+        if (WATERMARK_ALIGNMENT_ENABLED) {
+            coordinatorExecutor.scheduleAtFixedRate(
+                    this::announceCombinedWatermark,
+                    maxAllowedWatemarkUpdateInterval,
+                    maxAllowedWatemarkUpdateInterval,
+                    TimeUnit.MILLISECONDS);
+        }
     }
 
     private void announceCombinedWatermark() {
