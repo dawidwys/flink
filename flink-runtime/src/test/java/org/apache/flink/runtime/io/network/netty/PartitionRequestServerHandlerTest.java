@@ -127,6 +127,7 @@ public class PartitionRequestServerHandlerTest extends TestLogger {
         partitionRequestQueue.notifyReaderCreated(viewReader);
 
         // Write the message to acknowledge all records are processed to server
+        resultPartition.notifyEndOfUserRecords();
         CompletableFuture<Void> allRecordsProcessedFuture =
                 resultPartition.getAllRecordsProcessedFuture();
         assertFalse(allRecordsProcessedFuture.isDone());

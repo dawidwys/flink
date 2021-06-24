@@ -61,7 +61,10 @@ public class MockResultPartitionWriter implements ResultPartitionWriter {
     public void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException {}
 
     @Override
-    public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+    public void notifyEndOfUserRecords() throws IOException {}
+
+    @Override
+    public CompletableFuture<Void> getAllRecordsProcessedFuture() {
         return CompletableFuture.completedFuture(null);
     }
 

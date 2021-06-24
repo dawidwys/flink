@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
-import static org.apache.flink.util.Preconditions.checkState;
 
 /**
  * A result output of a task, pipelined (streamed) to the receivers.
@@ -73,13 +72,14 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
     @GuardedBy("lock")
     private int numNotAllRecordsProcessedSubpartitions;
 
+    @GuardedBy("lock")
+    private boolean hasNotifiedEndOfUserRecords;
+
     /**
      * The future represents whether all the records has been processed by all the downstream tasks.
-     * It would be created on first acquisition.
      */
-    @Nullable
     @GuardedBy("lock")
-    private CompletableFuture<Void> allRecordsProcessedFuture;
+    private final CompletableFuture<Void> allRecordsProcessedFuture = new CompletableFuture<>();
 
     /**
      * A flag for each subpartition indicating whether it was already consumed or not, to make
@@ -193,15 +193,18 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
     }
 
     @Override
-    public CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException {
+    public void notifyEndOfUserRecords() throws IOException {
         synchronized (lock) {
-            if (allRecordsProcessedFuture == null) {
-                allRecordsProcessedFuture = new CompletableFuture<>();
+            if (!hasNotifiedEndOfUserRecords) {
                 broadcastEvent(EndOfUserRecordsEvent.INSTANCE, false);
+                hasNotifiedEndOfUserRecords = true;
             }
-
-            return allRecordsProcessedFuture;
         }
+    }
+
+    @Override
+    public CompletableFuture<Void> getAllRecordsProcessedFuture() {
+        return allRecordsProcessedFuture;
     }
 
     @Override
@@ -214,7 +217,6 @@ public class PipelinedResultPartition extends BufferWritingResultPartition
             allRecordsProcessedSubpartitions[subpartition] = true;
             numNotAllRecordsProcessedSubpartitions--;
 
-            checkState(allRecordsProcessedFuture != null);
             if (numNotAllRecordsProcessedSubpartitions == 0) {
                 allRecordsProcessedFuture.complete(null);
             }

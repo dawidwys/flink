@@ -638,8 +638,7 @@ public class ResultPartitionTest {
         BufferWritingResultPartition bufferWritingResultPartition =
                 createResultPartition(ResultPartitionType.PIPELINED_BOUNDED);
 
-        // When acquiring the future for the first time, it would
-        // broadcast the EndOfUserRecordsEvent.
+        bufferWritingResultPartition.notifyEndOfUserRecords();
         CompletableFuture<Void> allRecordsProcessedFuture =
                 bufferWritingResultPartition.getAllRecordsProcessedFuture();
         assertFalse(allRecordsProcessedFuture.isDone());
@@ -650,13 +649,6 @@ public class ResultPartitionTest {
             assertEquals(
                     EndOfUserRecordsEvent.INSTANCE,
                     EventSerializer.fromBuffer(nextBuffer, getClass().getClassLoader()));
-        }
-
-        // When acquiring the future for the first time, it would
-        // not broadcast the EndOfUserRecordsEvent.
-        bufferWritingResultPartition.getAllRecordsProcessedFuture();
-        for (ResultSubpartition resultSubpartition : bufferWritingResultPartition.subpartitions) {
-            assertEquals(1, resultSubpartition.getTotalNumberOfBuffers());
         }
 
         for (int i = 0; i < bufferWritingResultPartition.subpartitions.length; ++i) {

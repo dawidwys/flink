@@ -67,10 +67,16 @@ public interface ResultPartitionWriter extends AutoCloseable, AvailabilityProvid
     void broadcastEvent(AbstractEvent event, boolean isPriorityEvent) throws IOException;
 
     /**
+     * Notifies the downstream tasks that this {@code ResultPartitionWriter} have emitted all the
+     * user records.
+     */
+    void notifyEndOfUserRecords() throws IOException;
+
+    /**
      * Gets the future indicating whether all the records has been processed by the downstream
      * tasks.
      */
-    CompletableFuture<Void> getAllRecordsProcessedFuture() throws IOException;
+    CompletableFuture<Void> getAllRecordsProcessedFuture();
 
     /** Sets the metric group for the {@link ResultPartitionWriter}. */
     void setMetricGroup(TaskIOMetricGroup metrics);
