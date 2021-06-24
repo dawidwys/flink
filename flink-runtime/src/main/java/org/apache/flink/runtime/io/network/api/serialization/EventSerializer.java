@@ -93,6 +93,8 @@ public class EventSerializer {
             return ByteBuffer.wrap(new byte[] {0, 0, 0, END_OF_SUPERSTEP_EVENT});
         } else if (eventClass == EndOfChannelStateEvent.class) {
             return ByteBuffer.wrap(new byte[] {0, 0, 0, END_OF_CHANNEL_STATE_EVENT});
+        } else if (eventClass == EndOfUserRecordsEvent.class) {
+            return ByteBuffer.wrap(new byte[] {0, 0, 0, END_OF_USER_RECORDS_EVENT});
         } else if (eventClass == CancelCheckpointMarker.class) {
             CancelCheckpointMarker marker = (CancelCheckpointMarker) event;
 
@@ -121,8 +123,6 @@ public class EventSerializer {
             buf.putInt(selector.getOutputSubtaskIndex());
             buf.flip();
             return buf;
-        } else if (eventClass == EndOfUserRecordsEvent.class) {
-            return ByteBuffer.wrap(new byte[] {0, 0, 0, END_OF_USER_RECORDS_EVENT});
         } else {
             try {
                 final DataOutputSerializer serializer = new DataOutputSerializer(128);
