@@ -92,7 +92,6 @@ import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 import org.apache.flink.util.TernaryBoolean;
 import org.apache.flink.util.concurrent.ExecutorThreadFactory;
-import org.apache.flink.util.function.FunctionUtils;
 import org.apache.flink.util.function.RunnableWithException;
 import org.apache.flink.util.function.ThrowingRunnable;
 
@@ -114,7 +113,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
-import java.util.stream.Collectors;
 
 import static org.apache.flink.runtime.concurrent.FutureUtils.assertNoException;
 import static org.apache.flink.util.ExceptionUtils.firstOrSuppressed;
@@ -702,14 +700,14 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // continue perform checkpoints.
         if (configuration.isCheckpointingEnabled()) {
             LOG.debug("Waiting for all the records processed by the downstream tasks.");
+
+            List<CompletableFuture<Void>> allRecordsProcessedFutures = new ArrayList<>();
+            for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
+                partitionWriter.notifyEndOfUserRecords();
+                allRecordsProcessedFutures.add(partitionWriter.getAllRecordsProcessedFuture());
+            }
             CompletableFuture<Void> combineFuture =
-                    FutureUtils.waitForAll(
-                            Arrays.stream(getEnvironment().getAllWriters())
-                                    .map(
-                                            FunctionUtils.uncheckedFunction(
-                                                    ResultPartitionWriter
-                                                            ::getAllRecordsProcessedFuture))
-                                    .collect(Collectors.toList()));
+                    FutureUtils.waitForAll(allRecordsProcessedFutures);
 
             MailboxExecutor mailboxExecutor =
                     mailboxProcessor.getMailboxExecutor(TaskMailbox.MIN_PRIORITY);

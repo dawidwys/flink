@@ -1780,11 +1780,17 @@ public class StreamTaskTest extends TestLogger {
                     new StreamTaskMailboxTestHarnessBuilder<>(
                                     OneInputStreamTask::new, BasicTypeInfo.STRING_TYPE_INFO)
                             .addInput(BasicTypeInfo.STRING_TYPE_INFO, 3)
+                            .modifyStreamConfig(config -> config.setCheckpointingEnabled(true))
                             .setupOperatorChain(new EmptyOperator())
                             .setNumberOfNonChainedOutputs(1 + partitionWriters.length)
                             .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
                             .addAdditionalOutput(partitionWriters)
                             .build()) {
+                testHarness
+                        .getStreamTask()
+                        .getCheckpointCoordinator()
+                        .setEnableCheckpointAfterTasksFinished(true);
+
                 // Tests triggering checkpoint when all the inputs are alive.
                 Future<Boolean> checkpointFuture = triggerCheckpoint(testHarness, 2);
                 processMailTillCheckpointSucceeds(testHarness, checkpointFuture);
@@ -1796,31 +1802,35 @@ public class StreamTaskTest extends TestLogger {
                 processMailTillCheckpointSucceeds(testHarness, checkpointFuture);
                 assertEquals(4, testHarness.getTaskStateManager().getReportedCheckpointId());
 
-                // Simulates the netty thread reports the downstream tasks have processed all the
-                // records.
-                new Thread(
-                                () -> {
-                                    for (ResultPartition partitionWriter : partitionWriters) {
-                                        waitTillResultPartitionHasEnoughBuffers(partitionWriter, 4);
-                                    }
-
-                                    for (ResultPartition partitionWriter : partitionWriters) {
-                                        partitionWriter.onSubpartitionAllRecordsProcessed(0);
-                                    }
-                                })
-                        .start();
-
                 // Tests triggering checkpoint after received all the inputs have received
                 // EndOfPartition.
                 testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 0, 1);
                 testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 0, 2);
                 checkpointFuture = triggerCheckpoint(testHarness, 6);
 
+                // Notifies the result partition that all records are processed after the
+                // last checkpoint is triggered.
+                checkState(
+                        checkpointFuture instanceof CompletableFuture,
+                        "The trigger future should " + " be also CompletableFuture.");
+                ((CompletableFuture<?>) checkpointFuture)
+                        .thenAccept(
+                                (ignored) -> {
+                                    for (ResultPartition resultPartition : partitionWriters) {
+                                        resultPartition.onSubpartitionAllRecordsProcessed(0);
+                                    }
+                                });
+
                 // The checkpoint 6 would be triggered successfully.
                 // TODO: Would also check the checkpoint succeed after we also waiting
                 // for the asynchronous step to finish on finish.
                 testHarness.finishProcessing();
                 assertTrue(checkpointFuture.isDone());
+
+                // Each result partition should have emitted 3 barriers and 1 EndOfUserRecordsEvent.
+                for (ResultPartition resultPartition : partitionWriters) {
+                    assertEquals(4, resultPartition.getNumberOfQueuedBuffers());
+                }
             }
         } finally {
             for (ResultPartitionWriter writer : partitionWriters) {
@@ -1831,7 +1841,7 @@ public class StreamTaskTest extends TestLogger {
         }
     }
 
-    private static Future<Boolean> triggerCheckpoint(
+    static Future<Boolean> triggerCheckpoint(
             StreamTaskMailboxTestHarness<String> testHarness, long checkpointId) {
         testHarness.getTaskStateManager().setWaitForReportLatch(new OneShotLatch());
         return testHarness
@@ -1843,24 +1853,13 @@ public class StreamTaskTest extends TestLogger {
                                 CheckpointStorageLocationReference.getDefault()));
     }
 
-    private static void processMailTillCheckpointSucceeds(
+    static void processMailTillCheckpointSucceeds(
             StreamTaskMailboxTestHarness<String> testHarness, Future<Boolean> checkpointFuture)
             throws Exception {
         while (!checkpointFuture.isDone()) {
             testHarness.processSingleStep();
         }
         testHarness.getTaskStateManager().getWaitForReportLatch().await();
-    }
-
-    static void waitTillResultPartitionHasEnoughBuffers(
-            ResultPartitionWriter writer, int targetNumBuffers) {
-        while (((PipelinedResultPartition) writer).getNumberOfQueuedBuffers() < targetNumBuffers) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                // Do nothing
-            }
-        }
     }
 
     private MockEnvironment setupEnvironment(boolean... outputAvailabilities) {

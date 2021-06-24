@@ -44,17 +44,19 @@ import org.junit.Test;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 import static org.apache.flink.streaming.runtime.tasks.MultipleInputStreamTaskTest.addSourceRecords;
 import static org.apache.flink.streaming.runtime.tasks.MultipleInputStreamTaskTest.buildTestHarness;
-import static org.apache.flink.streaming.runtime.tasks.MultipleInputStreamTaskTest.triggerCheckpoint;
-import static org.apache.flink.streaming.runtime.tasks.StreamTaskTest.waitTillResultPartitionHasEnoughBuffers;
+import static org.apache.flink.streaming.runtime.tasks.StreamTaskTest.triggerCheckpoint;
+import static org.apache.flink.util.Preconditions.checkState;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -269,7 +271,9 @@ public class MultipleInputStreamTaskChainedSourcesCheckpointingTest {
                                                     Boundedness.BOUNDED, 1),
                                             WatermarkStrategy.noWatermarks()))
                             .setupOperatorChain(new MapToStringMultipleInputOperatorFactory(4))
+                            .setNumberOfNonChainedOutputs(1 + partitionWriters.length)
                             .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
+                            .addAdditionalOutput(partitionWriters)
                             .build()) {
 
                 testHarness
@@ -280,30 +284,34 @@ public class MultipleInputStreamTaskChainedSourcesCheckpointingTest {
                 // TODO: Would add the test of part of channel finished after we are able to
                 // complement pending checkpoints when received EndOfPartitionEvent.
 
-                // Simulates the netty thread reports the downstream tasks have processed all the
-                // records.
-                new Thread(
-                                () -> {
-                                    for (ResultPartition partitionWriter : partitionWriters) {
-                                        waitTillResultPartitionHasEnoughBuffers(partitionWriter, 2);
-                                    }
-
-                                    for (ResultPartition partitionWriter : partitionWriters) {
-                                        partitionWriter.onSubpartitionAllRecordsProcessed(0);
-                                    }
-                                })
-                        .start();
-
                 // Tests triggering checkpoint after all the inputs have received EndOfPartition.
                 testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 0, 0);
                 testHarness.processEvent(EndOfPartitionEvent.INSTANCE, 1, 0);
                 Future<Boolean> checkpointFuture = triggerCheckpoint(testHarness, 4);
+
+                // Notifies the result partition that all records are processed after the
+                // last checkpoint is triggered.
+                checkState(
+                        checkpointFuture instanceof CompletableFuture,
+                        "The trigger future should " + " be also CompletableFuture.");
+                ((CompletableFuture<?>) checkpointFuture)
+                        .thenAccept(
+                                (ignored) -> {
+                                    for (ResultPartition resultPartition : partitionWriters) {
+                                        resultPartition.onSubpartitionAllRecordsProcessed(0);
+                                    }
+                                });
 
                 // The checkpoint 4 would be triggered successfully.
                 // TODO: Would also check the checkpoint succeed after we also waiting
                 // for the asynchronous step to finish on finish.
                 testHarness.finishProcessing();
                 assertTrue(checkpointFuture.isDone());
+
+                // Each result partition should have emitted 2 barriers and 1 EndOfUserRecordsEvent.
+                for (ResultPartition resultPartition : partitionWriters) {
+                    assertEquals(3, resultPartition.getNumberOfQueuedBuffers());
+                }
             }
         } finally {
             for (ResultPartitionWriter writer : partitionWriters) {
