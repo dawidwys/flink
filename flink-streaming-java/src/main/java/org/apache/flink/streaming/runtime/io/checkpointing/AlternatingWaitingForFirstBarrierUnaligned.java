@@ -84,6 +84,13 @@ final class AlternatingWaitingForFirstBarrierUnaligned implements BarrierHandler
     }
 
     @Override
+    public BarrierHandlerState endOfChannelReceived(
+            Controller controller, InputChannelInfo channelInfo) throws IOException {
+        channelState.channelFinished(channelInfo);
+        return this;
+    }
+
+    @Override
     public BarrierHandlerState abort(long cancelledId) throws IOException {
         return stopCheckpoint();
     }

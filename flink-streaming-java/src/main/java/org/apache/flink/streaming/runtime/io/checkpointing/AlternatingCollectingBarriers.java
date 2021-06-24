@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.runtime.io.checkpointing;
 
 import org.apache.flink.runtime.checkpoint.CheckpointException;
+import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.partition.consumer.CheckpointableInput;
 
@@ -46,6 +47,19 @@ final class AlternatingCollectingBarriers extends AbstractAlternatingAlignedBarr
         }
         controller.triggerGlobalCheckpoint(unalignedBarrier);
         return new AlternatingCollectingBarriersUnaligned(true, state);
+    }
+
+    @Override
+    public BarrierHandlerState endOfChannelReceived(
+            Controller controller, InputChannelInfo channelInfo) throws IOException {
+        state.channelFinished(channelInfo);
+
+        if (controller.allBarriersReceived()) {
+            state.unblockAllChannels();
+            controller.triggerGlobalCheckpoint(controller.getPendingCheckpoint());
+            return new AlternatingWaitingForFirstBarrier(state.emptyState());
+        }
+        return this;
     }
 
     @Override

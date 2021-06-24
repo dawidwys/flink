@@ -45,7 +45,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 
-import static org.apache.flink.runtime.checkpoint.CheckpointFailureReason.CHECKPOINT_DECLINED_INPUT_END_OF_STREAM;
 import static org.apache.flink.runtime.checkpoint.CheckpointFailureReason.CHECKPOINT_DECLINED_SUBSUMED;
 import static org.apache.flink.util.Preconditions.checkState;
 
@@ -74,6 +73,8 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
      * same barrier from different channels.
      */
     private long currentCheckpointId = -1L;
+
+    private CheckpointBarrier pendingCheckpoint;
 
     private long lastCancelledOrCompletedCheckpointId = -1L;
 
@@ -304,6 +305,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
             cancelSubsumedCheckpoint(barrierId);
         }
         currentCheckpointId = barrierId;
+        pendingCheckpoint = barrier;
         numBarriersReceived = 0;
         allBarriersReceivedFuture = new CompletableFuture<>();
         firstBarrierArrivalTime = getClock().relativeTimeNanos();
@@ -314,8 +316,8 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
     }
 
     @Override
-    public void processCancellationBarrier(CancelCheckpointMarker cancelBarrier)
-            throws IOException {
+    public void processCancellationBarrier(
+            CancelCheckpointMarker cancelBarrier, InputChannelInfo channelInfo) throws IOException {
         final long cancelledId = cancelBarrier.getCheckpointId();
         if (cancelledId > currentCheckpointId
                 || (cancelledId == currentCheckpointId && numBarriersReceived > 0)) {
@@ -358,16 +360,9 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
     }
 
     @Override
-    public void processEndOfPartition() throws IOException {
+    public void processEndOfPartition(InputChannelInfo inputChannelInfo) throws IOException {
         numOpenChannels--;
-
-        if (isCheckpointPending()) {
-            LOG.warn(
-                    "{}: Received EndOfPartition(-1) before completing current checkpoint {}. Skipping current checkpoint.",
-                    taskName,
-                    currentCheckpointId);
-            abortInternal(currentCheckpointId, CHECKPOINT_DECLINED_INPUT_END_OF_STREAM);
-        }
+        currentState = currentState.endOfChannelReceived(context, inputChannelInfo);
     }
 
     @Override
@@ -422,6 +417,7 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
     }
 
     private final class ControllerImpl implements BarrierHandlerState.Controller {
+
         @Override
         public void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier)
                 throws IOException {
@@ -439,6 +435,11 @@ public class SingleCheckpointBarrierHandler extends CheckpointBarrierHandler {
         @Override
         public boolean allBarriersReceived() {
             return numBarriersReceived == numOpenChannels;
+        }
+
+        @Override
+        public CheckpointBarrier getPendingCheckpoint() {
+            return pendingCheckpoint;
         }
 
         @Override

@@ -754,7 +754,8 @@ public class UnalignedCheckpointsTest {
                         SystemClock.getInstance(),
                         inputGate);
 
-        handler.processCancellationBarrier(new CancelCheckpointMarker(DEFAULT_CHECKPOINT_ID));
+        handler.processCancellationBarrier(
+                new CancelCheckpointMarker(DEFAULT_CHECKPOINT_ID), new InputChannelInfo(0, 0));
 
         verifyTriggeredCheckpoint(handler, invokable, DEFAULT_CHECKPOINT_ID);
 
@@ -773,13 +774,15 @@ public class UnalignedCheckpointsTest {
         final long cancelledCheckpointId =
                 new Random().nextBoolean() ? DEFAULT_CHECKPOINT_ID : DEFAULT_CHECKPOINT_ID + 1L;
         // should abort current checkpoint while processing CancelCheckpointMarker
-        handler.processCancellationBarrier(new CancelCheckpointMarker(cancelledCheckpointId));
+        handler.processCancellationBarrier(
+                new CancelCheckpointMarker(cancelledCheckpointId), new InputChannelInfo(0, 0));
         verifyTriggeredCheckpoint(handler, invokable, cancelledCheckpointId);
 
         final long nextCancelledCheckpointId = cancelledCheckpointId + 1L;
         // should update current checkpoint id and abort notification while processing
         // CancelCheckpointMarker
-        handler.processCancellationBarrier(new CancelCheckpointMarker(nextCancelledCheckpointId));
+        handler.processCancellationBarrier(
+                new CancelCheckpointMarker(nextCancelledCheckpointId), new InputChannelInfo(0, 0));
         verifyTriggeredCheckpoint(handler, invokable, nextCancelledCheckpointId);
     }
 
@@ -819,7 +822,7 @@ public class UnalignedCheckpointsTest {
         assertEquals(numberOfChannels, handler.getNumOpenChannels());
 
         // should abort current checkpoint while processing eof
-        handler.processEndOfPartition();
+        handler.processEndOfPartition(new InputChannelInfo(0, 0));
 
         assertFalse(handler.isCheckpointPending());
         assertEquals(DEFAULT_CHECKPOINT_ID, handler.getLatestCheckpointId());

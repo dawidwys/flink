@@ -51,6 +51,9 @@ interface BarrierHandlerState {
             CheckpointBarrier checkpointBarrier)
             throws IOException, CheckpointException;
 
+    BarrierHandlerState endOfChannelReceived(Controller controller, InputChannelInfo channelInfo)
+            throws IOException;
+
     BarrierHandlerState abort(long cancelledId) throws IOException;
 
     /**
@@ -59,6 +62,8 @@ interface BarrierHandlerState {
      */
     interface Controller {
         boolean allBarriersReceived();
+
+        CheckpointBarrier getPendingCheckpoint();
 
         void triggerGlobalCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException;
 

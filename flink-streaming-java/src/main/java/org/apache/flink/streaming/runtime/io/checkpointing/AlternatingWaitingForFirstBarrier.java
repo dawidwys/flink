@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.runtime.io.checkpointing;
 
 import org.apache.flink.runtime.checkpoint.CheckpointException;
+import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 
 import java.io.IOException;
@@ -36,6 +37,13 @@ final class AlternatingWaitingForFirstBarrier
             throws IOException, CheckpointException {
         state.prioritizeAllAnnouncements();
         return new AlternatingWaitingForFirstBarrierUnaligned(true, state);
+    }
+
+    @Override
+    public BarrierHandlerState endOfChannelReceived(
+            Controller controller, InputChannelInfo channelInfo) throws IOException {
+        state.channelFinished(channelInfo);
+        return this;
     }
 
     @Override

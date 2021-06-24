@@ -74,6 +74,17 @@ final class AlternatingCollectingBarriersUnaligned implements BarrierHandlerStat
     }
 
     @Override
+    public BarrierHandlerState endOfChannelReceived(
+            Controller controller, InputChannelInfo channelInfo) throws IOException {
+        channelState.channelFinished(channelInfo);
+
+        if (controller.allBarriersReceived()) {
+            return finishCheckpoint(controller.getPendingCheckpoint().getId());
+        }
+        return this;
+    }
+
+    @Override
     public BarrierHandlerState abort(long cancelledId) throws IOException {
         return finishCheckpoint(cancelledId);
     }
