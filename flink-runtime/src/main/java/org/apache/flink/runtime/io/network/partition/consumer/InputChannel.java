@@ -131,8 +131,8 @@ public abstract class InputChannel {
     public abstract void resumeConsumption() throws IOException;
 
     /**
-     * When received {@link org.apache.flink.runtime.io.network.api.EndOfUserRecordsEvent} from one
-     * channel, it need to acknowledge after this event get processed.
+     * The {@link org.apache.flink.runtime.io.network.api.EndOfUserRecordsEvent} needs to be acknowledged once it's
+     * been processed.
      */
     public abstract void acknowledgeAllRecordsProcessed() throws IOException;
 
