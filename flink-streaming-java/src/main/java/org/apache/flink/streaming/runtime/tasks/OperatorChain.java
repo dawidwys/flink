@@ -400,7 +400,7 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Bound
     /**
      * Initialize state and open all operators in the chain from <b>tail to heads</b>, contrary to
      * {@link StreamOperator#close()} which happens <b>heads to tail</b> (see {@link
-     * #closeOperators(StreamTaskActionExecutor)}).
+     * #finishOperators(StreamTaskActionExecutor)}).
      */
     protected void initializeStateAndOpenOperators(
             StreamTaskStateInitializer streamTaskStateInitializer) throws Exception {
@@ -416,9 +416,9 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Bound
      * operator in the chain, contrary to {@link StreamOperator#open()} which happens <b>tail to
      * heads</b> (see {@link #initializeStateAndOpenOperators(StreamTaskStateInitializer)}).
      */
-    protected void closeOperators(StreamTaskActionExecutor actionExecutor) throws Exception {
+    protected void finishOperators(StreamTaskActionExecutor actionExecutor) throws Exception {
         if (firstOperatorWrapper != null) {
-            firstOperatorWrapper.close(actionExecutor, ignoreEndOfInput);
+            firstOperatorWrapper.finish(actionExecutor, ignoreEndOfInput);
         }
     }
 
