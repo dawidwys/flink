@@ -29,7 +29,6 @@ import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
@@ -53,9 +52,6 @@ public abstract class AbstractUdfStreamOperator<OUT, F extends Function>
 
     /** The user function. */
     protected final F userFunction;
-
-    /** Flag to prevent duplicate function.close() calls in close() and dispose(). */
-    private transient boolean functionsClosed = false;
 
     public AbstractUdfStreamOperator(F userFunction) {
         this.userFunction = requireNonNull(userFunction);
@@ -100,26 +96,13 @@ public abstract class AbstractUdfStreamOperator<OUT, F extends Function>
     @Override
     public void open() throws Exception {
         super.open();
-        functionsClosed = false;
         FunctionUtils.openFunction(userFunction, new Configuration());
-    }
-
-    @Override
-    public void finish() throws Exception {
-        super.finish();
-        if (userFunction instanceof SinkFunction) {
-            functionsClosed = true;
-            FunctionUtils.closeFunction(userFunction);
-        }
     }
 
     @Override
     public void close() throws Exception {
         super.close();
-        if (!functionsClosed) {
-            functionsClosed = true;
-            FunctionUtils.closeFunction(userFunction);
-        }
+        FunctionUtils.closeFunction(userFunction);
     }
 
     // ------------------------------------------------------------------------
