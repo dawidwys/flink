@@ -139,16 +139,22 @@ public abstract class AbstractPythonFunctionOperator<OUT> extends AbstractStream
     }
 
     @Override
-    public void finish() throws Exception {
+    public void close() throws Exception {
         try {
             invokeFinishBundle();
         } finally {
-            super.finish();
+            super.close();
+
+            try {
+                cleanUpLeakingClasses(this.getClass().getClassLoader());
+            } catch (Throwable t) {
+                LOG.warn("Failed to clean up the leaking objects.", t);
+            }
         }
     }
 
     @Override
-    public void close() throws Exception {
+    public void dispose() throws Exception {
         try {
             if (checkFinishBundleTimer != null) {
                 checkFinishBundleTimer.cancel(true);
@@ -159,13 +165,7 @@ public abstract class AbstractPythonFunctionOperator<OUT> extends AbstractStream
                 pythonFunctionRunner = null;
             }
         } finally {
-            super.close();
-
-            try {
-                cleanUpLeakingClasses(this.getClass().getClassLoader());
-            } catch (Throwable t) {
-                LOG.warn("Failed to clean up the leaking objects.", t);
-            }
+            super.dispose();
         }
     }
 

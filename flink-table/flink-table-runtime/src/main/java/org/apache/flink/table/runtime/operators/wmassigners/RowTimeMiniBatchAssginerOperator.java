@@ -98,8 +98,8 @@ public class RowTimeMiniBatchAssginerOperator extends AbstractStreamOperator<Row
     }
 
     @Override
-    public void finish() throws Exception {
-        super.finish();
+    public void close() throws Exception {
+        super.close();
 
         // emit the buffered watermark
         advanceWatermark();

@@ -66,6 +66,9 @@ public class LocalSlicingWindowAggOperator extends AbstractStreamOperator<RowDat
     /** This is used for emitting elements with a given timestamp. */
     protected transient TimestampedCollector<RowData> collector;
 
+    /** Flag to prevent duplicate function.close() calls in close() and dispose(). */
+    private transient boolean functionsClosed = false;
+
     /** current watermark of this operator. */
     private transient long currentWatermark;
 
@@ -91,6 +94,7 @@ public class LocalSlicingWindowAggOperator extends AbstractStreamOperator<RowDat
     @Override
     public void open() throws Exception {
         super.open();
+        functionsClosed = false;
 
         collector = new TimestampedCollector<>(output);
         collector.eraseTimestamp();
@@ -138,7 +142,18 @@ public class LocalSlicingWindowAggOperator extends AbstractStreamOperator<RowDat
     public void close() throws Exception {
         super.close();
         collector = null;
+        functionsClosed = true;
         if (windowBuffer != null) {
+            windowBuffer.close();
+        }
+    }
+
+    @Override
+    public void dispose() throws Exception {
+        super.dispose();
+        collector = null;
+        if (!functionsClosed) {
+            functionsClosed = true;
             windowBuffer.close();
         }
     }

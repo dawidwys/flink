@@ -159,8 +159,8 @@ public abstract class AbstractStreamingWriter<IN, OUT> extends AbstractStreamOpe
     }
 
     @Override
-    public void close() throws Exception {
-        super.close();
+    public void dispose() throws Exception {
+        super.dispose();
         if (helper != null) {
             helper.close();
         }

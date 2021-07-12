@@ -181,8 +181,8 @@ public class PythonTimestampsAndWatermarksOperator<IN>
     }
 
     @Override
-    public void finish() throws Exception {
-        super.finish();
+    public void close() throws Exception {
+        super.close();
         watermarkGenerator.onPeriodicEmit(watermarkOutput);
     }
 }

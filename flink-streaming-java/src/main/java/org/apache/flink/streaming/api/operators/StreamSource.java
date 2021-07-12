@@ -132,20 +132,18 @@ public class StreamSource<OUT, SRC extends SourceFunction<OUT>>
     }
 
     @Override
-    public void finish() throws Exception {
-        super.finish();
-        if (!isCanceledOrStopped() && ctx != null) {
-            advanceToEndOfEventTime();
-        }
-    }
-
-    @Override
     public void close() throws Exception {
-        // make sure that the context is closed in any case
-        if (ctx != null) {
-            ctx.close();
+        try {
+            super.close();
+            if (!isCanceledOrStopped() && ctx != null) {
+                advanceToEndOfEventTime();
+            }
+        } finally {
+            // make sure that the context is closed in any case
+            if (ctx != null) {
+                ctx.close();
+            }
         }
-        super.close();
     }
 
     public void cancel() {

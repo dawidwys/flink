@@ -134,8 +134,8 @@ public class StreamSortOperator extends TableStreamOperator<RowData>
     }
 
     @Override
-    public void finish() throws Exception {
-        LOG.info("Finishing StreamSortOperator");
+    public void close() throws Exception {
+        LOG.info("Closing StreamSortOperator");
 
         // BoundedOneInput can not coexistence with checkpoint, so we emit output in close.
         if (!inputBuffer.isEmpty()) {
@@ -153,6 +153,6 @@ public class StreamSortOperator extends TableStreamOperator<RowData>
                         }
                     });
         }
-        super.finish();
+        super.close();
     }
 }

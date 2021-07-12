@@ -294,7 +294,7 @@ public class ContinuousFileProcessingRescalingTest {
             while (!getFormat().isLastProcessed()) {
                 mailboxProcessor.runMailboxStep();
             }
-            harness.getOperator().finish();
+            getHarness().close();
         }
 
         @Override

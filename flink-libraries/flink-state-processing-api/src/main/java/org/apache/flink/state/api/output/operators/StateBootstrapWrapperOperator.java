@@ -105,13 +105,13 @@ public final class StateBootstrapWrapperOperator<
     }
 
     @Override
-    public void finish() throws Exception {
-        operator.finish();
+    public void close() throws Exception {
+        operator.close();
     }
 
     @Override
-    public void close() throws Exception {
-        operator.close();
+    public void dispose() throws Exception {
+        operator.dispose();
     }
 
     @Override

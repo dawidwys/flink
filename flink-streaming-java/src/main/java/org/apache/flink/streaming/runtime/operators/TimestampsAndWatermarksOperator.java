@@ -127,8 +127,8 @@ public class TimestampsAndWatermarksOperator<T> extends AbstractStreamOperator<T
     }
 
     @Override
-    public void finish() throws Exception {
-        super.finish();
+    public void close() throws Exception {
+        super.close();
         watermarkGenerator.onPeriodicEmit(wmOutput);
     }
 

@@ -127,6 +127,9 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
      */
     private TimestampsAndWatermarks<OUT> eventTimeLogic;
 
+    /** Indicating whether the source operator has been closed. */
+    private boolean closed;
+
     public SourceOperator(
             FunctionWithException<SourceReaderContext, SourceReader<OUT, SplitT>, Exception>
                     readerFactory,
@@ -260,19 +263,24 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     }
 
     @Override
-    public void finish() throws Exception {
+    public void close() throws Exception {
         if (eventTimeLogic != null) {
             eventTimeLogic.stopPeriodicWatermarkEmits();
         }
-        super.finish();
-    }
-
-    @Override
-    public void close() throws Exception {
         if (sourceReader != null) {
             sourceReader.close();
         }
+        closed = true;
         super.close();
+    }
+
+    @Override
+    public void dispose() throws Exception {
+        // We also need to close the source reader to make sure the resources
+        // are released if the task does not finish normally.
+        if (!closed && sourceReader != null) {
+            sourceReader.close();
+        }
     }
 
     @Override

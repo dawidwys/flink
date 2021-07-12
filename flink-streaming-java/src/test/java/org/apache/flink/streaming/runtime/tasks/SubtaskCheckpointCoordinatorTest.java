@@ -547,10 +547,10 @@ public class SubtaskCheckpointCoordinatorTest {
         public void open() throws Exception {}
 
         @Override
-        public void finish() throws Exception {}
+        public void close() throws Exception {}
 
         @Override
-        public void close() throws Exception {}
+        public void dispose() {}
 
         @Override
         public void prepareSnapshotPreBarrier(long checkpointId) {}

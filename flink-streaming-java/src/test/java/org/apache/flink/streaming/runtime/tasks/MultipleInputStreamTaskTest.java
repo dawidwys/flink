@@ -73,6 +73,7 @@ import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTaskTest.WatermarkMetricOperator;
+import org.apache.flink.streaming.util.TestBoundedMultipleInputOperator;
 import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.apache.flink.util.SerializedValue;
 
@@ -472,11 +473,10 @@ public class MultipleInputStreamTaskTest {
                         LifeCycleTrackingMapToStringMultipleInputOperator.END_INPUT,
                         LifeCycleTrackingMapToStringMultipleInputOperator.END_INPUT,
                         LifeCycleTrackingMapToStringMultipleInputOperator.END_INPUT,
-                        LifeCycleTrackingMapToStringMultipleInputOperator.FINISH,
-                        LifeCycleTrackingMap.END_INPUT,
-                        LifeCycleTrackingMap.CLOSE,
+                        LifeCycleTrackingMockSourceReader.CLOSE,
                         LifeCycleTrackingMapToStringMultipleInputOperator.CLOSE,
-                        LifeCycleTrackingMockSourceReader.CLOSE));
+                        LifeCycleTrackingMap.END_INPUT,
+                        LifeCycleTrackingMap.CLOSE));
     }
 
     @Test
@@ -999,6 +999,35 @@ public class MultipleInputStreamTaskTest {
         }
     }
 
+    private static class TestBoundedMultipleInputOperatorFactory
+            extends AbstractStreamOperatorFactory<String> {
+        @Override
+        public <T extends StreamOperator<String>> T createStreamOperator(
+                StreamOperatorParameters<String> parameters) {
+            return (T) new TestBoundedMultipleInputOperator("Operator0", parameters);
+        }
+
+        @Override
+        public Class<? extends StreamOperator<String>> getStreamOperatorClass(
+                ClassLoader classLoader) {
+            return TestBoundedMultipleInputOperator.class;
+        }
+    }
+
+    private static class DuplicatingOperatorFactory extends AbstractStreamOperatorFactory<String> {
+        @Override
+        public <T extends StreamOperator<String>> T createStreamOperator(
+                StreamOperatorParameters<String> parameters) {
+            return (T) new DuplicatingOperator(parameters);
+        }
+
+        @Override
+        public Class<? extends StreamOperator<String>> getStreamOperatorClass(
+                ClassLoader classLoader) {
+            return DuplicatingOperator.class;
+        }
+    }
+
     /** Factory for {@link MapToStringMultipleInputOperator}. */
     protected static class MapToStringMultipleInputOperatorFactory
             extends AbstractStreamOperatorFactory<String> {
@@ -1109,7 +1138,6 @@ public class MultipleInputStreamTaskTest {
             extends MapToStringMultipleInputOperator implements BoundedMultiInput {
         public static final String OPEN = "MultipleInputOperator#open";
         public static final String CLOSE = "MultipleInputOperator#close";
-        public static final String FINISH = "MultipleInputOperator#finish";
         public static final String END_INPUT = "MultipleInputOperator#endInput";
 
         private static final long serialVersionUID = 1L;
@@ -1134,11 +1162,6 @@ public class MultipleInputStreamTaskTest {
         @Override
         public void endInput(int inputId) {
             LIFE_CYCLE_EVENTS.add(END_INPUT);
-        }
-
-        @Override
-        public void finish() throws Exception {
-            LIFE_CYCLE_EVENTS.add(FINISH);
         }
     }
 

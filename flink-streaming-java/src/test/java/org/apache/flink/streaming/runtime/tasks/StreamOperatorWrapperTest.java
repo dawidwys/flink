@@ -131,9 +131,9 @@ public class StreamOperatorWrapperTest extends TestLogger {
     }
 
     @Test
-    public void testFinish() throws Exception {
+    public void testClose() throws Exception {
         output.clear();
-        operatorWrappers.get(0).finish(containingTask.getActionExecutor(), false);
+        operatorWrappers.get(0).close(containingTask.getActionExecutor(), false);
 
         List<Object> expected = new ArrayList<>();
         for (int i = 0; i < operatorWrappers.size(); i++) {
@@ -143,7 +143,7 @@ public class StreamOperatorWrapperTest extends TestLogger {
                     prefix + ": End of input",
                     prefix + ": Timer that was in mailbox before closing operator",
                     prefix + ": Bye",
-                    prefix + ": Mail to put in mailbox when finishing operator");
+                    prefix + ": Mail to put in mailbox when closing operator");
         }
 
         assertArrayEquals(
@@ -153,12 +153,12 @@ public class StreamOperatorWrapperTest extends TestLogger {
     }
 
     @Test
-    public void testFinishingOperatorWithException() {
-        AbstractStreamOperator<Void> streamOperator =
+    public void testClosingOperatorWithException() {
+        AbstractStreamOperator streamOperator =
                 new AbstractStreamOperator<Void>() {
                     @Override
-                    public void finish() throws Exception {
-                        throw new Exception("test exception at finishing");
+                    public void close() throws Exception {
+                        throw new Exception("test exception at closing");
                     }
                 };
 
@@ -172,11 +172,11 @@ public class StreamOperatorWrapperTest extends TestLogger {
                         true);
 
         try {
-            operatorWrapper.finish(containingTask.getActionExecutor(), false);
+            operatorWrapper.close(containingTask.getActionExecutor(), false);
             fail("should throw an exception");
         } catch (Throwable t) {
             Optional<Throwable> optional =
-                    ExceptionUtils.findThrowableWithMessage(t, "test exception at finishing");
+                    ExceptionUtils.findThrowableWithMessage(t, "test exception at closing");
             assertTrue(optional.isPresent());
         }
     }
@@ -313,22 +313,20 @@ public class StreamOperatorWrapperTest extends TestLogger {
         }
 
         @Override
-        public void finish() throws Exception {
+        public void close() throws Exception {
             ProcessingTimeCallback callback =
                     t1 ->
                             output.add(
                                     "["
                                             + name
-                                            + "]: Timer to put in mailbox when finishing operator");
+                                            + "]: Timer to put in mailbox when closing operator");
             assertNotNull(processingTimeService.registerTimer(0, callback));
             assertNull(timerMailController.getPuttingLatch(callback));
 
             mailboxExecutor.submit(
                     () ->
                             output.add(
-                                    "["
-                                            + name
-                                            + "]: Mail to put in mailbox when finishing operator"),
+                                    "[" + name + "]: Mail to put in mailbox when closing operator"),
                     "");
 
             output.add("[" + name + "]: Bye");

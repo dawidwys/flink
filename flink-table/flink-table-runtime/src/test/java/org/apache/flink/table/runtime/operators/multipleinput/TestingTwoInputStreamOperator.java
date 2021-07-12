@@ -45,6 +45,7 @@ public class TestingTwoInputStreamOperator extends AbstractStreamOperator<RowDat
     private LatencyMarker currentLatencyMarker1 = null;
     private LatencyMarker currentLatencyMarker2 = null;
     private final List<Integer> endInputs = new ArrayList<>();
+    private boolean isDisposed = false;
     private boolean isClosed = false;
 
     public TestingTwoInputStreamOperator() {
@@ -117,6 +118,11 @@ public class TestingTwoInputStreamOperator extends AbstractStreamOperator<RowDat
     }
 
     @Override
+    public void dispose() throws Exception {
+        this.isDisposed = true;
+    }
+
+    @Override
     public void close() throws Exception {
         isClosed = true;
     }
@@ -151,6 +157,10 @@ public class TestingTwoInputStreamOperator extends AbstractStreamOperator<RowDat
 
     public List<Integer> getEndInputs() {
         return endInputs;
+    }
+
+    public boolean isDisposed() {
+        return isDisposed;
     }
 
     public boolean isClosed() {
