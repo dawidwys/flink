@@ -44,12 +44,14 @@ import org.apache.flink.streaming.runtime.tasks.TimerService;
 import org.apache.flink.streaming.util.CollectorOutput;
 import org.apache.flink.streaming.util.MockStreamTask;
 import org.apache.flink.streaming.util.MockStreamTaskBuilder;
+import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.apache.flink.util.ExceptionUtils;
 
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -62,7 +64,7 @@ public class StreamSourceOperatorWatermarksTest {
 
     @Test
     public void testEmitMaxWatermarkForFiniteSource() throws Exception {
-        StreamSource<String, ?> sourceOperator = new StreamSource<>(new FiniteSource<>());
+        StreamSource<String, ?> sourceOperator = new StreamSource<>(new FiniteSource());
         StreamTaskTestHarness<String> testHarness =
                 setupSourceStreamTask(sourceOperator, BasicTypeInfo.STRING_TYPE_INFO);
 
@@ -71,6 +73,23 @@ public class StreamSourceOperatorWatermarksTest {
 
         assertEquals(1, testHarness.getOutput().size());
         assertEquals(Watermark.MAX_WATERMARK, testHarness.getOutput().peek());
+    }
+
+    @Test
+    public void testMaxWatermarkIsForwardedLastForFiniteSource() throws Exception {
+        StreamSource<String, ?> sourceOperator = new StreamSource<>(new FiniteSource(true));
+        StreamTaskTestHarness<String> testHarness =
+                setupSourceStreamTask(sourceOperator, BasicTypeInfo.STRING_TYPE_INFO);
+
+        testHarness.invoke();
+        testHarness.waitForTaskCompletion();
+
+        ConcurrentLinkedQueue<Object> expectedOutput = new ConcurrentLinkedQueue<>();
+        expectedOutput.add(new StreamRecord<>("Hello"));
+        expectedOutput.add(Watermark.MAX_WATERMARK);
+
+        TestHarnessUtil.assertOutputEquals(
+                "Output was not correct.", expectedOutput, testHarness.getOutput());
     }
 
     @Test
@@ -226,13 +245,38 @@ public class StreamSourceOperatorWatermarksTest {
 
     // ------------------------------------------------------------------------
 
-    private static final class FiniteSource<T> extends RichSourceFunction<T> {
+    private static final class FiniteSource extends RichSourceFunction<String> {
+
+        private transient volatile boolean canceled = false;
+
+        private transient SourceContext<String> context;
+
+        private final boolean outputingARecordWhenClosing;
+
+        public FiniteSource() {
+            this(false);
+        }
+
+        public FiniteSource(boolean outputingARecordWhenClosing) {
+            this.outputingARecordWhenClosing = outputingARecordWhenClosing;
+        }
 
         @Override
-        public void run(SourceContext<T> ctx) {}
+        public void run(SourceContext<String> ctx) {
+            context = ctx;
+        }
 
         @Override
-        public void cancel() {}
+        public void close() {
+            if (!canceled && outputingARecordWhenClosing) {
+                context.collect("Hello");
+            }
+        }
+
+        @Override
+        public void cancel() {
+            canceled = true;
+        }
     }
 
     private static final class InfiniteSource<T> implements SourceFunction<T> {
