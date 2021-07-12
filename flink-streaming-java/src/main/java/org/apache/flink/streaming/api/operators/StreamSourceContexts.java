@@ -173,6 +173,7 @@ public class StreamSourceContexts {
 
         @Override
         protected void processAndCollect(T element) {
+            checkNotClosed();
             lastRecordTime = this.timeService.getCurrentProcessingTime();
             output.collect(reuse.replace(element, lastRecordTime));
 
@@ -192,6 +193,7 @@ public class StreamSourceContexts {
 
         @Override
         protected void processAndCollectWithTimestamp(T element, long timestamp) {
+            checkNotClosed();
             processAndCollect(element);
         }
 
@@ -205,6 +207,7 @@ public class StreamSourceContexts {
         /** This will only be called if allowWatermark returned {@code true}. */
         @Override
         protected void processAndEmitWatermark(Watermark mark) {
+            checkNotClosed();
             nextWatermarkTime = Long.MAX_VALUE;
             output.emitWatermark(mark);
 
@@ -219,6 +222,7 @@ public class StreamSourceContexts {
 
         @Override
         protected void processAndEmitStreamStatus(StreamStatus streamStatus) {
+            checkNotClosed();
             if (idle != streamStatus.isIdle()) {
                 output.emitStreamStatus(streamStatus);
             }
@@ -316,21 +320,25 @@ public class StreamSourceContexts {
 
         @Override
         protected void processAndCollect(T element) {
+            checkNotClosed();
             output.collect(reuse.replace(element));
         }
 
         @Override
         protected void processAndCollectWithTimestamp(T element, long timestamp) {
+            checkNotClosed();
             output.collect(reuse.replace(element, timestamp));
         }
 
         @Override
         protected void processAndEmitWatermark(Watermark mark) {
+            checkNotClosed();
             output.emitWatermark(mark);
         }
 
         @Override
         protected void processAndEmitStreamStatus(StreamStatus streamStatus) {
+            checkNotClosed();
             if (idle != streamStatus.isIdle()) {
                 output.emitStreamStatus(streamStatus);
             }
@@ -402,7 +410,7 @@ public class StreamSourceContexts {
         }
 
         @Override
-        public final void collect(T element) {
+        public void collect(T element) {
             checkNotClosed();
 
             synchronized (checkpointLock) {
@@ -418,14 +426,14 @@ public class StreamSourceContexts {
             }
         }
 
-        private void checkNotClosed() {
+        protected void checkNotClosed() {
             if (closed) {
                 throw new FlinkRuntimeException("The Source Context has been closed already.");
             }
         }
 
         @Override
-        public final void collectWithTimestamp(T element, long timestamp) {
+        public void collectWithTimestamp(T element, long timestamp) {
             checkNotClosed();
 
             synchronized (checkpointLock) {
@@ -442,7 +450,7 @@ public class StreamSourceContexts {
         }
 
         @Override
-        public final void emitWatermark(Watermark mark) {
+        public void emitWatermark(Watermark mark) {
             checkNotClosed();
 
             if (allowWatermark(mark)) {
@@ -461,7 +469,7 @@ public class StreamSourceContexts {
         }
 
         @Override
-        public final void markAsTemporarilyIdle() {
+        public void markAsTemporarilyIdle() {
             checkNotClosed();
 
             synchronized (checkpointLock) {
