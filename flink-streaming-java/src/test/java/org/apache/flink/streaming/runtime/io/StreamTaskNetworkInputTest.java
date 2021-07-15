@@ -157,6 +157,7 @@ public class StreamTaskNetworkInputTest {
                                                 "test",
                                                 new DummyCheckpointInvokable(),
                                                 SystemClock.getInstance(),
+                                                false,
                                                 inputGate.getInputGate()),
                                 new SyncMailboxExecutor()),
                         inSerializer,
@@ -259,7 +260,7 @@ public class StreamTaskNetworkInputTest {
         return new CheckpointedInputGate(
                 inputGate,
                 new CheckpointBarrierTracker(
-                        1, new DummyCheckpointInvokable(), SystemClock.getInstance()),
+                        1, new DummyCheckpointInvokable(), SystemClock.getInstance(), false),
                 new SyncMailboxExecutor(),
                 UpstreamRecoveryTracker.forInputGate(inputGate));
     }

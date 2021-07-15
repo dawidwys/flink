@@ -106,6 +106,8 @@ public class StreamGraph implements Pipeline {
 
     private GlobalDataExchangeMode globalDataExchangeMode;
 
+    private boolean enableCheckpointsAfterTasksFinish;
+
     /** Flag to indicate whether to put all vertices into the same slot sharing group by default. */
     private boolean allVerticesInSameSlotSharingGroupByDefault = true;
 
@@ -277,6 +279,14 @@ public class StreamGraph implements Pipeline {
      */
     public boolean isAllVerticesInSameSlotSharingGroupByDefault() {
         return allVerticesInSameSlotSharingGroupByDefault;
+    }
+
+    public boolean isEnableCheckpointsAfterTasksFinish() {
+        return enableCheckpointsAfterTasksFinish;
+    }
+
+    public void setEnableCheckpointsAfterTasksFinish(boolean enableCheckpointsAfterTasksFinish) {
+        this.enableCheckpointsAfterTasksFinish = enableCheckpointsAfterTasksFinish;
     }
 
     // Checkpointing
