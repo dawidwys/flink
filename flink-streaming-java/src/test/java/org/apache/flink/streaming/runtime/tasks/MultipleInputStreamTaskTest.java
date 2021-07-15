@@ -879,10 +879,6 @@ public class MultipleInputStreamTaskTest {
                             .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
                             .build()) {
 
-                testHarness
-                        .getStreamTask()
-                        .getCheckpointCoordinator()
-                        .setEnableCheckpointAfterTasksFinished(true);
                 testHarness.getStreamTask().getCheckpointBarrierHandler().get();
 
                 // Tests triggering checkpoint when all the inputs are alive.

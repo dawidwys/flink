@@ -352,6 +352,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                         getEnvironment(),
                         this,
                         configuration.isUnalignedCheckpointsEnabled(),
+                        configuration
+                                .getConfiguration()
+                                .get(
+                                        ExecutionCheckpointingOptions
+                                                .ENABLE_CHECKPOINTS_AFTER_TASKS_FINISH),
                         this::prepareInputSnapshot);
 
         // if the clock is not already set, then assign a default TimeServiceProvider
