@@ -76,7 +76,6 @@ public class FailoverStrategyCheckpointCoordinatorTest extends TestLogger {
                 new CheckpointCoordinator(
                         graph.getJobID(),
                         checkpointCoordinatorConfiguration,
-                        Collections.emptyList(),
                         new StandaloneCheckpointIDCounter(),
                         new StandaloneCompletedCheckpointStore(1),
                         new MemoryStateBackend(),
@@ -89,6 +88,7 @@ public class FailoverStrategyCheckpointCoordinatorTest extends TestLogger {
                                 graph.getJobID(),
                                 new ExecutionGraphCheckpointPlanCalculatorContext(graph),
                                 graph.getVerticesTopologically(),
+                                Collections.emptyList(),
                                 false),
                         new ExecutionAttemptMappingProvider(graph.getAllExecutionVertices()));
 

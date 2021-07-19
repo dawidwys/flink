@@ -398,9 +398,6 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
         checkState(state == JobStatus.CREATED, "Job must be in CREATED state");
         checkState(checkpointCoordinator == null, "checkpointing already enabled");
 
-        final Collection<OperatorCoordinatorCheckpointContext> operatorCoordinators =
-                buildOpCoordinatorCheckpointContexts();
-
         checkpointStatsTracker = checkNotNull(statsTracker, "CheckpointStatsTracker");
 
         CheckpointFailureManager failureManager =
@@ -435,7 +432,6 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                 new CheckpointCoordinator(
                         jobInformation.getJobId(),
                         chkConfig,
-                        operatorCoordinators,
                         checkpointIDCounter,
                         checkpointStore,
                         checkpointStorage,
@@ -475,6 +471,7 @@ public class DefaultExecutionGraph implements ExecutionGraph, InternalExecutionG
                 getJobID(),
                 new ExecutionGraphCheckpointPlanCalculatorContext(this),
                 getVerticesTopologically(),
+                buildOpCoordinatorCheckpointContexts(),
                 enableCheckpointsAfterTasksFinish);
     }
 

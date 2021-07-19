@@ -688,7 +688,7 @@ public class PendingCheckpointTest {
                 createPendingCheckpoint(
                         CheckpointProperties.forCheckpoint(
                                 CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
-                        OperatorInfo.getIds(Arrays.asList(coordinators)),
+                        Arrays.asList(coordinators),
                         Collections.emptyList(),
                         Executors.directExecutor());
 
@@ -713,7 +713,7 @@ public class PendingCheckpointTest {
 
     private PendingCheckpoint createPendingCheckpoint(
             CheckpointProperties props,
-            Collection<OperatorID> operatorCoordinators,
+            Collection<OperatorInfo> operatorCoordinators,
             Collection<String> masterStateIdentifiers,
             Executor executor)
             throws IOException {
@@ -741,8 +741,10 @@ public class PendingCheckpointTest {
                         ackTasks,
                         tasksToCommit,
                         Collections.emptyList(),
-                        Collections.emptyList()),
-                operatorCoordinators,
+                        Collections.emptyList(),
+                        operatorCoordinators.stream()
+                                .map(DummyOperatorCoordinatorCheckpointContext::new)
+                                .collect(Collectors.toList())),
                 masterStateIdentifiers,
                 props,
                 location,
@@ -756,6 +758,9 @@ public class PendingCheckpointTest {
                         new JobID(),
                         new ExecutionGraphCheckpointPlanCalculatorContext(executionGraph),
                         executionGraph.getVerticesTopologically(),
+                        executionGraph.getAllVertices().values().stream()
+                                .flatMap(v -> v.getOperatorCoordinators().stream())
+                                .collect(Collectors.toList()),
                         true);
         CheckpointPlan checkpointPlan = checkpointPlanCalculator.calculateCheckpointPlan().get();
 
@@ -775,7 +780,6 @@ public class PendingCheckpointTest {
                 0,
                 1,
                 checkpointPlan,
-                Collections.emptyList(),
                 Collections.emptyList(),
                 CheckpointProperties.forCheckpoint(
                         CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
@@ -824,6 +828,51 @@ public class PendingCheckpointTest {
             for (Runnable runnable : queue) {
                 runnable.run();
             }
+        }
+    }
+
+    private static final class DummyOperatorCoordinatorCheckpointContext
+            implements OperatorCoordinatorCheckpointContext {
+
+        private final OperatorInfo operatorInfo;
+
+        private DummyOperatorCoordinatorCheckpointContext(OperatorInfo operatorInfo) {
+            this.operatorInfo = operatorInfo;
+        }
+
+        @Override
+        public void checkpointCoordinator(long checkpointId, CompletableFuture<byte[]> result)
+                throws Exception {}
+
+        @Override
+        public void afterSourceBarrierInjection(long checkpointId) {}
+
+        @Override
+        public void abortCurrentTriggering() {}
+
+        @Override
+        public void notifyCheckpointComplete(long checkpointId) {}
+
+        @Override
+        public void resetToCheckpoint(long checkpointId, @Nullable byte[] checkpointData)
+                throws Exception {}
+
+        @Override
+        public void subtaskReset(int subtask, long checkpointId) {}
+
+        @Override
+        public OperatorID operatorId() {
+            return operatorInfo.operatorId();
+        }
+
+        @Override
+        public int maxParallelism() {
+            return operatorInfo.maxParallelism();
+        }
+
+        @Override
+        public int currentParallelism() {
+            return operatorInfo.currentParallelism();
         }
     }
 

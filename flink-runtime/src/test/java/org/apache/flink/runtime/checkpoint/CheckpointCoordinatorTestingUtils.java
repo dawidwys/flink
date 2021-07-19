@@ -767,12 +767,12 @@ public class CheckpointCoordinatorTestingUtils {
                             executionGraph.getJobID(),
                             new ExecutionGraphCheckpointPlanCalculatorContext(executionGraph),
                             executionGraph.getVerticesTopologically(),
+                            coordinatorsToCheckpoint,
                             allowCheckpointsAfterTasksFinished);
 
             return new CheckpointCoordinator(
                     executionGraph.getJobID(),
                     checkpointCoordinatorConfiguration,
-                    coordinatorsToCheckpoint,
                     checkpointIDCounter,
                     completedCheckpointStore,
                     checkpointStorage,

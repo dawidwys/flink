@@ -31,7 +31,11 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.DistributionPattern;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.operators.coordination.MockOperatorCoordinator;
+import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.testtasks.NoOpInvokable;
+import org.apache.flink.util.SerializedValue;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
@@ -48,6 +52,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.EnumSet.complementOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -151,6 +156,26 @@ public class DefaultCheckpointPlanCalculatorTest {
     }
 
     @Test
+    public void testComputeWithOperatorCoordinators() throws Exception {
+        runSingleTest(
+                Arrays.asList(
+                        new VertexDeclaration(
+                                16,
+                                range(0, 4),
+                                Stream.of(new OperatorID()).collect(Collectors.toSet())),
+                        new VertexDeclaration(
+                                16,
+                                range(0, 16),
+                                Stream.of(new OperatorID()).collect(Collectors.toSet())),
+                        new VertexDeclaration(16, range(0, 2)),
+                        new VertexDeclaration(16, range(0, 16))),
+                Collections.emptyList(),
+                Arrays.asList(
+                        new TaskDeclaration(0, range(4, 16)),
+                        new TaskDeclaration(2, range(2, 16))));
+    }
+
+    @Test
     public void testPlanCalculationWhenOneTaskNotRunning() throws Exception {
         // when: All combinations of Source/Not Source for one RUNNING and one NOT RUNNING tasks.
         runWithNotRunningTask(true, true);
@@ -179,7 +204,7 @@ public class DefaultCheckpointPlanCalculatorTest {
             // The second vertex is everything except RUNNING.
             transitVertexToState(graph, notRunningVertex, notRunningState);
 
-            DefaultCheckpointPlanCalculator checkpointPlanCalculator =
+            CheckpointPlanCalculator checkpointPlanCalculator =
                     createCheckpointPlanCalculator(graph);
 
             try {
@@ -236,7 +261,7 @@ public class DefaultCheckpointPlanCalculatorTest {
             throws Exception {
 
         ExecutionGraph graph = createExecutionGraph(vertexDeclarations, edgeDeclarations);
-        DefaultCheckpointPlanCalculator planCalculator = createCheckpointPlanCalculator(graph);
+        CheckpointPlanCalculator planCalculator = createCheckpointPlanCalculator(graph);
 
         List<TaskDeclaration> expectedRunningTaskDeclarations = new ArrayList<>();
         List<ExecutionJobVertex> expectedFullyFinishedJobVertices = new ArrayList<>();
@@ -284,11 +309,15 @@ public class DefaultCheckpointPlanCalculatorTest {
 
         JobVertex[] jobVertices = new JobVertex[vertexDeclarations.size()];
         for (int i = 0; i < vertexDeclarations.size(); ++i) {
-            jobVertices[i] =
+            VertexDeclaration vertexDeclaration = vertexDeclarations.get(i);
+            JobVertex jobVertex =
                     ExecutionGraphTestUtils.createJobVertex(
-                            vertexName(i),
-                            vertexDeclarations.get(i).parallelism,
-                            NoOpInvokable.class);
+                            vertexName(i), vertexDeclaration.parallelism, NoOpInvokable.class);
+            for (OperatorID operatorID : vertexDeclaration.operatorsWithCoordinator) {
+                jobVertex.addOperatorCoordinator(
+                        new SerializedValue<>(new MockOperatorCoordinatorProvider(operatorID)));
+            }
+            jobVertices[i] = jobVertex;
         }
 
         for (EdgeDeclaration edgeDeclaration : edgeDeclarations) {
@@ -324,14 +353,15 @@ public class DefaultCheckpointPlanCalculatorTest {
         return graph;
     }
 
-    private DefaultCheckpointPlanCalculator createCheckpointPlanCalculator(ExecutionGraph graph) {
-        DefaultCheckpointPlanCalculator checkpointPlanCalculator =
-                new DefaultCheckpointPlanCalculator(
-                        graph.getJobID(),
-                        new ExecutionGraphCheckpointPlanCalculatorContext(graph),
-                        graph.getVerticesTopologically(),
-                        true);
-        return checkpointPlanCalculator;
+    private CheckpointPlanCalculator createCheckpointPlanCalculator(ExecutionGraph graph) {
+        return new DefaultCheckpointPlanCalculator(
+                graph.getJobID(),
+                new ExecutionGraphCheckpointPlanCalculatorContext(graph),
+                graph.getVerticesTopologically(),
+                graph.getAllVertices().values().stream()
+                        .flatMap(v -> v.getOperatorCoordinators().stream())
+                        .collect(Collectors.toList()),
+                true);
     }
 
     private void checkCheckpointPlan(
@@ -376,6 +406,15 @@ public class DefaultCheckpointPlanCalculatorTest {
                         .map(ExecutionVertex::getCurrentExecutionAttempt)
                         .collect(Collectors.toList()),
                 plan.getTasksToWaitFor());
+
+        // Compares tasks to ack
+        assertSameInstancesWithoutOrder(
+                "The computed tasks to ack is different from expected",
+                expectedRunning.stream()
+                        .map(ExecutionVertex::getJobVertex)
+                        .flatMap(v -> v.getOperatorCoordinators().stream())
+                        .collect(Collectors.toSet()),
+                plan.getCoordinatorsToCheckpoint());
     }
 
     private <T> void assertSameInstancesWithoutOrder(
@@ -437,10 +476,21 @@ public class DefaultCheckpointPlanCalculatorTest {
     private static class VertexDeclaration {
         final int parallelism;
         final Set<Integer> finishedSubtaskIndices;
+        final Set<OperatorID> operatorsWithCoordinator;
 
         public VertexDeclaration(int parallelism, Set<Integer> finishedSubtaskIndices) {
             this.parallelism = parallelism;
             this.finishedSubtaskIndices = finishedSubtaskIndices;
+            this.operatorsWithCoordinator = Collections.emptySet();
+        }
+
+        public VertexDeclaration(
+                int parallelism,
+                Set<Integer> finishedSubtaskIndices,
+                Set<OperatorID> operatorsWithCoordinator) {
+            this.parallelism = parallelism;
+            this.finishedSubtaskIndices = finishedSubtaskIndices;
+            this.operatorsWithCoordinator = operatorsWithCoordinator;
         }
     }
 
@@ -464,6 +514,25 @@ public class DefaultCheckpointPlanCalculatorTest {
         public TaskDeclaration(int vertexIndex, Set<Integer> subtaskIndices) {
             this.vertexIndex = vertexIndex;
             this.subtaskIndices = subtaskIndices;
+        }
+    }
+
+    private static class MockOperatorCoordinatorProvider implements OperatorCoordinator.Provider {
+
+        private final OperatorID operatorID;
+
+        private MockOperatorCoordinatorProvider(OperatorID operatorID) {
+            this.operatorID = operatorID;
+        }
+
+        @Override
+        public OperatorID getOperatorId() {
+            return operatorID;
+        }
+
+        @Override
+        public OperatorCoordinator create(OperatorCoordinator.Context context) {
+            return new MockOperatorCoordinator();
         }
     }
 }

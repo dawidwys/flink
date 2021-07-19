@@ -29,14 +29,19 @@ import org.apache.flink.runtime.jobgraph.DistributionPattern;
 import org.apache.flink.runtime.jobgraph.IntermediateResultPartitionID;
 import org.apache.flink.runtime.jobgraph.JobEdge;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.operators.coordination.OperatorCoordinatorHolder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -60,16 +65,20 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
 
     private final List<ExecutionVertex> sourceTasks = new ArrayList<>();
 
+    private final Collection<OperatorCoordinatorCheckpointContext> operatorCoordinators;
+
     private final boolean allowCheckpointsAfterTasksFinished;
 
     public DefaultCheckpointPlanCalculator(
             JobID jobId,
             CheckpointPlanCalculatorContext context,
             Iterable<ExecutionJobVertex> jobVerticesInTopologyOrderIterable,
+            Collection<OperatorCoordinatorCheckpointContext> operatorCoordinators,
             boolean allowCheckpointsAfterTasksFinished) {
 
         this.jobId = checkNotNull(jobId);
         this.context = checkNotNull(context);
+        this.operatorCoordinators = checkNotNull(operatorCoordinators);
         this.allowCheckpointsAfterTasksFinished = allowCheckpointsAfterTasksFinished;
 
         checkNotNull(jobVerticesInTopologyOrderIterable);
@@ -170,7 +179,8 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
                 Collections.unmodifiableList(tasksToWaitFor),
                 Collections.unmodifiableList(allTasks),
                 Collections.emptyList(),
-                Collections.emptyList());
+                Collections.emptyList(),
+                Collections.unmodifiableCollection(operatorCoordinators));
     }
 
     /**
@@ -190,12 +200,17 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
         List<ExecutionVertex> tasksToCommitTo = new ArrayList<>();
         List<Execution> finishedTasks = new ArrayList<>();
         List<ExecutionJobVertex> fullyFinishedJobVertex = new ArrayList<>();
+        Set<OperatorID> fullyFinishedOperatorCoordinators = new HashSet<>();
 
         for (ExecutionJobVertex jobVertex : jobVerticesInTopologyOrder) {
             BitSet taskRunningStatus = taskRunningStatusByVertex.get(jobVertex.getJobVertexId());
 
             if (taskRunningStatus.cardinality() == 0) {
                 fullyFinishedJobVertex.add(jobVertex);
+                fullyFinishedOperatorCoordinators.addAll(
+                        jobVertex.getOperatorCoordinators().stream()
+                                .map(OperatorCoordinatorHolder::operatorId)
+                                .collect(Collectors.toList()));
 
                 for (ExecutionVertex task : jobVertex.getTaskVertices()) {
                     finishedTasks.add(task.getCurrentExecutionAttempt());
@@ -237,7 +252,10 @@ public class DefaultCheckpointPlanCalculator implements CheckpointPlanCalculator
                 Collections.unmodifiableList(tasksToWaitFor),
                 Collections.unmodifiableList(tasksToCommitTo),
                 Collections.unmodifiableList(finishedTasks),
-                Collections.unmodifiableList(fullyFinishedJobVertex));
+                Collections.unmodifiableList(fullyFinishedJobVertex),
+                operatorCoordinators.stream()
+                        .filter(c -> !fullyFinishedOperatorCoordinators.contains(c.operatorId()))
+                        .collect(Collectors.toList()));
     }
 
     private boolean someTasksMustBeTriggered(

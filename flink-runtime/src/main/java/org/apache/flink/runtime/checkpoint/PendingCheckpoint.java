@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -129,7 +130,6 @@ public class PendingCheckpoint implements Checkpoint {
             long checkpointId,
             long checkpointTimestamp,
             CheckpointPlan checkpointPlan,
-            Collection<OperatorID> operatorCoordinatorsToConfirm,
             Collection<String> masterStateIdentifiers,
             CheckpointProperties props,
             CheckpointStorageLocation targetLocation,
@@ -159,9 +159,11 @@ public class PendingCheckpoint implements Checkpoint {
                         ? Collections.emptySet()
                         : new HashSet<>(masterStateIdentifiers);
         this.notYetAcknowledgedOperatorCoordinators =
-                operatorCoordinatorsToConfirm.isEmpty()
+                checkpointPlan.getCoordinatorsToCheckpoint().isEmpty()
                         ? Collections.emptySet()
-                        : new HashSet<>(operatorCoordinatorsToConfirm);
+                        : checkpointPlan.getCoordinatorsToCheckpoint().stream()
+                                .map(OperatorCoordinatorCheckpointContext::operatorId)
+                                .collect(Collectors.toSet());
         this.acknowledgedTasks = new HashSet<>(checkpointPlan.getTasksToWaitFor().size());
         this.onCompletionPromise = checkNotNull(onCompletionPromise);
     }

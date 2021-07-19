@@ -480,7 +480,6 @@ public class CheckpointCoordinatorMasterHooksTest {
         return new CheckpointCoordinator(
                 graph.getJobID(),
                 chkConfig,
-                Collections.emptyList(),
                 new StandaloneCheckpointIDCounter(),
                 new StandaloneCompletedCheckpointStore(10),
                 new MemoryStateBackend(),
@@ -493,6 +492,7 @@ public class CheckpointCoordinatorMasterHooksTest {
                         graph.getJobID(),
                         new ExecutionGraphCheckpointPlanCalculatorContext(graph),
                         graph.getVerticesTopologically(),
+                        Collections.emptyList(),
                         false),
                 new ExecutionAttemptMappingProvider(graph.getAllExecutionVertices()));
     }

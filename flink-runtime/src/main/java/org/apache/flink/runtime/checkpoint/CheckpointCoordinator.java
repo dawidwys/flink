@@ -37,7 +37,6 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
-import org.apache.flink.runtime.operators.coordination.OperatorInfo;
 import org.apache.flink.runtime.persistence.PossibleInconsistentStateException;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageCoordinatorView;
@@ -120,9 +119,6 @@ public class CheckpointCoordinator {
     private final Executor executor;
 
     private final CheckpointsCleaner checkpointsCleaner;
-
-    /** The operator coordinators that need to be checkpointed. */
-    private final Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint;
 
     /** Map from checkpoint ID to the pending checkpoint. */
     @GuardedBy("lock")
@@ -234,7 +230,6 @@ public class CheckpointCoordinator {
     public CheckpointCoordinator(
             JobID job,
             CheckpointCoordinatorConfiguration chkConfig,
-            Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint,
             CheckpointIDCounter checkpointIDCounter,
             CompletedCheckpointStore completedCheckpointStore,
             CheckpointStorage checkpointStorage,
@@ -249,7 +244,6 @@ public class CheckpointCoordinator {
         this(
                 job,
                 chkConfig,
-                coordinatorsToCheckpoint,
                 checkpointIDCounter,
                 completedCheckpointStore,
                 checkpointStorage,
@@ -267,7 +261,6 @@ public class CheckpointCoordinator {
     public CheckpointCoordinator(
             JobID job,
             CheckpointCoordinatorConfiguration chkConfig,
-            Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint,
             CheckpointIDCounter checkpointIDCounter,
             CompletedCheckpointStore completedCheckpointStore,
             CheckpointStorage checkpointStorage,
@@ -300,8 +293,6 @@ public class CheckpointCoordinator {
         this.baseInterval = baseInterval;
         this.checkpointTimeout = chkConfig.getCheckpointTimeout();
         this.minPauseBetweenCheckpoints = minPauseBetweenCheckpoints;
-        this.coordinatorsToCheckpoint =
-                Collections.unmodifiableCollection(coordinatorsToCheckpoint);
         this.pendingCheckpoints = new LinkedHashMap<>();
         this.checkpointIdCounter = checkNotNull(checkpointIDCounter);
         this.completedCheckpointStore = checkNotNull(completedCheckpointStore);
@@ -576,7 +567,9 @@ public class CheckpointCoordinator {
                             (pendingCheckpoint) ->
                                     OperatorCoordinatorCheckpoints
                                             .triggerAndAcknowledgeAllCoordinatorCheckpointsWithCompletion(
-                                                    coordinatorsToCheckpoint,
+                                                    pendingCheckpoint
+                                                            .getCheckpointPlan()
+                                                            .getCoordinatorsToCheckpoint(),
                                                     pendingCheckpoint,
                                                     timer),
                             timer);
@@ -675,8 +668,11 @@ public class CheckpointCoordinator {
                                 return null;
                             });
 
-            coordinatorsToCheckpoint.forEach(
-                    (ctx) -> ctx.afterSourceBarrierInjection(checkpoint.getCheckpointID()));
+            checkpoint
+                    .getCheckpointPlan()
+                    .getCoordinatorsToCheckpoint()
+                    .forEach(
+                            (ctx) -> ctx.afterSourceBarrierInjection(checkpoint.getCheckpointID()));
             // It is possible that the tasks has finished
             // checkpointing at this point.
             // So we need to complete this pending checkpoint.
@@ -764,7 +760,6 @@ public class CheckpointCoordinator {
                         checkpointID,
                         timestamp,
                         checkpointPlan,
-                        OperatorInfo.getIds(coordinatorsToCheckpoint),
                         masterHooks.keySet(),
                         props,
                         checkpointStorageLocation,
@@ -881,22 +876,25 @@ public class CheckpointCoordinator {
         throwable = ExceptionUtils.stripCompletionException(throwable);
 
         try {
-            coordinatorsToCheckpoint.forEach(
-                    OperatorCoordinatorCheckpointContext::abortCurrentTriggering);
-
-            if (checkpoint != null && !checkpoint.isDisposed()) {
-                int numUnsuccessful = numUnsuccessfulCheckpointsTriggers.incrementAndGet();
-                LOG.warn(
-                        "Failed to trigger checkpoint {} for job {}. ({} consecutive failed attempts so far)",
-                        checkpoint.getCheckpointId(),
-                        job,
-                        numUnsuccessful,
-                        throwable);
-                final CheckpointException cause =
-                        getCheckpointException(
-                                CheckpointFailureReason.TRIGGER_CHECKPOINT_FAILURE, throwable);
-                synchronized (lock) {
-                    abortPendingCheckpoint(checkpoint, cause);
+            if (checkpoint != null) {
+                checkpoint
+                        .getCheckpointPlan()
+                        .getCoordinatorsToCheckpoint()
+                        .forEach(OperatorCoordinatorCheckpointContext::abortCurrentTriggering);
+                if (!checkpoint.isDisposed()) {
+                    int numUnsuccessful = numUnsuccessfulCheckpointsTriggers.incrementAndGet();
+                    LOG.warn(
+                            "Failed to trigger checkpoint {} for job {}. ({} consecutive failed attempts so far)",
+                            checkpoint.getCheckpointId(),
+                            job,
+                            numUnsuccessful,
+                            throwable);
+                    final CheckpointException cause =
+                            getCheckpointException(
+                                    CheckpointFailureReason.TRIGGER_CHECKPOINT_FAILURE, throwable);
+                    synchronized (lock) {
+                        abortPendingCheckpoint(checkpoint, cause);
+                    }
                 }
             } else {
                 LOG.info(
@@ -1235,7 +1233,7 @@ public class CheckpointCoordinator {
                 }
 
                 sendAbortedMessages(
-                        pendingCheckpoint.getCheckpointPlan().getTasksToCommitTo(),
+                        pendingCheckpoint.getCheckpointPlan(),
                         checkpointId,
                         pendingCheckpoint.getCheckpointTimestamp());
                 throw new CheckpointException(
@@ -1280,7 +1278,7 @@ public class CheckpointCoordinator {
 
         // send the "notify complete" call to all vertices, coordinators, etc.
         sendAcknowledgeMessages(
-                pendingCheckpoint.getCheckpointPlan().getTasksToCommitTo(),
+                pendingCheckpoint.getCheckpointPlan(),
                 checkpointId,
                 completedCheckpoint.getTimestamp());
     }
@@ -1297,9 +1295,9 @@ public class CheckpointCoordinator {
     }
 
     private void sendAcknowledgeMessages(
-            List<ExecutionVertex> tasksToCommit, long checkpointId, long timestamp) {
+            CheckpointPlan checkpointPlan, long checkpointId, long timestamp) {
         // commit tasks
-        for (ExecutionVertex ev : tasksToCommit) {
+        for (ExecutionVertex ev : checkpointPlan.getTasksToCommitTo()) {
             Execution ee = ev.getCurrentExecutionAttempt();
             if (ee != null) {
                 ee.notifyCheckpointComplete(checkpointId, timestamp);
@@ -1307,18 +1305,19 @@ public class CheckpointCoordinator {
         }
 
         // commit coordinators
-        for (OperatorCoordinatorCheckpointContext coordinatorContext : coordinatorsToCheckpoint) {
+        for (OperatorCoordinatorCheckpointContext coordinatorContext :
+                checkpointPlan.getCoordinatorsToCheckpoint()) {
             coordinatorContext.notifyCheckpointComplete(checkpointId);
         }
     }
 
     private void sendAbortedMessages(
-            List<ExecutionVertex> tasksToAbort, long checkpointId, long timeStamp) {
+            CheckpointPlan checkpointPlan, long checkpointId, long timeStamp) {
         // send notification of aborted checkpoints asynchronously.
         executor.execute(
                 () -> {
                     // send the "abort checkpoint" messages to necessary vertices.
-                    for (ExecutionVertex ev : tasksToAbort) {
+                    for (ExecutionVertex ev : checkpointPlan.getTasksToCommitTo()) {
                         Execution ee = ev.getCurrentExecutionAttempt();
                         if (ee != null) {
                             ee.notifyCheckpointAborted(checkpointId, timeStamp);
@@ -1327,7 +1326,8 @@ public class CheckpointCoordinator {
                 });
 
         // commit coordinators
-        for (OperatorCoordinatorCheckpointContext coordinatorContext : coordinatorsToCheckpoint) {
+        for (OperatorCoordinatorCheckpointContext coordinatorContext :
+                checkpointPlan.getCoordinatorsToCheckpoint()) {
             coordinatorContext.notifyCheckpointAborted(checkpointId);
         }
     }
@@ -1558,8 +1558,15 @@ public class CheckpointCoordinator {
                     // we let the JobManager-side components know that there was a recovery,
                     // even if there was no checkpoint to recover from, yet
                     LOG.info("Resetting the Operator Coordinators to an empty state.");
+
+                    Set<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint =
+                            tasks.stream()
+                                    .flatMap(v -> v.getOperatorCoordinators().stream())
+                                    .collect(Collectors.toSet());
                     restoreStateToCoordinators(
-                            OperatorCoordinator.NO_CHECKPOINT, Collections.emptyMap());
+                            OperatorCoordinator.NO_CHECKPOINT,
+                            Collections.emptyMap(),
+                            coordinatorsToCheckpoint);
                 }
 
                 return OptionalLong.empty();
@@ -1591,7 +1598,12 @@ public class CheckpointCoordinator {
                     LOG);
 
             if (operatorCoordinatorRestoreBehavior != OperatorCoordinatorRestoreBehavior.SKIP) {
-                restoreStateToCoordinators(latest.getCheckpointID(), operatorStates);
+                Set<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint =
+                        tasks.stream()
+                                .flatMap(v -> v.getOperatorCoordinators().stream())
+                                .collect(Collectors.toSet());
+                restoreStateToCoordinators(
+                        latest.getCheckpointID(), operatorStates, coordinatorsToCheckpoint);
             }
 
             // update metrics
@@ -1934,7 +1946,9 @@ public class CheckpointCoordinator {
     }
 
     private void restoreStateToCoordinators(
-            final long checkpointId, final Map<OperatorID, OperatorState> operatorStates)
+            final long checkpointId,
+            final Map<OperatorID, OperatorState> operatorStates,
+            Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint)
             throws Exception {
 
         for (OperatorCoordinatorCheckpointContext coordContext : coordinatorsToCheckpoint) {
@@ -2066,7 +2080,7 @@ public class CheckpointCoordinator {
                 }
             } finally {
                 sendAbortedMessages(
-                        pendingCheckpoint.getCheckpointPlan().getTasksToCommitTo(),
+                        pendingCheckpoint.getCheckpointPlan(),
                         pendingCheckpoint.getCheckpointId(),
                         pendingCheckpoint.getCheckpointTimestamp());
                 pendingCheckpoints.remove(pendingCheckpoint.getCheckpointId());

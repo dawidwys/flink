@@ -22,6 +22,7 @@ import org.apache.flink.runtime.executiongraph.Execution;
 import org.apache.flink.runtime.executiongraph.ExecutionJobVertex;
 import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 
+import java.util.Collection;
 import java.util.List;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -50,18 +51,22 @@ class CheckpointPlan {
     /** The job vertices whose tasks are all finished when taking the checkpoint. */
     private final List<ExecutionJobVertex> fullyFinishedJobVertex;
 
+    private final Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint;
+
     CheckpointPlan(
             List<Execution> tasksToTrigger,
             List<Execution> tasksToWaitFor,
             List<ExecutionVertex> tasksToCommitTo,
             List<Execution> finishedTasks,
-            List<ExecutionJobVertex> fullyFinishedJobVertex) {
+            List<ExecutionJobVertex> fullyFinishedJobVertex,
+            Collection<OperatorCoordinatorCheckpointContext> coordinatorsToCheckpoint) {
 
         this.tasksToTrigger = checkNotNull(tasksToTrigger);
         this.tasksToWaitFor = checkNotNull(tasksToWaitFor);
         this.tasksToCommitTo = checkNotNull(tasksToCommitTo);
         this.finishedTasks = checkNotNull(finishedTasks);
         this.fullyFinishedJobVertex = checkNotNull(fullyFinishedJobVertex);
+        this.coordinatorsToCheckpoint = checkNotNull(coordinatorsToCheckpoint);
     }
 
     List<Execution> getTasksToTrigger() {
@@ -78,6 +83,10 @@ class CheckpointPlan {
 
     public List<Execution> getFinishedTasks() {
         return finishedTasks;
+    }
+
+    public Collection<OperatorCoordinatorCheckpointContext> getCoordinatorsToCheckpoint() {
+        return coordinatorsToCheckpoint;
     }
 
     public List<ExecutionJobVertex> getFullyFinishedJobVertex() {
