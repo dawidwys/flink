@@ -281,10 +281,20 @@ public class SourceStreamTask<
         public void run() {
             try {
                 mainOperator.run(lock, operatorChain);
-                if (!wasStoppedExternally && !isCanceled()) {
+                if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
                     synchronized (lock) {
                         operatorChain.setIgnoreEndOfInput(false);
                     }
+                    CompletableFuture<Void> endOfDataProcessed = new CompletableFuture<>();
+                    mainMailboxExecutor.execute(
+                            () -> {
+                                endData();
+                                endOfDataProcessed.complete(null);
+                            },
+                            "SourceStreamTask finished processing data.");
+
+                    // wait until all operators are finished
+                    endOfDataProcessed.get();
                 }
                 completionFuture.complete(null);
             } catch (Throwable t) {

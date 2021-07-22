@@ -98,6 +98,8 @@ public abstract class InputGate
 
     public abstract boolean isFinished();
 
+    public abstract boolean hasReceivedAllUserRecords();
+
     /**
      * Blocking call waiting for next {@link BufferOrEvent}.
      *

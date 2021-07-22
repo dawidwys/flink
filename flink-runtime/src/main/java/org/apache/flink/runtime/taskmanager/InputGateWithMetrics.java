@@ -91,6 +91,11 @@ public class InputGateWithMetrics extends IndexedInputGate {
     }
 
     @Override
+    public boolean hasReceivedAllUserRecords() {
+        return inputGate.hasReceivedAllUserRecords();
+    }
+
+    @Override
     public void setup() throws IOException {
         inputGate.setup();
     }

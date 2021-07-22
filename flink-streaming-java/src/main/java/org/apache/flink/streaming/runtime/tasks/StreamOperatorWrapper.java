@@ -142,7 +142,7 @@ public class StreamOperatorWrapper<OUT, OP extends StreamOperator<OUT>> {
         wrapped.close();
     }
 
-    private void quiesceTimeServiceAndFinishOperator(StreamTaskActionExecutor actionExecutor)
+    public void quiesceTimeServiceAndFinishOperator(StreamTaskActionExecutor actionExecutor)
             throws InterruptedException, ExecutionException {
 
         // step 1. to ensure that there is no longer output triggered by the timers before invoking

@@ -59,6 +59,7 @@ public class StreamTaskSourceInput<T> implements StreamTaskInput<T>, Checkpointa
 
     @Override
     public DataInputStatus emitNext(DataOutput<T> output) throws Exception {
+
         /**
          * Safe guard against best efforts availability checks. If despite being unavailable someone
          * polls the data from this source while it's blocked, it should return {@link
