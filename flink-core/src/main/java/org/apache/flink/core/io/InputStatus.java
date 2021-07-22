@@ -53,6 +53,8 @@ public enum InputStatus {
     /** Indicator that all persisted data of the data exchange has been successfully restored. */
     END_OF_RECOVERY,
 
+    END_OF_USER_RECORDS,
+
     /** Indicator that the input has reached the end of data. */
     END_OF_INPUT
 }

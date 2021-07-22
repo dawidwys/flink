@@ -222,6 +222,11 @@ public class CheckpointedInputGate implements PullingAsyncDataInput<BufferOrEven
         return isFinished;
     }
 
+    @Override
+    public boolean hasReceivedAllUserRecords() {
+        return inputGate.hasReceivedAllUserRecords();
+    }
+
     /**
      * Cleans up all internally held resources.
      *

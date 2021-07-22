@@ -257,6 +257,18 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
     private final CompletableFuture<Void> terminationFuture = new CompletableFuture<>();
 
+    private CompletableFuture<Void> endOfInputReceived = new CompletableFuture<>();
+    private CompletableFuture<Void> finalCheckpointCompleted = new CompletableFuture<>();
+    private Long firstCheckpointIdAfterFinish = null;
+
+    private enum TaskState {
+        RUNNING,
+        WAITING_FOR_FINAL_CHECKPOINT_COMPLETE,
+        CLOSING
+    }
+
+    private TaskState taskState;
+
     // ------------------------------------------------------------------------
 
     /**
@@ -429,17 +441,41 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
      */
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
         InputStatus status = inputProcessor.processInput();
-        if (status == InputStatus.MORE_AVAILABLE && recordWriter.isAvailable()) {
-            return;
-        }
-        if (status == InputStatus.END_OF_INPUT) {
-            // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
-            // after all records processed by the downstream tasks. We also suspend the default
-            // actions to avoid repeat executing the empty default operation (namely process
-            // records).
-            controller.suspendDefaultAction();
-            mailboxProcessor.suspend();
-            return;
+        switch (status) {
+            case MORE_AVAILABLE:
+                if (recordWriter.isAvailable()) {
+                    return;
+                }
+                break;
+            case NOTHING_AVAILABLE:
+                break;
+            case END_OF_RECOVERY:
+                throw new IllegalStateException("We should not receive this event here.");
+            case END_OF_USER_RECORDS:
+                // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
+                // after all records processed by the downstream tasks. We also suspend the default
+                // actions to avoid repeat executing the empty default operation (namely process
+                // records).
+
+                // finish all operators in a chain effect way
+                operatorChain.finishOperators(actionExecutor);
+
+                for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
+                    partitionWriter.notifyEndOfUserRecords();
+                }
+
+                if (configuration.isCheckpointingEnabled()) {
+                    this.taskState = TaskState.WAITING_FOR_FINAL_CHECKPOINT_COMPLETE;
+                }
+
+                return;
+            case END_OF_INPUT:
+                if (this.taskState == TaskState.RUNNING) {
+                    mailboxProcessor.allActionsCompleted();
+                } else {
+                    endOfInputReceived.complete(null);
+                }
+                return;
         }
 
         TaskIOMetricGroup ioMetrics = getEnvironment().getMetricGroup().getIOMetricGroup();
@@ -653,6 +689,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // final check to exit early before starting to run
         ensureNotCanceled();
 
+        this.taskState = TaskState.RUNNING;
         // let the task do its work
         runMailboxLoop();
 
@@ -706,11 +743,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         LOG.debug("Finished task {}", getName());
         getCompletionFuture().exceptionally(unused -> null).join();
 
-        final CompletableFuture<Void> timersFinishedFuture = new CompletableFuture<>();
-
-        // close all operators in a chain effect way
-        operatorChain.finishOperators(actionExecutor);
-
         // If checkpoints are enabled, waits for all the records get processed by the downstream
         // tasks. During this process, this task could coordinate with its downstream tasks to
         // continue perform checkpoints.
@@ -720,7 +752,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
             List<CompletableFuture<Void>> partitionRecordsProcessedFutures = new ArrayList<>();
             for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
-                partitionWriter.notifyEndOfUserRecords();
                 partitionRecordsProcessedFutures.add(
                         partitionWriter.getAllRecordsProcessedFuture());
             }
@@ -728,7 +759,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         } else {
             allRecordsProcessedFuture = CompletableFuture.completedFuture(null);
         }
-        allRecordsProcessedFuture.thenRun(mailboxProcessor::allActionsCompleted);
+
+        FutureUtils.waitForAll(
+                        Arrays.asList(
+                                allRecordsProcessedFuture,
+                                endOfInputReceived,
+                                finalCheckpointCompleted))
+                .thenRun(mailboxProcessor::allActionsCompleted);
 
         // Resumes the mailbox processor. The mailbox processor would be completed
         // after all records are processed by the downstream tasks.
@@ -736,6 +773,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
         // make sure no further checkpoint and notification actions happen.
         // at the same time, this makes sure that during any "regular" exit where still
+        final CompletableFuture<Void> timersFinishedFuture = new CompletableFuture<>();
         actionExecutor.runThrowing(
                 () -> {
 
@@ -988,6 +1026,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                         boolean noUnfinishedInputGates =
                                 Arrays.stream(getEnvironment().getAllInputGates())
                                         .allMatch(InputGate::isFinished);
+
+                        if (this.firstCheckpointIdAfterFinish == null
+                                && this.taskState
+                                        == TaskState.WAITING_FOR_FINAL_CHECKPOINT_COMPLETE) {
+                            this.firstCheckpointIdAfterFinish =
+                                    checkpointMetaData.getCheckpointId();
+                        }
 
                         if (noUnfinishedInputGates) {
                             result.complete(
@@ -1245,6 +1290,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     private void notifyCheckpointComplete(long checkpointId) throws Exception {
         subtaskCheckpointCoordinator.notifyCheckpointComplete(
                 checkpointId, operatorChain, this::isRunning);
+        if (this.firstCheckpointIdAfterFinish != null
+                && checkpointId >= this.firstCheckpointIdAfterFinish) {
+            this.finalCheckpointCompleted.complete(null);
+        }
         if (isRunning && isSynchronousSavepointId(checkpointId)) {
             finishTask();
             // Reset to "notify" the internal synchronous savepoint mailbox loop.

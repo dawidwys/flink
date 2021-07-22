@@ -167,6 +167,11 @@ public class AlignedCheckpointsMassiveRandomTest {
         }
 
         @Override
+        public boolean hasReceivedAllUserRecords() {
+            return false;
+        }
+
+        @Override
         public InputChannel getChannel(int channelIndex) {
             throw new UnsupportedOperationException();
         }

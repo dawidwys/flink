@@ -22,6 +22,7 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
+import org.apache.flink.runtime.io.network.api.EndOfUserRecordsEvent;
 import org.apache.flink.runtime.io.network.api.serialization.RecordDeserializer;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.EndOfChannelStateEvent;
@@ -152,7 +153,11 @@ public abstract class AbstractStreamTaskNetworkInput<
         final AbstractEvent event = bufferOrEvent.getEvent();
         // TODO: with checkpointedInputGate.isFinished() we might not need to support any events on
         // this level.
-        if (event.getClass() == EndOfPartitionEvent.class) {
+        if (event.getClass() == EndOfUserRecordsEvent.class) {
+            if (checkpointedInputGate.hasReceivedAllUserRecords()) {
+                return InputStatus.END_OF_USER_RECORDS;
+            }
+        } else if (event.getClass() == EndOfPartitionEvent.class) {
             // release the record deserializer immediately,
             // which is very valuable in case of bounded stream
             releaseDeserializer(bufferOrEvent.getChannelInfo());
