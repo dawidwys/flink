@@ -48,6 +48,7 @@ public class StreamTaskSourceInput<T> implements StreamTaskInput<T>, Checkpointa
     private final AvailabilityHelper isBlockedAvailability = new AvailabilityHelper();
     private final List<InputChannelInfo> inputChannelInfos;
     private final int inputIndex;
+    private boolean operatorFinished = false;
 
     public StreamTaskSourceInput(
             SourceOperator<T, ?> operator, int inputGateIndex, int inputIndex) {
@@ -60,13 +61,23 @@ public class StreamTaskSourceInput<T> implements StreamTaskInput<T>, Checkpointa
 
     @Override
     public InputStatus emitNext(DataOutput<T> output) throws Exception {
+
+        if (operatorFinished) {
+            return InputStatus.END_OF_INPUT;
+        }
+
         /**
          * Safe guard against best efforts availability checks. If despite being unavailable someone
          * polls the data from this source while it's blocked, it should return {@link
          * InputStatus.NOTHING_AVAILABLE}.
          */
         if (isBlockedAvailability.isApproximatelyAvailable()) {
-            return operator.emitNext(output);
+            InputStatus inputStatus = operator.emitNext(output);
+            if (inputStatus == InputStatus.END_OF_INPUT) {
+                operatorFinished = true;
+                return InputStatus.END_OF_USER_RECORDS;
+            }
+            return inputStatus;
         }
         return InputStatus.NOTHING_AVAILABLE;
     }

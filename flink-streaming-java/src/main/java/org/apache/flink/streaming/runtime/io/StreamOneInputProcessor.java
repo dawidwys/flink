@@ -65,9 +65,8 @@ public final class StreamOneInputProcessor<IN> implements StreamInputProcessor {
     public InputStatus processInput() throws Exception {
         InputStatus status = input.emitNext(output);
 
-        if (status == InputStatus.END_OF_INPUT) {
+        if (status == InputStatus.END_OF_USER_RECORDS) {
             endOfInputAware.endInput(input.getInputIndex() + 1);
-        } else if (status == InputStatus.END_OF_USER_RECORDS) {
             output = new FinishedDataOutput<>();
         } else if (status == InputStatus.END_OF_RECOVERY) {
             if (input instanceof RecoverableStreamTaskInput) {

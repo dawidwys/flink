@@ -47,6 +47,7 @@ public class MultipleInputSelectionHandler {
     private long availableInputsMask;
 
     private long notFinishedInputsMask;
+    private long notFinishedDataInputsMask;
 
     public MultipleInputSelectionHandler(
             @Nullable InputSelectable inputSelectable, int inputCount) {
@@ -55,6 +56,7 @@ public class MultipleInputSelectionHandler {
         this.allSelectedMask = (1L << inputCount) - 1;
         this.availableInputsMask = allSelectedMask;
         this.notFinishedInputsMask = allSelectedMask;
+        this.notFinishedDataInputsMask = allSelectedMask;
     }
 
     public static void checkSupportedInputCount(int inputCount) {
@@ -72,6 +74,13 @@ public class MultipleInputSelectionHandler {
                 return InputStatus.MORE_AVAILABLE;
             case NOTHING_AVAILABLE:
                 availableInputsMask = unsetBitMask(availableInputsMask, inputIndex);
+                break;
+            case END_OF_USER_RECORDS:
+                notFinishedDataInputsMask = unsetBitMask(notFinishedDataInputsMask, inputIndex);
+                if (areAllDataInputsFinished()) {
+                    // emit that only once when all inputs reported end of records
+                    return InputStatus.END_OF_USER_RECORDS;
+                }
                 break;
             case END_OF_INPUT:
                 notFinishedInputsMask = unsetBitMask(notFinishedInputsMask, inputIndex);
@@ -143,6 +152,10 @@ public class MultipleInputSelectionHandler {
 
     public boolean areAllInputsFinished() {
         return notFinishedInputsMask == 0;
+    }
+
+    private boolean areAllDataInputsFinished() {
+        return notFinishedDataInputsMask == 0;
     }
 
     long setBitMask(long mask, int inputIndex) {

@@ -182,7 +182,8 @@ public class SourceStreamTask<
                             } else if (!wasStoppedExternally && sourceThreadThrowable != null) {
                                 mailboxProcessor.reportThrowable(sourceThreadThrowable);
                             } else {
-                                mailboxProcessor.suspend();
+                                mainMailboxExecutor.execute(
+                                        this::endInput, "SourceStreamTask finished.");
                             }
                         });
     }
@@ -285,6 +286,9 @@ public class SourceStreamTask<
                     synchronized (lock) {
                         operatorChain.setIgnoreEndOfInput(false);
                     }
+                    mainMailboxExecutor.execute(
+                            SourceStreamTask.this::endData,
+                            "SourceStreamTask finished processing data.");
                 }
                 completionFuture.complete(null);
             } catch (Throwable t) {

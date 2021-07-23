@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.StringSerializer;
@@ -28,9 +29,11 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.testutils.MultiShotLatch;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
+import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
 import org.apache.flink.runtime.execution.CancelTaskException;
+import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.NettyShuffleEnvironment;
 import org.apache.flink.runtime.io.network.NettyShuffleEnvironmentBuilder;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
@@ -39,6 +42,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.testutils.ExpectedTestException;
+import org.apache.flink.runtime.taskmanager.TestCheckpointResponder;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.FromElementsFunction;
@@ -607,10 +611,29 @@ public class SourceStreamTaskTest extends SourceStreamTaskTestBase {
                 partitionWriters[i].setup();
             }
 
+            final CompletableFuture<Long> checkpointCompleted = new CompletableFuture<>();
             try (StreamTaskMailboxTestHarness<String> testHarness =
                     new StreamTaskMailboxTestHarnessBuilder<>(
                                     SourceStreamTask::new, BasicTypeInfo.STRING_TYPE_INFO)
                             .modifyStreamConfig(config -> config.setCheckpointingEnabled(true))
+                            .setCheckpointResponder(
+                                    new TestCheckpointResponder() {
+                                        @Override
+                                        public void acknowledgeCheckpoint(
+                                                JobID jobID,
+                                                ExecutionAttemptID executionAttemptID,
+                                                long checkpointId,
+                                                CheckpointMetrics checkpointMetrics,
+                                                TaskStateSnapshot subtaskState) {
+                                            super.acknowledgeCheckpoint(
+                                                    jobID,
+                                                    executionAttemptID,
+                                                    checkpointId,
+                                                    checkpointMetrics,
+                                                    subtaskState);
+                                            checkpointCompleted.complete(checkpointId);
+                                        }
+                                    })
                             .addAdditionalOutput(partitionWriters)
                             .setupOperatorChain(new StreamSource<>(new MockSource(0, 0, 1)))
                             .finishForSingletonOperatorChain(StringSerializer.INSTANCE)
@@ -622,6 +645,7 @@ public class SourceStreamTaskTest extends SourceStreamTaskTestBase {
 
                 testHarness.processAll();
                 testHarness.getStreamTask().getCompletionFuture().get();
+                testHarness.processAll();
 
                 Future<Boolean> checkpointFuture = triggerCheckpoint(testHarness, 2);
                 // Notifies the result partition that all records are processed after the
@@ -637,6 +661,9 @@ public class SourceStreamTaskTest extends SourceStreamTaskTestBase {
                                     }
                                 });
 
+                checkpointCompleted.whenComplete(
+                        (id, error) ->
+                                testHarness.getStreamTask().notifyCheckpointCompleteAsync(2));
                 testHarness.finishProcessing();
                 assertTrue(checkpointFuture.isDone());
 

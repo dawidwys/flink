@@ -257,8 +257,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
     private final CompletableFuture<Void> terminationFuture = new CompletableFuture<>();
 
-    private CompletableFuture<Void> endOfInputReceived = new CompletableFuture<>();
-    private CompletableFuture<Void> finalCheckpointCompleted = new CompletableFuture<>();
+    private final CompletableFuture<Void> endOfInputReceived = new CompletableFuture<>();
+    private final CompletableFuture<Void> finalCheckpointCompleted = new CompletableFuture<>();
     private Long firstCheckpointIdAfterFinish = null;
 
     private enum TaskState {
@@ -267,7 +267,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         CLOSING
     }
 
-    private TaskState taskState;
+    private TaskState taskState = TaskState.RUNNING;
 
     // ------------------------------------------------------------------------
 
@@ -452,29 +452,12 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             case END_OF_RECOVERY:
                 throw new IllegalStateException("We should not receive this event here.");
             case END_OF_USER_RECORDS:
-                // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
-                // after all records processed by the downstream tasks. We also suspend the default
-                // actions to avoid repeat executing the empty default operation (namely process
-                // records).
-
-                // finish all operators in a chain effect way
-                operatorChain.finishOperators(actionExecutor);
-
-                for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
-                    partitionWriter.notifyEndOfUserRecords();
-                }
-
-                if (configuration.isCheckpointingEnabled()) {
-                    this.taskState = TaskState.WAITING_FOR_FINAL_CHECKPOINT_COMPLETE;
-                }
+                endData();
 
                 return;
             case END_OF_INPUT:
-                if (this.taskState == TaskState.RUNNING) {
-                    mailboxProcessor.allActionsCompleted();
-                } else {
-                    endOfInputReceived.complete(null);
-                }
+                endInput();
+                controller.suspendDefaultAction();
                 return;
         }
 
@@ -491,6 +474,32 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         assertNoException(
                 resumeFuture.thenRun(
                         new ResumeWrapper(controller.suspendDefaultAction(timer), timer)));
+    }
+
+    protected void endInput() {
+        if (this.taskState == TaskState.RUNNING) {
+            mailboxProcessor.allActionsCompleted();
+        } else {
+            endOfInputReceived.complete(null);
+        }
+    }
+
+    protected void endData() throws Exception {
+        // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
+        // after all records processed by the downstream tasks. We also suspend the default
+        // actions to avoid repeat executing the empty default operation (namely process
+        // records).
+
+        // finish all operators in a chain effect way
+        operatorChain.finishOperators(actionExecutor);
+
+        for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
+            partitionWriter.notifyEndOfUserRecords();
+        }
+
+        if (configuration.isCheckpointingEnabled()) {
+            this.taskState = TaskState.WAITING_FOR_FINAL_CHECKPOINT_COMPLETE;
+        }
     }
 
     private void resetSynchronousSavepointId(long id, boolean succeeded) {
@@ -746,30 +755,26 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // If checkpoints are enabled, waits for all the records get processed by the downstream
         // tasks. During this process, this task could coordinate with its downstream tasks to
         // continue perform checkpoints.
-        CompletableFuture<Void> allRecordsProcessedFuture;
         if (configuration.isCheckpointingEnabled()) {
-            LOG.debug("Waiting for all the records processed by the downstream tasks.");
 
             List<CompletableFuture<Void>> partitionRecordsProcessedFutures = new ArrayList<>();
             for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
                 partitionRecordsProcessedFutures.add(
                         partitionWriter.getAllRecordsProcessedFuture());
             }
-            allRecordsProcessedFuture = FutureUtils.waitForAll(partitionRecordsProcessedFutures);
-        } else {
-            allRecordsProcessedFuture = CompletableFuture.completedFuture(null);
+            CompletableFuture<Void> allRecordsProcessedFuture =
+                    FutureUtils.waitForAll(partitionRecordsProcessedFutures);
+            FutureUtils.waitForAll(
+                            Arrays.asList(
+                                    allRecordsProcessedFuture,
+                                    endOfInputReceived,
+                                    finalCheckpointCompleted))
+                    .thenRun(mailboxProcessor::allActionsCompleted);
+
+            // Resumes the mailbox processor. The mailbox processor would be completed
+            // after all records are processed by the downstream tasks.
+            mailboxProcessor.runMailboxLoop();
         }
-
-        FutureUtils.waitForAll(
-                        Arrays.asList(
-                                allRecordsProcessedFuture,
-                                endOfInputReceived,
-                                finalCheckpointCompleted))
-                .thenRun(mailboxProcessor::allActionsCompleted);
-
-        // Resumes the mailbox processor. The mailbox processor would be completed
-        // after all records are processed by the downstream tasks.
-        mailboxProcessor.runMailboxLoop();
 
         // make sure no further checkpoint and notification actions happen.
         // at the same time, this makes sure that during any "regular" exit where still

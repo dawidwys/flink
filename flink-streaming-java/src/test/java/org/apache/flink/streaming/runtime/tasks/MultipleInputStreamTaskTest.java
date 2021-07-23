@@ -784,8 +784,8 @@ public class MultipleInputStreamTaskTest {
 
             finishAddingRecords(testHarness, 1);
             testHarness.endInput();
-            testHarness.finishProcessing();
             testHarness.waitForTaskCompletion();
+            testHarness.finishProcessing();
         }
     }
 
