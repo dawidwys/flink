@@ -45,7 +45,6 @@ import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 import javax.annotation.Nullable;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -58,11 +57,6 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
 
     public SourceOperatorStreamTask(Environment env) throws Exception {
         super(env);
-    }
-
-    @Override
-    protected CompletableFuture<Void> getCompletionFuture() {
-        return super.getCompletionFuture();
     }
 
     @Override
@@ -119,9 +113,13 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     }
 
     @Override
-    public Future<Boolean> triggerCheckpointAsync(
+    public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
+            if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
+                mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
+            }
             return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             return CompletableFuture.completedFuture(isRunning());
@@ -131,14 +129,6 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     @Override
     protected void advanceToEndOfEventTime() {
         output.emitWatermark(Watermark.MAX_WATERMARK);
-    }
-
-    @Override
-    protected void afterInvoke() throws Exception {
-        if (!isCanceled()) {
-            advanceToEndOfEventTime();
-        }
-        super.afterInvoke();
     }
 
     // --------------------------
