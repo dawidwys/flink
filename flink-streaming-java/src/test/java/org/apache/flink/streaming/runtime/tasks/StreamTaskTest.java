@@ -240,7 +240,7 @@ public class StreamTaskTest extends TestLogger {
                                 new CheckpointException(
                                         UNKNOWN_TASK_CHECKPOINT_NOTIFICATION_FAILURE)),
                 CheckpointType.SAVEPOINT_SUSPEND,
-                true);
+                false);
     }
 
     @Test
@@ -258,7 +258,7 @@ public class StreamTaskTest extends TestLogger {
     @Test
     public void testSavepointSuspendAbortedAsync() throws Exception {
         testSyncSavepointWithEndInput(
-                StreamTask::notifyCheckpointAbortAsync, CheckpointType.SAVEPOINT_SUSPEND, true);
+                StreamTask::notifyCheckpointAbortAsync, CheckpointType.SAVEPOINT_SUSPEND, false);
     }
 
     @Test
@@ -283,35 +283,32 @@ public class StreamTaskTest extends TestLogger {
             boolean expectEndInput)
             throws Exception {
         StreamTaskMailboxTestHarness<String> harness =
-                new StreamTaskMailboxTestHarnessBuilder<>(OneInputStreamTask::new, STRING_TYPE_INFO)
-                        .addInput(STRING_TYPE_INFO)
-                        .setupOutputForSingletonOperatorChain(
-                                new TestBoundedOneInputStreamOperator())
+                new StreamTaskMailboxTestHarnessBuilder<>(SourceStreamTask::new, STRING_TYPE_INFO)
+                        .setupOperatorChain(UNBOUNDED_SOURCE)
+                        .chain(new TestBoundedOneInputStreamOperator(), StringSerializer.INSTANCE)
+                        .finish()
                         .build();
 
         final long checkpointId = 1L;
         CountDownLatch savepointTriggeredLatch = new CountDownLatch(1);
         CountDownLatch inputEndedLatch = new CountDownLatch(1);
 
+        // initialize source stream task
+        harness.processSingleStep();
         MailboxExecutor executor =
                 harness.streamTask.getMailboxExecutorFactory().createExecutor(MAX_PRIORITY);
         executor.execute(
                 () -> {
-                    try {
-                        harness.streamTask.triggerCheckpointOnBarrier(
-                                new CheckpointMetaData(checkpointId, checkpointId),
-                                new CheckpointOptions(checkpointType, getDefault()),
-                                new CheckpointMetricsBuilder());
-                    } catch (IOException e) {
-                        fail(e.getMessage());
-                    }
+                    harness.streamTask.triggerCheckpointAsync(
+                            new CheckpointMetaData(checkpointId, checkpointId),
+                            new CheckpointOptions(checkpointType, getDefault()));
                 },
                 "triggerCheckpointOnBarrier");
         new Thread(
                         () -> {
                             try {
                                 savepointTriggeredLatch.await();
-                                harness.endInput();
+                                harness.endInput(false);
                                 inputEndedLatch.countDown();
                             } catch (InterruptedException e) {
                                 fail(e.getMessage());
@@ -330,6 +327,25 @@ public class StreamTaskTest extends TestLogger {
 
         Assert.assertEquals(expectEndInput, TestBoundedOneInputStreamOperator.isInputEnded());
     }
+
+    public static final StreamSource<String, ?> UNBOUNDED_SOURCE =
+            new StreamSource<>(
+                    new SourceFunction<String>() {
+
+                        private volatile boolean isRunning = true;
+
+                        @Override
+                        public void run(SourceContext<String> ctx) throws Exception {
+                            while (isRunning) {
+                                Thread.sleep(100);
+                            }
+                        }
+
+                        @Override
+                        public void cancel() {
+                            this.isRunning = false;
+                        }
+                    });
 
     @Test
     public void testCleanUpExceptionSuppressing() throws Exception {

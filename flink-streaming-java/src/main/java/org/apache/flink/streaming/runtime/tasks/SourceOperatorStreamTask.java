@@ -61,11 +61,6 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     }
 
     @Override
-    protected CompletableFuture<Void> getCompletionFuture() {
-        return super.getCompletionFuture();
-    }
-
-    @Override
     public void init() throws Exception {
         final SourceOperator<T, ?> sourceOperator = this.mainOperator;
         // reader initialization, which cannot happen in the constructor due to the
@@ -122,6 +117,9 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     public Future<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
+            if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
+            }
             return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             return CompletableFuture.completedFuture(isRunning());
@@ -131,14 +129,6 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     @Override
     protected void advanceToEndOfEventTime() {
         output.emitWatermark(Watermark.MAX_WATERMARK);
-    }
-
-    @Override
-    protected void afterInvoke() throws Exception {
-        if (!isCanceled()) {
-            advanceToEndOfEventTime();
-        }
-        super.afterInvoke();
     }
 
     // --------------------------

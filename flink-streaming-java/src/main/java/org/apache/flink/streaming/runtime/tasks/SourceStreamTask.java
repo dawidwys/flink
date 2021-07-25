@@ -252,6 +252,9 @@ public class SourceStreamTask<
     public Future<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
+            if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
+            }
             return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             // we do not trigger checkpoints here, we simply state whether we can trigger them
@@ -282,9 +285,6 @@ public class SourceStreamTask<
             try {
                 mainOperator.run(lock, operatorChain);
                 if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
-                    synchronized (lock) {
-                        operatorChain.setIgnoreEndOfInput(false);
-                    }
                     CompletableFuture<Void> endOfDataProcessed = new CompletableFuture<>();
                     mainMailboxExecutor.execute(
                             () -> {

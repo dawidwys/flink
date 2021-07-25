@@ -147,8 +147,8 @@ import static org.apache.flink.util.concurrent.FutureUtils.assertNoException;
  *       +----> initialize-operator-states()
  *       +----> open-operators()
  *       +----> run()
+ *       +----> finish-operators()
  *       +----> close-operators()
- *       +----> dispose-operators()
  *       +----> common cleanup
  *       +----> task specific cleanup()
  * }</pre>
@@ -256,6 +256,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     private long latestAsyncCheckpointStartDelayNanos;
 
     private final CompletableFuture<Void> terminationFuture = new CompletableFuture<>();
+    private volatile boolean endOfDataReceived = false;
 
     // ------------------------------------------------------------------------
 
@@ -441,7 +442,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                 throw new IllegalStateException("We should not receive this event here.");
             case END_OF_DATA:
                 endData();
-
                 return;
             case END_OF_INPUT:
                 // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
@@ -469,35 +469,30 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     }
 
     protected void endData() throws Exception {
-        // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
-        // after all records processed by the downstream tasks. We also suspend the default
-        // actions to avoid repeat executing the empty default operation (namely process
-        // records).
-
+        advanceToEndOfEventTime();
         // finish all operators in a chain effect way
         operatorChain.finishOperators(actionExecutor);
 
         for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
             partitionWriter.notifyEndOfData();
         }
+        this.endOfDataReceived = true;
     }
 
     private void resetSynchronousSavepointId(long id, boolean succeeded) {
         if (!succeeded && activeSyncSavepointId != null && activeSyncSavepointId == id) {
             // allow to process further EndOfPartition events
             activeSyncSavepointId = null;
-            operatorChain.setIgnoreEndOfInput(false);
         }
         syncSavepointId = null;
     }
 
-    private void setSynchronousSavepointId(long checkpointId, boolean ignoreEndOfInput) {
+    private void setSynchronousSavepointId(long checkpointId) {
         checkState(
                 syncSavepointId == null,
                 "at most one stop-with-savepoint checkpoint at a time is allowed");
         syncSavepointId = checkpointId;
         activeSyncSavepointId = checkpointId;
-        operatorChain.setIgnoreEndOfInput(ignoreEndOfInput);
     }
 
     @VisibleForTesting
@@ -735,7 +730,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // tasks. During this process, this task could coordinate with its downstream tasks to
         // continue perform checkpoints.
         CompletableFuture<Void> allRecordsProcessedFuture;
-        if (configuration.isCheckpointingEnabled()) {
+        if (configuration.isCheckpointingEnabled() && endOfDataReceived) {
             LOG.debug("Waiting for all the records processed by the downstream tasks.");
 
             List<CompletableFuture<Void>> partitionRecordsProcessedFutures = new ArrayList<>();
@@ -772,7 +767,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // the queued checkpoint requirements could be triggered normally.
         actionExecutor.runThrowing(
                 () -> {
-                    // only set the StreamTask to not running after all operators have been closed!
+                    // only set the StreamTask to not running after all operators have been
+                    // finished!
                     // See FLINK-7430
                     isRunning = false;
                 });
@@ -780,7 +776,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // make sure all timers finish
         timersFinishedFuture.get();
 
-        LOG.debug("Closed operators for task {}", getName());
+        LOG.debug("Finished operators for task {}", getName());
 
         // make sure all buffered data is flushed
         operatorChain.flushOutputs();
@@ -1170,17 +1166,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             actionExecutor.runThrowing(
                     () -> {
                         if (checkpointOptions.getCheckpointType().isSynchronous()) {
-                            setSynchronousSavepointId(
-                                    checkpointMetaData.getCheckpointId(),
-                                    checkpointOptions.getCheckpointType().shouldIgnoreEndOfInput());
-
-                            if (checkpointOptions.getCheckpointType().shouldAdvanceToEndOfTime()) {
-                                advanceToEndOfEventTime();
-                            }
+                            setSynchronousSavepointId(checkpointMetaData.getCheckpointId());
                         } else if (activeSyncSavepointId != null
                                 && activeSyncSavepointId < checkpointMetaData.getCheckpointId()) {
                             activeSyncSavepointId = null;
-                            operatorChain.setIgnoreEndOfInput(false);
                         }
 
                         subtaskCheckpointCoordinator.checkpointState(
