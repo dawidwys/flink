@@ -36,7 +36,7 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 
 /**
  * {@link StreamTask} for executing a {@link StreamSource}.
@@ -67,6 +67,12 @@ public class SourceStreamTask<
      * to ignore exceptions thrown after finishing, to ensure shutdown works smoothly.
      */
     private volatile boolean wasStoppedExternally = false;
+
+    /**
+     * Indicates whether the source operator has been cancelled for stop-with-savepoint --drain, in
+     * this case we want to ignore interrupt exceptions thrown when stopping.
+     */
+    private volatile boolean wasDrained = false;
 
     public SourceStreamTask(Environment env) throws Exception {
         this(env, new Object());
@@ -172,14 +178,7 @@ public class SourceStreamTask<
                 .getCompletionFuture()
                 .whenComplete(
                         (Void ignore, Throwable sourceThreadThrowable) -> {
-                            if (isCanceled()
-                                    && ExceptionUtils.findThrowable(
-                                                    sourceThreadThrowable,
-                                                    InterruptedException.class)
-                                            .isPresent()) {
-                                mailboxProcessor.reportThrowable(
-                                        new CancelTaskException(sourceThreadThrowable));
-                            } else if (!wasStoppedExternally && sourceThreadThrowable != null) {
+                            if (sourceThreadThrowable != null) {
                                 mailboxProcessor.reportThrowable(sourceThreadThrowable);
                             } else {
                                 mailboxProcessor.suspend();
@@ -197,7 +196,7 @@ public class SourceStreamTask<
 
     @Override
     protected void cancelTask() {
-        cancelTask(true);
+        cancelOperator(true);
     }
 
     @Override
@@ -210,16 +209,16 @@ public class SourceStreamTask<
          * network stack in an inconsistent state. So, if we want to relay on the clean shutdown, we
          * can not interrupt the source thread.
          */
-        cancelTask(false);
+        cancelOperator(false);
     }
 
-    private void cancelTask(boolean interrupt) {
+    private void cancelOperator(boolean interruptThread) {
         try {
             if (mainOperator != null) {
                 mainOperator.cancel();
             }
         } finally {
-            interruptSourceThread(interrupt);
+            interruptSourceThread(interruptThread);
         }
     }
 
@@ -249,10 +248,28 @@ public class SourceStreamTask<
     // ------------------------------------------------------------------------
 
     @Override
-    public Future<Boolean> triggerCheckpointAsync(
+    public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
-            return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
+            if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                mainMailboxExecutor.execute(
+                        () -> {
+                            setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
+                            wasDrained = true;
+                            if (mainOperator != null) {
+                                mainOperator.stop();
+                            }
+                        },
+                        "stop legacy source and set synchronous savepoint");
+                return sourceThread
+                        .getCompletionFuture()
+                        .thenCompose(
+                                ignore ->
+                                        super.triggerCheckpointAsync(
+                                                checkpointMetaData, checkpointOptions));
+            } else {
+                return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
+            }
         } else {
             // we do not trigger checkpoints here, we simply state whether we can trigger them
             synchronized (lock) {
@@ -281,25 +298,47 @@ public class SourceStreamTask<
         public void run() {
             try {
                 mainOperator.run(lock, operatorChain);
-                if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
-                    synchronized (lock) {
-                        operatorChain.setIgnoreEndOfInput(false);
-                    }
-                    CompletableFuture<Void> endOfDataProcessed = new CompletableFuture<>();
-                    mainMailboxExecutor.execute(
-                            () -> {
-                                endData();
-                                endOfDataProcessed.complete(null);
-                            },
-                            "SourceStreamTask finished processing data.");
-
-                    // wait until all operators are finished
-                    endOfDataProcessed.get();
-                }
+                completeProcessing();
                 completionFuture.complete(null);
             } catch (Throwable t) {
                 // Note, t can be also an InterruptedException
-                completionFuture.completeExceptionally(t);
+                if (isCanceled()
+                        && ExceptionUtils.findThrowable(t, InterruptedException.class)
+                                .isPresent()) {
+                    completionFuture.completeExceptionally(new CancelTaskException(t));
+                } else if (wasDrained
+                        && ExceptionUtils.findThrowable(t, InterruptedException.class)
+                                .isPresent()) {
+                    // if we are stopping the source thread for stop-with-savepoint
+                    // we may actually return from run with an InterruptedException which
+                    // should be ignored
+                    try {
+                        // clear the interrupted status for the thread
+                        Thread.interrupted();
+                        completeProcessing();
+                        completionFuture.complete(null);
+                    } catch (Throwable e) {
+                        completionFuture.completeExceptionally(e);
+                    }
+                } else if (wasStoppedExternally) {
+                    // swallow all exceptions if the source was stopped externally
+                    completionFuture.complete(null);
+                } else {
+                    completionFuture.completeExceptionally(t);
+                }
+            }
+        }
+
+        private void completeProcessing() throws InterruptedException, ExecutionException {
+            if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
+                CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
+                mainMailboxExecutor.execute(
+                        () -> {
+                            endData();
+                            endOfDataConsumed.complete(null);
+                        },
+                        "SourceStreamTask finished processing data.");
+                endOfDataConsumed.get();
             }
         }
 

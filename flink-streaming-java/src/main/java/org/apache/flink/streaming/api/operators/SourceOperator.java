@@ -114,6 +114,8 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     /** The source reader that does most of the work. */
     private SourceReader<OUT, SplitT> sourceReader;
 
+    private SourceReader<OUT, SplitT> readingReader;
+
     private ReaderOutput<OUT> currentMainOutput;
 
     private DataOutput<OUT> lastInvokedOutput;
@@ -226,6 +228,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 };
 
         sourceReader = readerFactory.apply(context);
+        readingReader = sourceReader;
     }
 
     @Override
@@ -267,6 +270,8 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
         if (eventTimeLogic != null) {
             eventTimeLogic.stopPeriodicWatermarkEmits();
         }
+        dataFinished = true;
+        readingReader = new DrainedSourceReader<>();
         super.finish();
     }
 
@@ -287,13 +292,13 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
         // short circuit the common case (every invocation except the first)
         if (currentMainOutput != null) {
-            return convertToInternalStatus(sourceReader.pollNext(currentMainOutput));
+            return convertToInternalStatus(readingReader.pollNext(currentMainOutput));
         }
 
         // this creates a batch or streaming output based on the runtime mode
         currentMainOutput = eventTimeLogic.createMainOutput(output);
         lastInvokedOutput = output;
-        return convertToInternalStatus(sourceReader.pollNext(currentMainOutput));
+        return convertToInternalStatus(readingReader.pollNext(currentMainOutput));
     }
 
     private DataInputStatus convertToInternalStatus(InputStatus inputStatus) {

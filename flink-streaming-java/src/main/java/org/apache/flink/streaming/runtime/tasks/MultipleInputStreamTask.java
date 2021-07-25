@@ -31,8 +31,6 @@ import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamConfig.InputConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.MultipleInputStreamOperator;
-import org.apache.flink.streaming.api.operators.Output;
-import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.StreamMultipleInputProcessorFactory;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
 import org.apache.flink.streaming.runtime.io.checkpointing.CheckpointBarrierHandler;
@@ -41,7 +39,6 @@ import org.apache.flink.streaming.runtime.io.checkpointing.InputProcessorUtil;
 import org.apache.flink.streaming.runtime.metrics.MinWatermarkGauge;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
-import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 import javax.annotation.Nullable;
 
@@ -51,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.function.Function;
 
 /**
@@ -181,7 +177,7 @@ public class MultipleInputStreamTask<OUT>
     }
 
     @Override
-    public Future<Boolean> triggerCheckpointAsync(
+    public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData metadata, CheckpointOptions options) {
 
         if (operatorChain.getSourceTaskInputs().size() == 0) {
@@ -280,12 +276,5 @@ public class MultipleInputStreamTask<OUT>
             resultFuture.completeExceptionally(cause);
         }
         super.abortCheckpointOnBarrier(checkpointId, cause);
-    }
-
-    @Override
-    protected void advanceToEndOfEventTime() throws Exception {
-        for (Output<StreamRecord<?>> sourceOutput : operatorChain.getChainedSourceOutputs()) {
-            sourceOutput.emitWatermark(Watermark.MAX_WATERMARK);
-        }
     }
 }
