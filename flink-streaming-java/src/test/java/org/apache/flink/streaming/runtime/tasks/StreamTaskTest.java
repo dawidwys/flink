@@ -118,6 +118,7 @@ import org.apache.flink.streaming.util.TestSequentialReadingStreamOperator;
 import org.apache.flink.util.CloseableIterable;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FatalExitExceptionHandler;
+import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.TestLogger;
 import org.apache.flink.util.concurrent.FutureUtils;
@@ -128,7 +129,9 @@ import org.apache.flink.util.function.SupplierWithException;
 
 import org.hamcrest.Matchers;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -192,6 +195,8 @@ public class StreamTaskTest extends TestLogger {
 
     private static OneShotLatch syncLatch;
 
+    @Rule public ExpectedException thrown = ExpectedException.none();
+
     @Test
     public void testCancellationWaitsForActiveTimers() throws Exception {
         StreamTaskWithBlockingTimer.reset();
@@ -245,6 +250,8 @@ public class StreamTaskTest extends TestLogger {
 
     @Test
     public void testSavepointTerminateAborted() throws Exception {
+        thrown.expect(FlinkRuntimeException.class);
+        thrown.expectMessage("Stop-with-savepoint --drain failed.");
         testSyncSavepointWithEndInput(
                 (task, id) ->
                         task.abortCheckpointOnBarrier(
@@ -263,6 +270,8 @@ public class StreamTaskTest extends TestLogger {
 
     @Test
     public void testSavepointTerminateAbortedAsync() throws Exception {
+        thrown.expect(FlinkRuntimeException.class);
+        thrown.expectMessage("Stop-with-savepoint --drain failed.");
         testSyncSavepointWithEndInput(
                 StreamTask::notifyCheckpointAbortAsync, CheckpointType.SAVEPOINT_TERMINATE, true);
     }
@@ -283,32 +292,35 @@ public class StreamTaskTest extends TestLogger {
             boolean expectEndInput)
             throws Exception {
         StreamTaskMailboxTestHarness<String> harness =
-                new StreamTaskMailboxTestHarnessBuilder<>(SourceStreamTask::new, STRING_TYPE_INFO)
-                        .setupOperatorChain(UNBOUNDED_SOURCE)
-                        .chain(new TestBoundedOneInputStreamOperator(), StringSerializer.INSTANCE)
-                        .finish()
+                new StreamTaskMailboxTestHarnessBuilder<>(OneInputStreamTask::new, STRING_TYPE_INFO)
+                        .addInput(STRING_TYPE_INFO)
+                        .setupOutputForSingletonOperatorChain(
+                                new TestBoundedOneInputStreamOperator())
                         .build();
 
         final long checkpointId = 1L;
         CountDownLatch savepointTriggeredLatch = new CountDownLatch(1);
         CountDownLatch inputEndedLatch = new CountDownLatch(1);
 
-        // initialize source stream task
-        harness.processSingleStep();
         MailboxExecutor executor =
                 harness.streamTask.getMailboxExecutorFactory().createExecutor(MAX_PRIORITY);
         executor.execute(
                 () -> {
-                    harness.streamTask.triggerCheckpointAsync(
-                            new CheckpointMetaData(checkpointId, checkpointId),
-                            new CheckpointOptions(checkpointType, getDefault()));
+                    try {
+                        harness.streamTask.triggerCheckpointOnBarrier(
+                                new CheckpointMetaData(checkpointId, checkpointId),
+                                new CheckpointOptions(checkpointType, getDefault()),
+                                new CheckpointMetricsBuilder());
+                    } catch (IOException e) {
+                        fail(e.getMessage());
+                    }
                 },
                 "triggerCheckpointOnBarrier");
         new Thread(
                         () -> {
                             try {
                                 savepointTriggeredLatch.await();
-                                harness.endInput(false);
+                                harness.endInput(expectEndInput);
                                 inputEndedLatch.countDown();
                             } catch (InterruptedException e) {
                                 fail(e.getMessage());
@@ -327,25 +339,6 @@ public class StreamTaskTest extends TestLogger {
 
         Assert.assertEquals(expectEndInput, TestBoundedOneInputStreamOperator.isInputEnded());
     }
-
-    public static final StreamSource<String, ?> UNBOUNDED_SOURCE =
-            new StreamSource<>(
-                    new SourceFunction<String>() {
-
-                        private volatile boolean isRunning = true;
-
-                        @Override
-                        public void run(SourceContext<String> ctx) throws Exception {
-                            while (isRunning) {
-                                Thread.sleep(100);
-                            }
-                        }
-
-                        @Override
-                        public void cancel() {
-                            this.isRunning = false;
-                        }
-                    });
 
     @Test
     public void testCleanUpExceptionSuppressing() throws Exception {

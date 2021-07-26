@@ -36,7 +36,6 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 /**
  * {@link StreamTask} for executing a {@link StreamSource}.
@@ -67,6 +66,10 @@ public class SourceStreamTask<
      * to ignore exceptions thrown after finishing, to ensure shutdown works smoothly.
      */
     private volatile boolean wasStoppedExternally = false;
+
+    private volatile boolean wasDrained = false;
+
+    private CompletableFuture<Boolean> waitForSyncSavepointScheduled = new CompletableFuture<>();
 
     public SourceStreamTask(Environment env) throws Exception {
         this(env, new Object());
@@ -197,11 +200,15 @@ public class SourceStreamTask<
 
     @Override
     protected void cancelTask() {
-        cancelTask(true);
+        cancelOperator(true);
     }
 
     @Override
     protected void finishTask() {
+        if (wasDrained) {
+            return;
+        }
+
         wasStoppedExternally = true;
         /**
          * Currently stop with savepoint relies on the EndOfPartitionEvents propagation and performs
@@ -210,16 +217,16 @@ public class SourceStreamTask<
          * network stack in an inconsistent state. So, if we want to relay on the clean shutdown, we
          * can not interrupt the source thread.
          */
-        cancelTask(false);
+        cancelOperator(false);
     }
 
-    private void cancelTask(boolean interrupt) {
+    private void cancelOperator(boolean interruptThread) {
         try {
             if (mainOperator != null) {
                 mainOperator.cancel();
             }
         } finally {
-            interruptSourceThread(interrupt);
+            interruptSourceThread(interruptThread);
         }
     }
 
@@ -249,13 +256,28 @@ public class SourceStreamTask<
     // ------------------------------------------------------------------------
 
     @Override
-    public Future<Boolean> triggerCheckpointAsync(
+    public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
             if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
+                mainMailboxExecutor.execute(
+                        () -> {
+                            setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
+                            wasDrained = true;
+                            if (mainOperator != null) {
+                                mainOperator.stop();
+                            }
+                        },
+                        "stop legacy source and set synchronous savepoint");
+                return sourceThread
+                        .getCompletionFuture()
+                        .thenCompose(
+                                ignore ->
+                                        super.triggerCheckpointAsync(
+                                                checkpointMetaData, checkpointOptions));
+            } else {
+                return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
-            return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             // we do not trigger checkpoints here, we simply state whether we can trigger them
             synchronized (lock) {
@@ -285,16 +307,14 @@ public class SourceStreamTask<
             try {
                 mainOperator.run(lock, operatorChain);
                 if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
-                    CompletableFuture<Void> endOfDataProcessed = new CompletableFuture<>();
+                    CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
                     mainMailboxExecutor.execute(
                             () -> {
                                 endData();
-                                endOfDataProcessed.complete(null);
+                                endOfDataConsumed.complete(null);
                             },
                             "SourceStreamTask finished processing data.");
-
-                    // wait until all operators are finished
-                    endOfDataProcessed.get();
+                    endOfDataConsumed.get();
                 }
                 completionFuture.complete(null);
             } catch (Throwable t) {

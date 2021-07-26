@@ -108,7 +108,10 @@ public class SourceTaskTerminationTest extends TestLogger {
 
         if (shouldTerminate) {
             // if we are in TERMINATE mode, we expect the source task
+            // to be cancelled which emits extra element
             // to emit MAX_WM before the SYNC_SAVEPOINT barrier.
+            verifyWatermark(srcTaskTestHarness.getOutput(), new Watermark(4L));
+            verifyNextElement(srcTaskTestHarness.getOutput(), 4L);
             verifyWatermark(srcTaskTestHarness.getOutput(), Watermark.MAX_WATERMARK);
         }
 
@@ -119,7 +122,9 @@ public class SourceTaskTerminationTest extends TestLogger {
         assertTrue(srcTask.getSynchronousSavepointId().isPresent());
 
         srcTask.notifyCheckpointCompleteAsync(syncSavepointId).get();
-        assertFalse(srcTask.getSynchronousSavepointId().isPresent());
+        if (!shouldTerminate) {
+            assertFalse(srcTask.getSynchronousSavepointId().isPresent());
+        }
 
         executionThread.join();
     }
