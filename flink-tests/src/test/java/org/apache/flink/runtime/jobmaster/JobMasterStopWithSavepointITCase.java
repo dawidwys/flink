@@ -105,12 +105,6 @@ public class JobMasterStopWithSavepointITCase extends AbstractTestBase {
         stopWithSavepointNormalExecutionHelper(false);
     }
 
-    @Test
-    public void terminateWithSavepointWithoutComplicationsShouldSucceedAndLeadJobToFinished()
-            throws Exception {
-        stopWithSavepointNormalExecutionHelper(true);
-    }
-
     private void stopWithSavepointNormalExecutionHelper(final boolean terminate) throws Exception {
         setUpJobGraph(NoOpBlockingStreamTask.class, RestartStrategies.noRestart());
 
