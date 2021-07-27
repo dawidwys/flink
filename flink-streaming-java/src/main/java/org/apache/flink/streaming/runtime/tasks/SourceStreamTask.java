@@ -36,6 +36,7 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 /**
  * {@link StreamTask} for executing a {@link StreamSource}.
@@ -306,20 +307,40 @@ public class SourceStreamTask<
         public void run() {
             try {
                 mainOperator.run(lock, operatorChain);
-                if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
-                    CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
-                    mainMailboxExecutor.execute(
-                            () -> {
-                                endData();
-                                endOfDataConsumed.complete(null);
-                            },
-                            "SourceStreamTask finished processing data.");
-                    endOfDataConsumed.get();
-                }
+                completeProcessing();
                 completionFuture.complete(null);
             } catch (Throwable t) {
                 // Note, t can be also an InterruptedException
-                completionFuture.completeExceptionally(t);
+                if (wasDrained
+                        && ExceptionUtils.findThrowable(t, InterruptedException.class)
+                                .isPresent()) {
+                    // if we are stopping the source thread for stop-with-savepoint
+                    // we may actually return from run with an InterruptedException which
+                    // should be ignored
+                    try {
+                        // clear the interrupted status for the thread
+                        Thread.interrupted();
+                        completeProcessing();
+                        completionFuture.complete(null);
+                    } catch (Throwable e) {
+                        completionFuture.completeExceptionally(e);
+                    }
+                } else {
+                    completionFuture.completeExceptionally(t);
+                }
+            }
+        }
+
+        private void completeProcessing() throws InterruptedException, ExecutionException {
+            if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
+                CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
+                mainMailboxExecutor.execute(
+                        () -> {
+                            endData();
+                            endOfDataConsumed.complete(null);
+                        },
+                        "SourceStreamTask finished processing data.");
+                endOfDataConsumed.get();
             }
         }
 
