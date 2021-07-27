@@ -70,8 +70,6 @@ public class SourceStreamTask<
 
     private volatile boolean wasDrained = false;
 
-    private CompletableFuture<Boolean> waitForSyncSavepointScheduled = new CompletableFuture<>();
-
     public SourceStreamTask(Environment env) throws Exception {
         this(env, new Object());
     }
