@@ -108,10 +108,7 @@ public class SourceTaskTerminationTest extends TestLogger {
 
         if (shouldTerminate) {
             // if we are in TERMINATE mode, we expect the source task
-            // to be cancelled which emits extra element
             // to emit MAX_WM before the SYNC_SAVEPOINT barrier.
-            verifyWatermark(srcTaskTestHarness.getOutput(), new Watermark(4L));
-            verifyNextElement(srcTaskTestHarness.getOutput(), 4L);
             verifyWatermark(srcTaskTestHarness.getOutput(), Watermark.MAX_WATERMARK);
         }
 
@@ -197,8 +194,10 @@ public class SourceTaskTerminationTest extends TestLogger {
 
             while (isRunning) {
                 runLoopStart.await();
-                ctx.emitWatermark(new Watermark(element));
-                ctx.collect(element++);
+                if (isRunning) {
+                    ctx.emitWatermark(new Watermark(element));
+                    ctx.collect(element++);
+                }
                 runLoopEnd.trigger();
             }
         }
