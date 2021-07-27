@@ -117,6 +117,7 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
             if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
                 mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
             }
             return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
