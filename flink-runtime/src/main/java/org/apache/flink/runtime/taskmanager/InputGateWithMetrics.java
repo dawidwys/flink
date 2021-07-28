@@ -91,6 +91,11 @@ public class InputGateWithMetrics extends IndexedInputGate {
     }
 
     @Override
+    public boolean hasReceivedEndOfData() {
+        return inputGate.hasReceivedEndOfData();
+    }
+
+    @Override
     public void setup() throws IOException {
         inputGate.setup();
     }
