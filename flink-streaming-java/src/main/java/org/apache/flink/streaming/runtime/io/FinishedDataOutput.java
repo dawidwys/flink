@@ -19,39 +19,36 @@
 package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
- * TODO.
+ * An empty {@link DataOutput} which is used by {@link StreamOneInputProcessor} once an {@link
+ * DataInputStatus#END_OF_DATA} is received.
  *
  * @param <IN>
  */
 public class FinishedDataOutput<IN> implements PushingAsyncDataInput.DataOutput<IN> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FinishedDataOutput.class);
-
     @Override
     public void emitRecord(StreamRecord<IN> streamRecord) throws Exception {
-        LOG.debug("Unexpected record after finish() received.");
+        throw new IllegalStateException("Unexpected record after finish() received.");
     }
 
     @Override
     public void emitWatermark(Watermark watermark) throws Exception {
-        LOG.debug("Unexpected watermark after finish() received.");
+        throw new IllegalStateException("Unexpected watermark after finish() received.");
     }
 
     @Override
     public void emitStreamStatus(StreamStatus streamStatus) throws Exception {
-        LOG.debug("Unexpected stream status after finish() received.");
+        throw new IllegalStateException("Unexpected stream status after finish() received.");
     }
 
     @Override
     public void emitLatencyMarker(LatencyMarker latencyMarker) throws Exception {
-        LOG.debug("Unexpected latency marker after finish() received.");
+        throw new IllegalStateException("Unexpected latency marker after finish() received.");
     }
 }
