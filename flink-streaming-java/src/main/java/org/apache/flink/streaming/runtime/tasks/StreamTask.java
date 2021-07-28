@@ -435,17 +435,28 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
      */
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
         DataInputStatus status = inputProcessor.processInput();
-        if (status == DataInputStatus.MORE_AVAILABLE && recordWriter.isAvailable()) {
-            return;
-        }
-        if (status == DataInputStatus.END_OF_INPUT) {
-            // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
-            // after all records processed by the downstream tasks. We also suspend the default
-            // actions to avoid repeat executing the empty default operation (namely process
-            // records).
-            controller.suspendDefaultAction();
-            mailboxProcessor.suspend();
-            return;
+        switch (status) {
+            case MORE_AVAILABLE:
+                if (recordWriter.isAvailable()) {
+                    return;
+                }
+                break;
+            case NOTHING_AVAILABLE:
+                break;
+            case END_OF_RECOVERY:
+                throw new IllegalStateException("We should not receive this event here.");
+            case END_OF_DATA:
+                endData();
+
+                return;
+            case END_OF_INPUT:
+                // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
+                // after all records processed by the downstream tasks. We also suspend the default
+                // actions to avoid repeat executing the empty default operation (namely process
+                // records).
+                controller.suspendDefaultAction();
+                mailboxProcessor.suspend();
+                return;
         }
 
         TaskIOMetricGroup ioMetrics = getEnvironment().getMetricGroup().getIOMetricGroup();
@@ -461,6 +472,20 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         assertNoException(
                 resumeFuture.thenRun(
                         new ResumeWrapper(controller.suspendDefaultAction(timer), timer)));
+    }
+
+    protected void endData() throws Exception {
+        // Suspend the mailbox processor, it would be resumed in afterInvoke and finished
+        // after all records processed by the downstream tasks. We also suspend the default
+        // actions to avoid repeat executing the empty default operation (namely process
+        // records).
+
+        // finish all operators in a chain effect way
+        operatorChain.finishOperators(actionExecutor);
+
+        for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
+            partitionWriter.notifyEndOfData();
+        }
     }
 
     private void resetSynchronousSavepointId(long id, boolean succeeded) {
@@ -712,11 +737,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         LOG.debug("Finished task {}", getName());
         getCompletionFuture().exceptionally(unused -> null).join();
 
-        final CompletableFuture<Void> timersFinishedFuture = new CompletableFuture<>();
-
-        // close all operators in a chain effect way
-        operatorChain.finishOperators(actionExecutor);
-
         // If checkpoints are enabled, waits for all the records get processed by the downstream
         // tasks. During this process, this task could coordinate with its downstream tasks to
         // continue perform checkpoints.
@@ -726,7 +746,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
             List<CompletableFuture<Void>> partitionRecordsProcessedFutures = new ArrayList<>();
             for (ResultPartitionWriter partitionWriter : getEnvironment().getAllWriters()) {
-                partitionWriter.notifyEndOfData();
                 partitionRecordsProcessedFutures.add(partitionWriter.getAllDataProcessedFuture());
             }
             allRecordsProcessedFuture = FutureUtils.waitForAll(partitionRecordsProcessedFutures);
@@ -741,6 +760,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
         // make sure no further checkpoint and notification actions happen.
         // at the same time, this makes sure that during any "regular" exit where still
+        final CompletableFuture<Void> timersFinishedFuture = new CompletableFuture<>();
         actionExecutor.runThrowing(
                 () -> {
 
