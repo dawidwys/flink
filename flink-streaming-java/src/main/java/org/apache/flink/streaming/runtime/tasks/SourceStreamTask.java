@@ -181,6 +181,20 @@ public class SourceStreamTask<
                                             .isPresent()) {
                                 mailboxProcessor.reportThrowable(
                                         new CancelTaskException(sourceThreadThrowable));
+                            } else if (wasDrained
+                                    && ExceptionUtils.findThrowable(
+                                                    sourceThreadThrowable,
+                                                    InterruptedException.class)
+                                            .isPresent()) {
+                                // if we are stopping the source thread for stop-with-savepoint
+                                // it may be cancelled with e.g. an InterruptedException
+                                // (see e.g. FlinkKinesisConsumer#cancel)
+                                try {
+                                    completeProcessing();
+                                    mailboxProcessor.suspend();
+                                } catch (Exception e) {
+                                    mailboxProcessor.reportThrowable(e);
+                                }
                             } else if (!wasStoppedExternally && sourceThreadThrowable != null) {
                                 mailboxProcessor.reportThrowable(sourceThreadThrowable);
                             } else {
@@ -204,10 +218,6 @@ public class SourceStreamTask<
 
     @Override
     protected void finishTask() {
-        if (wasDrained) {
-            return;
-        }
-
         wasStoppedExternally = true;
         /**
          * Currently stop with savepoint relies on the EndOfPartitionEvents propagation and performs
@@ -292,6 +302,19 @@ public class SourceStreamTask<
         }
     }
 
+    private void completeProcessing() throws InterruptedException, ExecutionException {
+        if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
+            CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
+            mainMailboxExecutor.execute(
+                    () -> {
+                        endData();
+                        endOfDataConsumed.complete(null);
+                    },
+                    "SourceStreamTask finished processing data.");
+            endOfDataConsumed.get();
+        }
+    }
+
     /** Runnable that executes the the source function in the head operator. */
     private class LegacySourceFunctionThread extends Thread {
 
@@ -309,36 +332,7 @@ public class SourceStreamTask<
                 completionFuture.complete(null);
             } catch (Throwable t) {
                 // Note, t can be also an InterruptedException
-                if (wasDrained
-                        && ExceptionUtils.findThrowable(t, InterruptedException.class)
-                                .isPresent()) {
-                    // if we are stopping the source thread for stop-with-savepoint
-                    // we may actually return from run with an InterruptedException which
-                    // should be ignored
-                    try {
-                        // clear the interrupted status for the thread
-                        Thread.interrupted();
-                        completeProcessing();
-                        completionFuture.complete(null);
-                    } catch (Throwable e) {
-                        completionFuture.completeExceptionally(e);
-                    }
-                } else {
-                    completionFuture.completeExceptionally(t);
-                }
-            }
-        }
-
-        private void completeProcessing() throws InterruptedException, ExecutionException {
-            if (!wasStoppedExternally && !isCanceled() && !isFailing()) {
-                CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
-                mainMailboxExecutor.execute(
-                        () -> {
-                            endData();
-                            endOfDataConsumed.complete(null);
-                        },
-                        "SourceStreamTask finished processing data.");
-                endOfDataConsumed.get();
+                completionFuture.completeExceptionally(t);
             }
         }
 
