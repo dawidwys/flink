@@ -252,21 +252,7 @@ public class SourceStreamTask<
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
             if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                mainMailboxExecutor.execute(
-                        () -> {
-                            setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
-                            wasDrained = true;
-                            if (mainOperator != null) {
-                                mainOperator.stop();
-                            }
-                        },
-                        "stop legacy source and set synchronous savepoint");
-                return sourceThread
-                        .getCompletionFuture()
-                        .thenCompose(
-                                ignore ->
-                                        super.triggerCheckpointAsync(
-                                                checkpointMetaData, checkpointOptions));
+                return triggerStopWithSavepointWithDrain(checkpointMetaData, checkpointOptions);
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
@@ -275,6 +261,29 @@ public class SourceStreamTask<
             synchronized (lock) {
                 return CompletableFuture.completedFuture(isRunning());
             }
+        }
+    }
+
+    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrain(
+            CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
+        mainMailboxExecutor.execute(
+                () ->
+                        stopOperatorForStopWithSavepointWithDrain(
+                                checkpointMetaData.getCheckpointId()),
+                "stop legacy source for stop-with-savepoint --drain");
+        return sourceThread
+                .getCompletionFuture()
+                .thenCompose(
+                        ignore ->
+                                super.triggerCheckpointAsync(
+                                        checkpointMetaData, checkpointOptions));
+    }
+
+    private void stopOperatorForStopWithSavepointWithDrain(long checkpointId) {
+        setSynchronousSavepoint(checkpointId, true);
+        wasDrained = true;
+        if (mainOperator != null) {
+            mainOperator.stop();
         }
     }
 
