@@ -259,7 +259,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     private Long syncSavepointWithoutDrain = null;
 
     private Long syncSavepointWithDrain = null;
-    private CompletableFuture<Void> savepointCompletedFuture = null;
+    private CompletableFuture<Void> syncSavepointWithDrainCompletionFuture = null;
 
     private long latestAsyncCheckpointStartDelayNanos;
 
@@ -507,7 +507,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         if (isDrain) {
             if (syncSavepointWithDrain == null) {
                 syncSavepointWithDrain = checkpointId;
-                savepointCompletedFuture = new CompletableFuture<>();
+                syncSavepointWithDrainCompletionFuture = new CompletableFuture<>();
             }
         } else {
             syncSavepointWithoutDrain = checkpointId;
@@ -782,8 +782,8 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             }
         }
 
-        if (savepointCompletedFuture != null) {
-            terminationConditions.add(savepointCompletedFuture);
+        if (syncSavepointWithDrainCompletionFuture != null) {
+            terminationConditions.add(syncSavepointWithDrainCompletionFuture);
         }
 
         FutureUtils.waitForAll(terminationConditions)
@@ -1324,7 +1324,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                 // Reset to "notify" the internal synchronous savepoint mailbox loop.
                 syncSavepointWithoutDrain = null;
             } else if (isCurrentSavepointWithDrain(checkpointId)) {
-                savepointCompletedFuture.complete(null);
+                syncSavepointWithDrainCompletionFuture.complete(null);
             }
         }
     }
