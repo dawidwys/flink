@@ -334,6 +334,9 @@ public class SourceStreamTask<
                 CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
                 mainMailboxExecutor.execute(
                         () -> {
+                            // theoretically the StreamSource can implement BoundedOneInput, so we
+                            // need to call it here
+                            operatorChain.endInput(1);
                             endData();
                             endOfDataConsumed.complete(null);
                         },

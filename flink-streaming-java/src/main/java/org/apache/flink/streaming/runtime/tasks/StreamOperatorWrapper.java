@@ -22,7 +22,6 @@ import org.apache.flink.runtime.mailbox.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.BoundedMultiInput;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
 import org.apache.flink.streaming.api.operators.StreamOperator;
-import org.apache.flink.streaming.api.operators.StreamSource;
 
 import javax.annotation.Nonnull;
 
@@ -122,7 +121,7 @@ public class StreamOperatorWrapper<OUT, OP extends StreamOperator<OUT>> {
      * them.
      */
     public void finish(StreamTaskActionExecutor actionExecutor) throws Exception {
-        if (!isHead || wrapped instanceof StreamSource) {
+        if (!isHead) {
             // NOTE: This only do for the case where the operator is one-input operator. At present,
             // any non-head operator on the operator chain is one-input operator.
             actionExecutor.runThrowing(() -> endOperatorInput(1));
