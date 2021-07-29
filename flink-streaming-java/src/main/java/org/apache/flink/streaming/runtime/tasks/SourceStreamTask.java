@@ -311,7 +311,7 @@ public class SourceStreamTask<
                                 .isPresent()) {
                     // if we are stopping the source thread for stop-with-savepoint
                     // we may actually return from run with an InterruptedException which
-                    // should be ignored
+                    // should be ignored (e.g. Kinesis case see FLINK-23528)
                     try {
                         // clear the interrupted status for the thread
                         Thread.interrupted();
