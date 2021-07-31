@@ -335,17 +335,17 @@ public class SourceStreamTask<
 
         private void completeProcessing() throws InterruptedException, ExecutionException {
             if (finishingReason.shouldCallFinish() && !isCanceled() && !isFailing()) {
-                CompletableFuture<Void> endOfDataConsumed = new CompletableFuture<>();
-                mainMailboxExecutor.execute(
-                        () -> {
-                            // theoretically the StreamSource can implement BoundedOneInput, so we
-                            // need to call it here
-                            operatorChain.endInput(1);
-                            endData();
-                            endOfDataConsumed.complete(null);
-                        },
-                        "SourceStreamTask finished processing data.");
-                endOfDataConsumed.get();
+                mainMailboxExecutor
+                        .submit(
+                                () -> {
+                                    // theoretically the StreamSource can implement BoundedOneInput,
+                                    // so we
+                                    // need to call it here
+                                    operatorChain.endInput(1);
+                                    endData();
+                                },
+                                "SourceStreamTask finished processing data.")
+                        .get();
             }
         }
 
