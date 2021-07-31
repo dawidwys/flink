@@ -264,11 +264,7 @@ public class SourceStreamTask<
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
-            if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                return triggerStopWithSavepointWithDrain(checkpointMetaData, checkpointOptions);
-            } else {
-                return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
-            }
+            return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             // we do not trigger checkpoints here, we simply state whether we can trigger them
             synchronized (lock) {
@@ -277,27 +273,13 @@ public class SourceStreamTask<
         }
     }
 
-    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrain(
-            CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
-        mainMailboxExecutor.execute(
-                () ->
-                        stopOperatorForStopWithSavepointWithDrain(
-                                checkpointMetaData.getCheckpointId()),
-                "stop legacy source for stop-with-savepoint --drain");
-        return sourceThread
-                .getCompletionFuture()
-                .thenCompose(
-                        ignore ->
-                                super.triggerCheckpointAsync(
-                                        checkpointMetaData, checkpointOptions));
-    }
-
-    private void stopOperatorForStopWithSavepointWithDrain(long checkpointId) {
-        setSynchronousSavepoint(checkpointId, true);
+    @Override
+    protected CompletableFuture<Void> stopIfSourceMailboxAction() {
         finishingReason = FinishingReason.STOP_WITH_SAVEPOINT_DRAIN;
         if (mainOperator != null) {
             mainOperator.stop();
         }
+        return sourceThread.getCompletionFuture();
     }
 
     @Override

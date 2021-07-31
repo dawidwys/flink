@@ -41,6 +41,7 @@ import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
+import org.apache.flink.util.concurrent.FutureUtils;
 
 import javax.annotation.Nullable;
 
@@ -116,14 +117,20 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
-            if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), true);
-                mainMailboxExecutor.execute(this::endData, "Drain pipeline on stop-with-savepoint");
-            }
             return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
         } else {
             return CompletableFuture.completedFuture(isRunning());
         }
+    }
+
+    @Override
+    protected CompletableFuture<Void> stopIfSourceMailboxAction() {
+        try {
+            endData();
+        } catch (Exception e) {
+            return FutureUtils.completedExceptionally(e);
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
