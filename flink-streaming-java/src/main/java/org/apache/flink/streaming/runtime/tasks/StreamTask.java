@@ -1228,6 +1228,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                             setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), isDrain);
                             if (isDrain) {
                                 CompletableFuture<Void> sourceStopped = stopIfSourceMailboxAction();
+                                // legacy source case, wait for endData processed in mailbox
                                 while (!sourceStopped.isDone()) {
                                     mainMailboxExecutor.yield();
                                 }
@@ -1262,7 +1263,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         }
     }
 
-    protected CompletableFuture<Void> stopIfSourceMailboxAction() {
+    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
         return CompletableFuture.completedFuture(null);
     }
 

@@ -32,6 +32,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.operators.coordination.OperatorEventGateway;
 import org.apache.flink.runtime.operators.coordination.OperatorEventHandler;
@@ -131,9 +132,13 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     /** A mode to control the behaviour of the {@link #emitNext(DataOutput)} method. */
     private OperatingMode operatingMode;
 
+    private final CompletableFuture<Void> emittedEndOfData = new CompletableFuture<>();
+    private final CompletableFuture<Void> forcedStop = new CompletableFuture<>();
+
     private enum OperatingMode {
         OUTPUT_NOT_INITIALIZED,
         READING,
+        SOURCE_STOPPED,
         DATA_FINISHED
     }
 
@@ -275,8 +280,18 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
         if (eventTimeLogic != null) {
             eventTimeLogic.stopPeriodicWatermarkEmits();
         }
-        this.operatingMode = OperatingMode.DATA_FINISHED;
         super.finish();
+    }
+
+    public CompletableFuture<Void> stop() {
+        switch (operatingMode) {
+            case OUTPUT_NOT_INITIALIZED:
+            case READING:
+                this.operatingMode = OperatingMode.SOURCE_STOPPED;
+                forcedStop.complete(null);
+                break;
+        }
+        return emittedEndOfData;
     }
 
     @Override
@@ -306,6 +321,10 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
             case READING:
                 // short circuit the common case (every invocation except the first)
                 return convertToInternalStatus(sourceReader.pollNext(currentMainOutput));
+            case SOURCE_STOPPED:
+                this.operatingMode = OperatingMode.DATA_FINISHED;
+                emittedEndOfData.complete(null);
+                return DataInputStatus.END_OF_DATA;
             case DATA_FINISHED:
                 return DataInputStatus.END_OF_INPUT;
             default:
@@ -321,6 +340,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 return DataInputStatus.NOTHING_AVAILABLE;
             case END_OF_INPUT:
                 this.operatingMode = OperatingMode.DATA_FINISHED;
+                emittedEndOfData.complete(null);
                 return DataInputStatus.END_OF_DATA;
             default:
                 throw new IllegalArgumentException("Unknown input status: " + inputStatus);
@@ -336,7 +356,19 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     @Override
     public CompletableFuture<?> getAvailableFuture() {
-        return sourceReader.isAvailable();
+        switch (operatingMode) {
+            case OUTPUT_NOT_INITIALIZED:
+            case READING:
+                CompletableFuture<Void> sourceReaderAvailable = sourceReader.isAvailable();
+                return sourceReaderAvailable == AvailabilityProvider.AVAILABLE
+                        ? sourceReaderAvailable
+                        : CompletableFuture.anyOf(sourceReaderAvailable, forcedStop);
+            case SOURCE_STOPPED:
+            case DATA_FINISHED:
+                return AvailabilityProvider.AVAILABLE;
+            default:
+                throw new IllegalStateException("Unknown operating mode: " + operatingMode);
+        }
     }
 
     @Override

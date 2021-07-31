@@ -41,7 +41,6 @@ import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
-import org.apache.flink.util.concurrent.FutureUtils;
 
 import javax.annotation.Nullable;
 
@@ -124,13 +123,13 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     }
 
     @Override
-    protected CompletableFuture<Void> stopIfSourceMailboxAction() {
-        try {
-            endData();
-        } catch (Exception e) {
-            return FutureUtils.completedExceptionally(e);
+    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
+        CompletableFuture<Void> sourceStopped = mainOperator.stop();
+        while (!sourceStopped.isDone()) {
+            // process data until we consume the EndOfData and the source stops
+            mailboxProcessor.runDefaultAction();
         }
-        return CompletableFuture.completedFuture(null);
+        return sourceStopped;
     }
 
     @Override

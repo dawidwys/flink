@@ -42,6 +42,7 @@ import org.apache.flink.streaming.runtime.metrics.MinWatermarkGauge;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.util.concurrent.FutureUtils;
 
 import javax.annotation.Nullable;
 
@@ -52,6 +53,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * A {@link StreamTask} for executing a {@link MultipleInputStreamOperator} and supporting the
@@ -238,6 +240,19 @@ public class MultipleInputStreamTask<OUT>
                                 new IllegalStateException("Too many pending checkpoints"));
             }
         }
+    }
+
+    @Override
+    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
+        CompletableFuture<Void> sourcesStopped =
+                FutureUtils.waitForAll(
+                        operatorChain.getSourceTaskInputs().stream()
+                                .map(s -> s.getOperator().stop())
+                                .collect(Collectors.toList()));
+        while (!sourcesStopped.isDone()) {
+            mailboxProcessor.runDefaultAction();
+        }
+        return sourcesStopped;
     }
 
     private void triggerSourcesCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException {
