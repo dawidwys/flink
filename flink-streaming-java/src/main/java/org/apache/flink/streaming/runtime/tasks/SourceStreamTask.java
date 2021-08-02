@@ -265,7 +265,8 @@ public class SourceStreamTask<
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!externallyInducedCheckpoints) {
             if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                return triggerStopWithSavepointWithDrain(checkpointMetaData, checkpointOptions);
+                return triggerStopWithSavepointWithDrainAsync(
+                        checkpointMetaData, checkpointOptions);
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
@@ -277,7 +278,7 @@ public class SourceStreamTask<
         }
     }
 
-    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrain(
+    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrainAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         mainMailboxExecutor.execute(
                 () ->

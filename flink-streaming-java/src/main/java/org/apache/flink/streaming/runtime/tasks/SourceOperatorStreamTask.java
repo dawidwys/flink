@@ -117,7 +117,8 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
             if (checkpointOptions.getCheckpointType().shouldDrain()) {
-                return triggerStopWithSavepointWithDrain(checkpointMetaData, checkpointOptions);
+                return triggerStopWithSavepointWithDrainAsync(
+                        checkpointMetaData, checkpointOptions);
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
@@ -126,7 +127,7 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
         }
     }
 
-    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrain(
+    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrainAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         CompletableFuture<Void> sourceStopped = mainOperator.stop();
         return sourceStopped.thenCompose(

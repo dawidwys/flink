@@ -203,13 +203,13 @@ public class MultipleInputStreamTask<OUT>
                                     .collect(Collectors.toList()));
 
             return sourcesStopped.thenCompose(
-                    ignore -> triggerSourcesCheckpointInMailbox(metadata, options));
+                    ignore -> triggerSourcesCheckpointAsync(metadata, options));
         } else {
-            return triggerSourcesCheckpointInMailbox(metadata, options);
+            return triggerSourcesCheckpointAsync(metadata, options);
         }
     }
 
-    private CompletableFuture<Boolean> triggerSourcesCheckpointInMailbox(
+    private CompletableFuture<Boolean> triggerSourcesCheckpointAsync(
             CheckpointMetaData metadata, CheckpointOptions options) {
         CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
         mainMailboxExecutor.execute(
@@ -224,7 +224,7 @@ public class MultipleInputStreamTask<OUT>
                         pendingCheckpointCompletedFutures.put(
                                 metadata.getCheckpointId(), resultFuture);
                         checkPendingCheckpointCompletedFuturesSize();
-                        triggerSourcesCheckpoint(
+                        emitBarrierForSources(
                                 new CheckpointBarrier(
                                         metadata.getCheckpointId(),
                                         metadata.getTimestamp(),
@@ -258,7 +258,7 @@ public class MultipleInputStreamTask<OUT>
         }
     }
 
-    private void triggerSourcesCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException {
+    private void emitBarrierForSources(CheckpointBarrier checkpointBarrier) throws IOException {
         for (StreamTaskSourceInput<?> sourceInput : operatorChain.getSourceTaskInputs()) {
             for (InputChannelInfo channelInfo : sourceInput.getChannelInfos()) {
                 checkpointBarrierHandler.processBarrier(checkpointBarrier, channelInfo);
