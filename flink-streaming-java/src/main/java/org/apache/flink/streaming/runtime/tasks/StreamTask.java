@@ -498,13 +498,17 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         this.endOfDataReceived = true;
     }
 
-    private void setSynchronousSavepoint(long checkpointId, boolean isDrain) {
+    protected void setSynchronousSavepoint(long checkpointId, boolean isDrain) {
         checkState(
-                syncSavepointWithoutDrain == null && syncSavepointWithDrain == null,
+                syncSavepointWithoutDrain == null
+                        && (syncSavepointWithDrain == null
+                                || (isDrain && syncSavepointWithDrain == checkpointId)),
                 "at most one stop-with-savepoint checkpoint at a time is allowed");
         if (isDrain) {
-            syncSavepointWithDrain = checkpointId;
-            syncSavepointWithDrainCompletionFuture = new CompletableFuture<>();
+            if (syncSavepointWithDrain == null) {
+                syncSavepointWithDrain = checkpointId;
+                syncSavepointWithDrainCompletionFuture = new CompletableFuture<>();
+            }
         } else {
             syncSavepointWithoutDrain = checkpointId;
         }
@@ -1224,15 +1228,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             actionExecutor.runThrowing(
                     () -> {
                         if (checkpointOptions.getCheckpointType().isSynchronous()) {
-                            boolean isDrain = checkpointOptions.getCheckpointType().shouldDrain();
-                            setSynchronousSavepoint(checkpointMetaData.getCheckpointId(), isDrain);
-                            if (isDrain) {
-                                CompletableFuture<Void> sourceStopped = stopIfSourceMailboxAction();
-                                // legacy source case, wait for endData processed in mailbox
-                                while (!sourceStopped.isDone()) {
-                                    mainMailboxExecutor.yield();
-                                }
-                            }
+                            setSynchronousSavepoint(
+                                    checkpointMetaData.getCheckpointId(),
+                                    checkpointOptions.getCheckpointType().shouldDrain());
                         }
 
                         subtaskCheckpointCoordinator.checkpointState(
@@ -1261,10 +1259,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
             return false;
         }
-    }
-
-    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
-        return CompletableFuture.completedFuture(null);
     }
 
     protected void declineCheckpoint(long checkpointId) {

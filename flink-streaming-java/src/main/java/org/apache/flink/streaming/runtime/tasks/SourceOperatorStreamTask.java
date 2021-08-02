@@ -116,20 +116,21 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
-            return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
+            if (checkpointOptions.getCheckpointType().shouldDrain()) {
+                return triggerStopWithSavepointWithDrain(checkpointMetaData, checkpointOptions);
+            } else {
+                return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
+            }
         } else {
             return CompletableFuture.completedFuture(isRunning());
         }
     }
 
-    @Override
-    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
+    private CompletableFuture<Boolean> triggerStopWithSavepointWithDrain(
+            CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         CompletableFuture<Void> sourceStopped = mainOperator.stop();
-        while (!sourceStopped.isDone()) {
-            // process data until we consume the EndOfData and the source stops
-            mailboxProcessor.runDefaultAction();
-        }
-        return sourceStopped;
+        return sourceStopped.thenCompose(
+                (ignore) -> super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions));
     }
 
     @Override

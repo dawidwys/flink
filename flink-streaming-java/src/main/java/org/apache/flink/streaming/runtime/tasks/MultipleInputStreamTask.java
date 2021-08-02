@@ -195,6 +195,22 @@ public class MultipleInputStreamTask<OUT>
         // EndOfPartitionEvent, we would not complement barriers for the
         // unfinished network inputs, and the checkpoint would be triggered
         // after received all the EndOfPartitionEvent.
+        if (options.getCheckpointType().shouldDrain()) {
+            CompletableFuture<Void> sourcesStopped =
+                    FutureUtils.waitForAll(
+                            operatorChain.getSourceTaskInputs().stream()
+                                    .map(s -> s.getOperator().stop())
+                                    .collect(Collectors.toList()));
+
+            return sourcesStopped.thenCompose(
+                    ignore -> triggerSourcesCheckpointInMailbox(metadata, options));
+        } else {
+            return triggerSourcesCheckpointInMailbox(metadata, options);
+        }
+    }
+
+    private CompletableFuture<Boolean> triggerSourcesCheckpointInMailbox(
+            CheckpointMetaData metadata, CheckpointOptions options) {
         CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
         mainMailboxExecutor.execute(
                 () -> {
@@ -240,19 +256,6 @@ public class MultipleInputStreamTask<OUT>
                                 new IllegalStateException("Too many pending checkpoints"));
             }
         }
-    }
-
-    @Override
-    protected CompletableFuture<Void> stopIfSourceMailboxAction() throws Exception {
-        CompletableFuture<Void> sourcesStopped =
-                FutureUtils.waitForAll(
-                        operatorChain.getSourceTaskInputs().stream()
-                                .map(s -> s.getOperator().stop())
-                                .collect(Collectors.toList()));
-        while (!sourcesStopped.isDone()) {
-            mailboxProcessor.runDefaultAction();
-        }
-        return sourcesStopped;
     }
 
     private void triggerSourcesCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException {

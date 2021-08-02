@@ -414,12 +414,6 @@ public class MailboxProcessor implements Closeable {
         return mailbox.hasMail();
     }
 
-    public void runDefaultAction() throws Exception {
-        if (!isDefaultActionUnavailable()) {
-            mailboxDefaultAction.runDefaultAction(new MailboxController(this));
-        }
-    }
-
     /**
      * Implementation of {@link MailboxDefaultAction.Controller} that is connected to a {@link
      * MailboxProcessor} instance.
