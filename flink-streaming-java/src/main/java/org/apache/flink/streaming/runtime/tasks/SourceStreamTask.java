@@ -310,20 +310,6 @@ public class SourceStreamTask<
                         && ExceptionUtils.findThrowable(t, InterruptedException.class)
                                 .isPresent()) {
                     completionFuture.completeExceptionally(new CancelTaskException(t));
-                } else if (finishingReason == FinishingReason.STOP_WITH_SAVEPOINT_DRAIN
-                        && ExceptionUtils.findThrowable(t, InterruptedException.class)
-                                .isPresent()) {
-                    // if we are stopping the source thread for stop-with-savepoint
-                    // we may actually return from run with an InterruptedException which
-                    // should be ignored (e.g. Kinesis case see FLINK-23528)
-                    try {
-                        // clear the interrupted status for the thread
-                        Thread.interrupted();
-                        completeProcessing();
-                        completionFuture.complete(null);
-                    } catch (Throwable e) {
-                        completionFuture.completeExceptionally(e);
-                    }
                 } else if (finishingReason == FinishingReason.STOP_WITH_SAVEPOINT_NO_DRAIN) {
                     // swallow all exceptions if the source was stopped without drain
                     completionFuture.complete(null);
