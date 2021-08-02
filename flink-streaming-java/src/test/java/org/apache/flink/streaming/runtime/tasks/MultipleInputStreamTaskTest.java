@@ -1020,6 +1020,11 @@ public class MultipleInputStreamTaskTest {
         }
 
         @Override
+        public void finish() throws Exception {
+            output.collect(new StreamRecord<>("FINISH"));
+        }
+
+        @Override
         public void close() throws Exception {
             super.close();
             if (!openCalled) {
@@ -1124,10 +1129,23 @@ public class MultipleInputStreamTaskTest {
     static void addSourceRecords(
             StreamTaskMailboxTestHarness<String> testHarness, int sourceId, int... records)
             throws Exception {
+        addSourceRecords(testHarness, sourceId, Boundedness.BOUNDED, records);
+    }
+
+    static void addSourceRecords(
+            StreamTaskMailboxTestHarness<String> testHarness,
+            int sourceId,
+            Boundedness boundedness,
+            int... records)
+            throws Exception {
         OperatorID sourceOperatorID = getSourceOperatorID(testHarness, sourceId);
 
         // Prepare the source split and assign it to the source reader.
-        MockSourceSplit split = new MockSourceSplit(0, 0, records.length);
+        MockSourceSplit split =
+                new MockSourceSplit(
+                        0,
+                        0,
+                        boundedness == Boundedness.BOUNDED ? records.length : Integer.MAX_VALUE);
         for (int record : records) {
             split.addRecord(record);
         }
