@@ -262,7 +262,7 @@ public class MultipleInputStreamTaskChainedSourcesCheckpointingTest {
                                 BasicTypeInfo.INT_TYPE_INFO)
                         .addInput(BasicTypeInfo.DOUBLE_TYPE_INFO)
                         .setupOutputForSingletonOperatorChain(
-                                new MapToStringMultipleInputOperatorFactory(4))
+                                new MapToStringMultipleInputOperatorFactory(4, true))
                         .build(); ) {
             testHarness.setAutoProcess(false);
             ArrayDeque<Object> expectedOutput = new ArrayDeque<>();

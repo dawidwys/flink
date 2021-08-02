@@ -1001,13 +1001,22 @@ public class MultipleInputStreamTaskTest {
         private static final long serialVersionUID = 1L;
 
         private final int numberOfInputs;
+        private final boolean emitOnFinish;
         private boolean openCalled;
         private boolean closeCalled;
 
         public MapToStringMultipleInputOperator(
                 StreamOperatorParameters<String> parameters, int numberOfInputs) {
+            this(parameters, numberOfInputs, false);
+        }
+
+        public MapToStringMultipleInputOperator(
+                StreamOperatorParameters<String> parameters,
+                int numberOfInputs,
+                boolean emitOnFinish) {
             super(parameters, numberOfInputs);
             this.numberOfInputs = numberOfInputs;
+            this.emitOnFinish = emitOnFinish;
         }
 
         @Override
@@ -1021,7 +1030,9 @@ public class MultipleInputStreamTaskTest {
 
         @Override
         public void finish() throws Exception {
-            output.collect(new StreamRecord<>("FINISH"));
+            if (emitOnFinish) {
+                output.collect(new StreamRecord<>("FINISH"));
+            }
         }
 
         @Override
@@ -1074,15 +1085,22 @@ public class MultipleInputStreamTaskTest {
     protected static class MapToStringMultipleInputOperatorFactory
             extends AbstractStreamOperatorFactory<String> {
         private final int numberOfInputs;
+        private final boolean emitOnFinish;
 
         public MapToStringMultipleInputOperatorFactory(int numberOfInputs) {
+            this(numberOfInputs, false);
+        }
+
+        public MapToStringMultipleInputOperatorFactory(int numberOfInputs, boolean emitOnFinish) {
             this.numberOfInputs = numberOfInputs;
+            this.emitOnFinish = emitOnFinish;
         }
 
         @Override
         public <T extends StreamOperator<String>> T createStreamOperator(
                 StreamOperatorParameters<String> parameters) {
-            return (T) new MapToStringMultipleInputOperator(parameters, numberOfInputs);
+            return (T)
+                    new MapToStringMultipleInputOperator(parameters, numberOfInputs, emitOnFinish);
         }
 
         @Override
