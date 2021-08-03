@@ -129,9 +129,14 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
 
     private CompletableFuture<Boolean> triggerStopWithSavepointWithDrainAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
-        CompletableFuture<Void> sourceStopped = mainOperator.stop();
-        return sourceStopped.thenCompose(
-                (ignore) -> super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions));
+        return assertTriggeringCheckpointExceptions(
+                mainOperator
+                        .stop()
+                        .thenCompose(
+                                (ignore) ->
+                                        super.triggerCheckpointAsync(
+                                                checkpointMetaData, checkpointOptions)),
+                checkpointMetaData.getCheckpointId());
     }
 
     @Override

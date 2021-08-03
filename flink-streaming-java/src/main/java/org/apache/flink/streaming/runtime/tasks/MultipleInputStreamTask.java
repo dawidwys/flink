@@ -202,8 +202,10 @@ public class MultipleInputStreamTask<OUT>
                                     .map(s -> s.getOperator().stop())
                                     .collect(Collectors.toList()));
 
-            return sourcesStopped.thenCompose(
-                    ignore -> triggerSourcesCheckpointAsync(metadata, options));
+            return assertTriggeringCheckpointExceptions(
+                    sourcesStopped.thenCompose(
+                            ignore -> triggerSourcesCheckpointAsync(metadata, options)),
+                    metadata.getCheckpointId());
         } else {
             return triggerSourcesCheckpointAsync(metadata, options);
         }
