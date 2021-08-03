@@ -56,6 +56,7 @@ import static org.apache.flink.streaming.api.TimeCharacteristic.ProcessingTime;
 import static org.apache.flink.streaming.connectors.kafka.shuffle.FlinkKafkaShuffle.PARTITION_NUMBER;
 import static org.apache.flink.streaming.connectors.kafka.shuffle.FlinkKafkaShuffle.PRODUCER_PARALLELISM;
 import static org.apache.flink.test.util.TestUtils.tryExecute;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /** Simple End to End Test for Kafka. */
@@ -201,10 +202,10 @@ public class KafkaShuffleITCase extends KafkaShuffleTestBase {
                 KafkaShuffleElement element = deserializer.deserialize(consumerRecord);
                 if (element.isRecord()) {
                     KafkaShuffleRecord<Tuple3<Integer, Long, Integer>> record = element.asRecord();
-                    Assert.assertEquals(
+                    assertEquals(
                             record.getValue().f1.longValue(),
                             INIT_TIMESTAMP + record.getValue().f0);
-                    Assert.assertEquals(
+                    assertEquals(
                             record.getTimestamp().longValue(), record.getValue().f1.longValue());
                 } else if (element.isWatermark()) {
                     KafkaShuffleWatermark watermark = element.asWatermark();
@@ -229,14 +230,14 @@ public class KafkaShuffleITCase extends KafkaShuffleTestBase {
             // Besides, watermarks from the same producer sub task should keep in order.
             for (List<KafkaShuffleWatermark> subTaskWatermarks : watermarks.values()) {
                 int index = 0;
-                Assert.assertEquals(numElementsPerProducer + 1, subTaskWatermarks.size());
+                assertEquals(numElementsPerProducer + 1, subTaskWatermarks.size());
                 for (KafkaShuffleWatermark watermark : subTaskWatermarks) {
                     if (index == numElementsPerProducer) {
                         // the last element is the watermark that signifies end-of-event-time
-                        Assert.assertEquals(
+                        assertEquals(
                                 watermark.getWatermark(), Watermark.MAX_WATERMARK.getTimestamp());
                     } else {
-                        Assert.assertEquals(watermark.getWatermark(), INIT_TIMESTAMP + index++);
+                        assertEquals(watermark.getWatermark(), INIT_TIMESTAMP + index++);
                     }
                 }
             }
@@ -386,8 +387,9 @@ public class KafkaShuffleITCase extends KafkaShuffleTestBase {
 
         switch (timeCharacteristic) {
             case ProcessingTime:
-                // NonTimestampContext, no watermark
-                Assert.assertEquals(records.size(), numElementsPerProducer);
+                // NonTimestampContext, no intermediate watermarks, and one end-of-event-time
+                // watermark
+                assertEquals(records.size(), numElementsPerProducer + 1);
                 break;
             case IngestionTime:
                 // IngestionTime uses AutomaticWatermarkContext and it emits a watermark after every
@@ -398,7 +400,7 @@ public class KafkaShuffleITCase extends KafkaShuffleTestBase {
                 // ManualWatermarkContext
                 // `numElementsPerProducer` records, `numElementsPerProducer` watermarks, and one
                 // end-of-event-time watermark
-                Assert.assertEquals(records.size(), numElementsPerProducer * 2 + 1);
+                assertEquals(records.size(), numElementsPerProducer * 2 + 1);
                 break;
             default:
                 fail("unknown TimeCharacteristic type");
@@ -424,35 +426,38 @@ public class KafkaShuffleITCase extends KafkaShuffleTestBase {
                         Assert.assertNotNull(record.getTimestamp());
                         break;
                     case EventTime:
-                        Assert.assertEquals(
+                        assertEquals(
                                 record.getTimestamp().longValue(),
                                 record.getValue().f1.longValue());
                         break;
                     default:
                         fail("unknown TimeCharacteristic type");
                 }
-                Assert.assertEquals(record.getValue().f0.intValue(), recordIndex);
-                Assert.assertEquals(record.getValue().f1.longValue(), INIT_TIMESTAMP + recordIndex);
-                Assert.assertEquals(record.getValue().f2.intValue(), 0);
+                assertEquals(record.getValue().f0.intValue(), recordIndex);
+                assertEquals(record.getValue().f1.longValue(), INIT_TIMESTAMP + recordIndex);
+                assertEquals(record.getValue().f2.intValue(), 0);
                 recordIndex++;
             } else if (element.isWatermark()) {
+                KafkaShuffleWatermark watermark = element.asWatermark();
                 switch (timeCharacteristic) {
                     case ProcessingTime:
-                        fail("Watermarks should not be generated in the case of ProcessingTime");
+                        assertEquals(watermark.getSubtask(), 0);
+                        // the last element is the watermark that signifies end-of-event-time
+                        assertEquals(numElementsPerProducer, recordIndex);
+                        assertEquals(
+                                watermark.getWatermark(), Watermark.MAX_WATERMARK.getTimestamp());
                         break;
                     case IngestionTime:
                         break;
                     case EventTime:
-                        KafkaShuffleWatermark watermark = element.asWatermark();
-                        Assert.assertEquals(watermark.getSubtask(), 0);
+                        assertEquals(watermark.getSubtask(), 0);
                         if (watermarkIndex == recordIndex) {
                             // the last element is the watermark that signifies end-of-event-time
-                            Assert.assertEquals(
+                            assertEquals(
                                     watermark.getWatermark(),
                                     Watermark.MAX_WATERMARK.getTimestamp());
                         } else {
-                            Assert.assertEquals(
-                                    watermark.getWatermark(), INIT_TIMESTAMP + watermarkIndex);
+                            assertEquals(watermark.getWatermark(), INIT_TIMESTAMP + watermarkIndex);
                         }
                         break;
                     default:
