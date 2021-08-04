@@ -128,9 +128,12 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
             return DataInputStatus.END_OF_INPUT;
         }
 
-        if (inputSelectionHandler.allInputsReceivedEndOfData() & !emittedEndOfData) {
-            emittedEndOfData = true;
-            return DataInputStatus.END_OF_DATA;
+        if (firstInputStatus == DataInputStatus.END_OF_DATA
+                || secondInputStatus == DataInputStatus.END_OF_DATA) {
+            if (inputSelectionHandler.allInputsReceivedEndOfData() & !emittedEndOfData) {
+                emittedEndOfData = true;
+                return DataInputStatus.END_OF_DATA;
+            }
         }
 
         if (inputSelectionHandler.areAllInputsSelected()) {
@@ -144,19 +147,22 @@ public final class StreamTwoInputProcessor<IN1, IN2> implements StreamInputProce
 
         DataInputStatus selectedStatus =
                 inputSelectionHandler.isFirstInputSelected() ? firstInputStatus : secondInputStatus;
-        DataInputStatus otherStatus =
-                inputSelectionHandler.isFirstInputSelected() ? secondInputStatus : firstInputStatus;
-        if (selectedStatus == DataInputStatus.END_OF_INPUT) {
-            return otherStatus;
-        } else if (selectedStatus == DataInputStatus.END_OF_DATA) {
-            if (inputSelectionHandler.allInputsReceivedEndOfData() & !emittedEndOfData) {
-                emittedEndOfData = true;
-                return DataInputStatus.END_OF_DATA;
-            } else {
-                return DataInputStatus.MORE_AVAILABLE;
-            }
-        } else {
-            return selectedStatus;
+        switch (selectedStatus) {
+            case MORE_AVAILABLE:
+            case NOTHING_AVAILABLE:
+            case END_OF_RECOVERY:
+                return selectedStatus;
+            case END_OF_DATA:
+                if (inputSelectionHandler.allInputsReceivedEndOfData() & !emittedEndOfData) {
+                    emittedEndOfData = true;
+                    return DataInputStatus.END_OF_DATA;
+                } else {
+                    return DataInputStatus.MORE_AVAILABLE;
+                }
+            case END_OF_INPUT:
+                return inputSelectionHandler.isFirstInputSelected()
+                        ? secondInputStatus
+                        : firstInputStatus;
         }
     }
 
