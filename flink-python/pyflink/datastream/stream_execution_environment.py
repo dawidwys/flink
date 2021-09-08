@@ -23,6 +23,7 @@ from typing import List, Any, Optional
 from py4j.java_gateway import JavaObject
 
 from pyflink.common import WatermarkStrategy
+from pyflink.common.configuration import Configuration
 from pyflink.common.execution_config import ExecutionConfig
 from pyflink.common.job_client import JobClient
 from pyflink.common.job_execution_result import JobExecutionResult
@@ -60,6 +61,18 @@ class StreamExecutionEnvironment(object):
         self._j_stream_execution_environment = j_stream_execution_environment
         self._remote_mode = False
         self.serializer = serializer
+
+    def configure(self, configuration: Configuration):
+        """
+        Sets all relevant options contained in the *Configuration*.
+
+        It will change the value of a setting only if a corresponding option was set in the
+        *configuration*. If a key is not present, the current value of a field will remain
+        untouched.
+
+        :param configuration a configuration to read the values from
+        """
+        self._j_stream_execution_environment.configure(configuration._j_configuration)
 
     def get_config(self) -> ExecutionConfig:
         """
