@@ -24,6 +24,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
+import org.apache.flink.runtime.operators.coordination.CoordinatorStore;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
 import org.apache.flink.runtime.scheduler.VertexParallelismStore;
 import org.apache.flink.runtime.scheduler.adaptivebatch.AdaptiveBatchScheduler;
@@ -185,7 +186,8 @@ public class ExecutionJobVertexTest {
                 1,
                 Time.milliseconds(1L),
                 1L,
-                new DefaultSubtaskAttemptNumberStore(Collections.emptyList()));
+                new DefaultSubtaskAttemptNumberStore(Collections.emptyList()),
+                new CoordinatorStore());
     }
 
     private static ExecutionJobVertex createDynamicExecutionJobVertex() throws Exception {
@@ -214,6 +216,6 @@ public class ExecutionJobVertexTest {
         final VertexParallelismInformation vertexParallelismInfo =
                 vertexParallelismStore.getParallelismInfo(jobVertex.getID());
 
-        return new ExecutionJobVertex(eg, jobVertex, vertexParallelismInfo);
+        return new ExecutionJobVertex(eg, jobVertex, vertexParallelismInfo, new CoordinatorStore());
     }
 }

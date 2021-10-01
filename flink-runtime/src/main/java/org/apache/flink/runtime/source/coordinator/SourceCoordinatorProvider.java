@@ -23,6 +23,7 @@ import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.api.connector.source.SourceSplit;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.operators.coordination.CoordinatorStore;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.coordination.RecreateOnResetOperatorCoordinator;
 import org.apache.flink.util.FatalExitExceptionHandler;
@@ -83,7 +84,11 @@ public class SourceCoordinatorProvider<SplitT extends SourceSplit>
                         context,
                         splitSerializer);
         return new SourceCoordinator<>(
-                operatorName, coordinatorExecutor, source, sourceCoordinatorContext);
+                operatorName,
+                coordinatorExecutor,
+                source,
+                sourceCoordinatorContext,
+                new CoordinatorStore());
     }
 
     /** A thread factory class that provides some helper methods. */

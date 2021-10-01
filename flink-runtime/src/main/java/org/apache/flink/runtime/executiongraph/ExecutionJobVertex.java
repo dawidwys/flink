@@ -42,6 +42,7 @@ import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.operators.coordination.CoordinatorStore;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinatorHolder;
 import org.apache.flink.runtime.scheduler.VertexParallelismInformation;
@@ -124,7 +125,8 @@ public class ExecutionJobVertex
     public ExecutionJobVertex(
             InternalExecutionGraphAccessor graph,
             JobVertex jobVertex,
-            VertexParallelismInformation parallelismInfo)
+            VertexParallelismInformation parallelismInfo,
+            CoordinatorStore coordinatorStore)
             throws JobException {
 
         if (graph == null || jobVertex == null) {
@@ -158,7 +160,8 @@ public class ExecutionJobVertex
             int maxPriorAttemptsHistoryLength,
             Time timeout,
             long createTimestamp,
-            SubtaskAttemptNumberStore initialAttemptCounts)
+            SubtaskAttemptNumberStore initialAttemptCounts,
+            CoordinatorStore coordinatorStore)
             throws JobException {
 
         checkState(parallelismInfo.getParallelism() > 0);
@@ -219,7 +222,7 @@ public class ExecutionJobVertex
                         coordinatorProviders) {
                     coordinators.add(
                             OperatorCoordinatorHolder.create(
-                                    provider, this, graph.getUserClassLoader()));
+                                    provider, this, graph.getUserClassLoader(), coordinatorStore));
                 }
             } catch (Exception | LinkageError e) {
                 IOUtils.closeAllQuietly(coordinators);
