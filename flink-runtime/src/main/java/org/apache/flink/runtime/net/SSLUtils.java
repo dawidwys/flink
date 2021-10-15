@@ -22,6 +22,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.runtime.io.network.netty.SSLHandlerFactory;
 import org.apache.flink.util.StringUtils;
@@ -70,7 +71,7 @@ public class SSLUtils {
      * Creates a factory for SSL Server Sockets from the given configuration. SSL Server Sockets are
      * always part of internal communication.
      */
-    public static ServerSocketFactory createSSLServerSocketFactory(Configuration config)
+    public static ServerSocketFactory createSSLServerSocketFactory(ReadableConfig config)
             throws Exception {
         SSLContext sslContext = createInternalSSLContext(config, false);
         if (sslContext == null) {
@@ -88,7 +89,7 @@ public class SSLUtils {
      * Creates a factory for SSL Client Sockets from the given configuration. SSL Client Sockets are
      * always part of internal communication.
      */
-    public static SocketFactory createSSLClientSocketFactory(Configuration config)
+    public static SocketFactory createSSLClientSocketFactory(ReadableConfig config)
             throws Exception {
         SSLContext sslContext = createInternalSSLContext(config, true);
         if (sslContext == null) {
@@ -166,14 +167,14 @@ public class SSLUtils {
         return new SSLHandlerFactory(sslContext, -1, -1);
     }
 
-    private static String[] getEnabledProtocols(final Configuration config) {
+    private static String[] getEnabledProtocols(final ReadableConfig config) {
         checkNotNull(config, "config must not be null");
-        return config.getString(SecurityOptions.SSL_PROTOCOL).split(",");
+        return config.get(SecurityOptions.SSL_PROTOCOL).split(",");
     }
 
-    private static String[] getEnabledCipherSuites(final Configuration config) {
+    private static String[] getEnabledCipherSuites(final ReadableConfig config) {
         checkNotNull(config, "config must not be null");
-        return config.getString(SecurityOptions.SSL_ALGORITHMS).split(",");
+        return config.get(SecurityOptions.SSL_ALGORITHMS).split(",");
     }
 
     @VisibleForTesting
@@ -195,7 +196,7 @@ public class SSLUtils {
     }
 
     private static TrustManagerFactory getTrustManagerFactory(
-            Configuration config, boolean internal)
+            ReadableConfig config, boolean internal)
             throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
         String trustStoreFilePath =
                 getAndCheckOption(
@@ -220,7 +221,7 @@ public class SSLUtils {
         }
 
         String certFingerprint =
-                config.getString(
+                config.get(
                         internal
                                 ? SecurityOptions.SSL_INTERNAL_CERT_FINGERPRINT
                                 : SecurityOptions.SSL_REST_CERT_FINGERPRINT);
@@ -238,7 +239,7 @@ public class SSLUtils {
     }
 
     private static KeyManagerFactory getKeyManagerFactory(
-            Configuration config, boolean internal, SslProvider provider)
+            ReadableConfig config, boolean internal, SslProvider provider)
             throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException,
                     UnrecoverableKeyException {
         String keystoreFilePath =
@@ -286,7 +287,7 @@ public class SSLUtils {
      * the client and server side configuration are identical, because of mutual authentication.
      */
     @Nullable
-    private static SSLContext createInternalSSLContext(Configuration config, boolean clientMode)
+    private static SSLContext createInternalSSLContext(ReadableConfig config, boolean clientMode)
             throws Exception {
         JdkSslContext nettySSLContext =
                 (JdkSslContext) createInternalNettySSLContext(config, clientMode, JDK);
@@ -309,7 +310,7 @@ public class SSLUtils {
      */
     @Nullable
     private static SslContext createInternalNettySSLContext(
-            Configuration config, boolean clientMode, SslProvider provider) throws Exception {
+            ReadableConfig config, boolean clientMode, SslProvider provider) throws Exception {
         checkNotNull(config, "config");
 
         if (!SecurityOptions.isInternalSSLEnabled(config)) {
@@ -318,8 +319,8 @@ public class SSLUtils {
 
         String[] sslProtocols = getEnabledProtocols(config);
         List<String> ciphers = Arrays.asList(getEnabledCipherSuites(config));
-        int sessionCacheSize = config.getInteger(SecurityOptions.SSL_INTERNAL_SESSION_CACHE_SIZE);
-        int sessionTimeoutMs = config.getInteger(SecurityOptions.SSL_INTERNAL_SESSION_TIMEOUT);
+        int sessionCacheSize = config.get(SecurityOptions.SSL_INTERNAL_SESSION_CACHE_SIZE);
+        int sessionTimeoutMs = config.get(SecurityOptions.SSL_INTERNAL_SESSION_TIMEOUT);
 
         KeyManagerFactory kmf = getKeyManagerFactory(config, true, provider);
         TrustManagerFactory tmf = getTrustManagerFactory(config, true);
@@ -412,10 +413,11 @@ public class SSLUtils {
     // ------------------------------------------------------------------------
 
     private static String getAndCheckOption(
-            Configuration config,
+            ReadableConfig config,
             ConfigOption<String> primaryOption,
             ConfigOption<String> fallbackOption) {
-        String value = config.getString(primaryOption, config.getString(fallbackOption));
+        String value =
+                config.getOptional(primaryOption).orElseGet(() -> config.get(fallbackOption));
         if (value != null) {
             return value;
         } else {

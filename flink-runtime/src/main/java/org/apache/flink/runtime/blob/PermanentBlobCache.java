@@ -24,6 +24,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.FileUtils;
 
 import org.slf4j.Logger;
@@ -93,7 +94,7 @@ public class PermanentBlobCache extends AbstractBlobCache implements PermanentBl
      *     not usable
      */
     public PermanentBlobCache(
-            final Configuration blobClientConfig,
+            final ReadableConfig blobClientConfig,
             final BlobView blobView,
             @Nullable final InetSocketAddress serverAddress)
             throws IOException {
@@ -107,7 +108,7 @@ public class PermanentBlobCache extends AbstractBlobCache implements PermanentBl
 
     @VisibleForTesting
     public PermanentBlobCache(
-            final Configuration blobClientConfig,
+            final ReadableConfig blobClientConfig,
             final BlobView blobView,
             @Nullable final InetSocketAddress serverAddress,
             BlobCacheSizeTracker blobCacheSizeTracker)
@@ -122,7 +123,7 @@ public class PermanentBlobCache extends AbstractBlobCache implements PermanentBl
         // Initializing the clean up task
         this.cleanupTimer = new Timer(true);
 
-        this.cleanupInterval = blobClientConfig.getLong(BlobServerOptions.CLEANUP_INTERVAL) * 1000;
+        this.cleanupInterval = blobClientConfig.get(BlobServerOptions.CLEANUP_INTERVAL) * 1000;
         this.cleanupTimer.schedule(
                 new PermanentBlobCleanupTask(), cleanupInterval, cleanupInterval);
 

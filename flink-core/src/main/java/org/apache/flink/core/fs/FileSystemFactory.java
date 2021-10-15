@@ -20,6 +20,7 @@ package org.apache.flink.core.fs;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.plugin.Plugin;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ import java.net.URI;
 /**
  * A factory to create file systems.
  *
- * <p>The factory is typically configured via {@link #configure(Configuration)} before creating file
+ * <p>The factory is typically configured via {@link #configure(ReadableConfig)} before creating file
  * systems via {@link #create(URI)}.
  */
 @PublicEvolving

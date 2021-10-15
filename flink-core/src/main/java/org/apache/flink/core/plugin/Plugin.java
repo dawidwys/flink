@@ -20,6 +20,7 @@ package org.apache.flink.core.plugin;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.Preconditions;
 
 /**

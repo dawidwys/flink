@@ -21,6 +21,7 @@ package org.apache.flink.runtime.blob;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.ShutdownHookUtil;
 
@@ -66,7 +67,7 @@ public abstract class AbstractBlobCache implements Closeable {
     /**
      * Configuration for the blob client like ssl parameters required to connect to the blob server.
      */
-    protected final Configuration blobClientConfig;
+    protected final ReadableConfig blobClientConfig;
 
     /** Lock guarding concurrent file accesses. */
     protected final ReadWriteLock readWriteLock;
@@ -74,7 +75,7 @@ public abstract class AbstractBlobCache implements Closeable {
     @Nullable protected volatile InetSocketAddress serverAddress;
 
     public AbstractBlobCache(
-            final Configuration blobClientConfig,
+            final ReadableConfig blobClientConfig,
             final BlobView blobView,
             final Logger logger,
             @Nullable final InetSocketAddress serverAddress)
@@ -90,7 +91,7 @@ public abstract class AbstractBlobCache implements Closeable {
         log.info("Created BLOB cache storage directory " + storageDir);
 
         // configure the number of fetch retries
-        final int fetchRetries = blobClientConfig.getInteger(BlobServerOptions.FETCH_RETRIES);
+        final int fetchRetries = blobClientConfig.get(BlobServerOptions.FETCH_RETRIES);
         if (fetchRetries >= 0) {
             this.numFetchRetries = fetchRetries;
         } else {

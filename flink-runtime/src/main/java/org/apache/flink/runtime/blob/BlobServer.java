@@ -24,6 +24,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.runtime.net.SSLUtils;
 import org.apache.flink.util.ExceptionUtils;
@@ -83,7 +84,7 @@ public class BlobServer extends Thread
     private final ServerSocket serverSocket;
 
     /** Blob Server configuration. */
-    private final Configuration blobServiceConfiguration;
+    private final ReadableConfig blobServiceConfiguration;
 
     /** Indicates whether a shutdown of server component has been requested. */
     private final AtomicBoolean shutdownRequested = new AtomicBoolean();
@@ -129,7 +130,7 @@ public class BlobServer extends Thread
      * @throws IOException thrown if the BLOB server cannot bind to a free network port or if the
      *     (local or distributed) file storage cannot be created or is not usable
      */
-    public BlobServer(Configuration config, BlobStore blobStore) throws IOException {
+    public BlobServer(ReadableConfig config, BlobStore blobStore) throws IOException {
         this.blobServiceConfiguration = checkNotNull(config);
         this.blobStore = checkNotNull(blobStore);
         this.readWriteLock = new ReentrantReadWriteLock();
@@ -139,7 +140,7 @@ public class BlobServer extends Thread
         LOG.info("Created BLOB server storage directory {}", storageDir);
 
         // configure the maximum number of concurrent connections
-        final int maxConnections = config.getInteger(BlobServerOptions.FETCH_CONCURRENT);
+        final int maxConnections = config.get(BlobServerOptions.FETCH_CONCURRENT);
         if (maxConnections >= 1) {
             this.maxConnections = maxConnections;
         } else {
@@ -151,7 +152,7 @@ public class BlobServer extends Thread
         }
 
         // configure the backlog of connections
-        int backlog = config.getInteger(BlobServerOptions.FETCH_BACKLOG);
+        int backlog = config.get(BlobServerOptions.FETCH_BACKLOG);
         if (backlog < 1) {
             LOG.warn(
                     "Invalid value for BLOB connection backlog: {}. Using default value of {}",
@@ -163,7 +164,7 @@ public class BlobServer extends Thread
         // Initializing the clean up task
         this.cleanupTimer = new Timer(true);
 
-        this.cleanupInterval = config.getLong(BlobServerOptions.CLEANUP_INTERVAL) * 1000;
+        this.cleanupInterval = config.get(BlobServerOptions.CLEANUP_INTERVAL) * 1000;
         this.cleanupTimer.schedule(
                 new TransientBlobCleanupTask(
                         blobExpiryTimes, readWriteLock.writeLock(), storageDir, LOG),
@@ -174,12 +175,12 @@ public class BlobServer extends Thread
 
         //  ----------------------- start the server -------------------
 
-        final String serverPortRange = config.getString(BlobServerOptions.PORT);
+        final String serverPortRange = config.get(BlobServerOptions.PORT);
         final Iterator<Integer> ports = NetUtils.getPortRangeFromString(serverPortRange);
 
         final ServerSocketFactory socketFactory;
         if (SecurityOptions.isInternalSSLEnabled(config)
-                && config.getBoolean(BlobServerOptions.SSL_ENABLED)) {
+                && config.get(BlobServerOptions.SSL_ENABLED)) {
             try {
                 socketFactory = SSLUtils.createSSLServerSocketFactory(config);
             } catch (Exception e) {
@@ -885,7 +886,7 @@ public class BlobServer extends Thread
      */
     @Override
     public final int getMinOffloadingSize() {
-        return blobServiceConfiguration.getInteger(BlobServerOptions.OFFLOAD_MINSIZE);
+        return blobServiceConfiguration.get(BlobServerOptions.OFFLOAD_MINSIZE);
     }
 
     /**

@@ -515,22 +515,22 @@ public class SecurityOptions {
     /**
      * Checks whether SSL for internal communication (rpc, data transport, blob server) is enabled.
      */
-    public static boolean isInternalSSLEnabled(Configuration sslConfig) {
+    public static boolean isInternalSSLEnabled(ReadableConfig sslConfig) {
         @SuppressWarnings("deprecation")
-        final boolean fallbackFlag = sslConfig.getBoolean(SSL_ENABLED);
-        return sslConfig.getBoolean(SSL_INTERNAL_ENABLED, fallbackFlag);
+        final boolean fallbackFlag = sslConfig.get(SSL_ENABLED);
+        return sslConfig.getOptional(SSL_INTERNAL_ENABLED).orElse(fallbackFlag);
     }
 
     /** Checks whether SSL for the external REST endpoint is enabled. */
-    public static boolean isRestSSLEnabled(Configuration sslConfig) {
+    public static boolean isRestSSLEnabled(ReadableConfig sslConfig) {
         @SuppressWarnings("deprecation")
-        final boolean fallbackFlag = sslConfig.getBoolean(SSL_ENABLED);
-        return sslConfig.getBoolean(SSL_REST_ENABLED, fallbackFlag);
+        final boolean fallbackFlag = sslConfig.get(SSL_ENABLED);
+        return sslConfig.getOptional(SSL_REST_ENABLED).orElse(fallbackFlag);
     }
 
     /** Checks whether mutual SSL authentication for the external REST endpoint is enabled. */
-    public static boolean isRestSSLAuthenticationEnabled(Configuration sslConfig) {
+    public static boolean isRestSSLAuthenticationEnabled(ReadableConfig sslConfig) {
         checkNotNull(sslConfig, "sslConfig");
-        return isRestSSLEnabled(sslConfig) && sslConfig.getBoolean(SSL_REST_AUTHENTICATION_ENABLED);
+        return isRestSSLEnabled(sslConfig) && sslConfig.get(SSL_REST_AUTHENTICATION_ENABLED);
     }
 }

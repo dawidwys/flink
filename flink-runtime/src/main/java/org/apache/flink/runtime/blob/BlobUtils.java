@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils;
@@ -70,7 +71,7 @@ public class BlobUtils {
      * @return a (distributed) blob store for high availability
      * @throws IOException thrown if the (distributed) file storage cannot be created
      */
-    public static BlobStoreService createBlobStoreFromConfig(Configuration config)
+    public static BlobStoreService createBlobStoreFromConfig(ReadableConfig config)
             throws IOException {
         if (HighAvailabilityMode.isHighAvailabilityModeActivated(config)) {
             return createFileSystemBlobStore(config);
@@ -79,7 +80,7 @@ public class BlobUtils {
         }
     }
 
-    private static BlobStoreService createFileSystemBlobStore(Configuration configuration)
+    private static BlobStoreService createFileSystemBlobStore(ReadableConfig configuration)
             throws IOException {
         final Path clusterStoragePath =
                 HighAvailabilityServicesUtils.getClusterHighAvailableStoragePath(configuration);
@@ -108,9 +109,9 @@ public class BlobUtils {
      * @return a new local storage directory
      * @throws IOException thrown if the local file storage cannot be created or is not usable
      */
-    static File initLocalStorageDirectory(Configuration config) throws IOException {
+    static File initLocalStorageDirectory(ReadableConfig config) throws IOException {
 
-        String basePath = config.getString(BlobServerOptions.STORAGE_DIRECTORY);
+        String basePath = config.get(BlobServerOptions.STORAGE_DIRECTORY);
 
         File baseDir;
         if (StringUtils.isNullOrWhitespaceOnly(basePath)) {

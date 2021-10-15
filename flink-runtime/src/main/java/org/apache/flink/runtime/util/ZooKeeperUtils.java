@@ -23,6 +23,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpoint;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpointStore;
@@ -453,7 +454,7 @@ public class ZooKeeperUtils {
      */
     public static CompletedCheckpointStore createCompletedCheckpoints(
             CuratorFramework client,
-            Configuration configuration,
+            ReadableConfig configuration,
             int maxNumberOfCheckpointsToRetain,
             Executor executor)
             throws Exception {
@@ -532,7 +533,7 @@ public class ZooKeeperUtils {
      */
     public static <T extends Serializable>
             FileSystemStateStorageHelper<T> createFileSystemStateStorage(
-                    Configuration configuration, String prefix) throws IOException {
+                    ReadableConfig configuration, String prefix) throws IOException {
 
         return new FileSystemStateStorageHelper<>(
                 HighAvailabilityServicesUtils.getClusterHighAvailableStoragePath(configuration),

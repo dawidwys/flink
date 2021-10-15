@@ -20,6 +20,7 @@ package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.flink.runtime.util.ZooKeeperUtils;
 
@@ -34,12 +35,12 @@ public class ZooKeeperCheckpointRecoveryFactory implements CheckpointRecoveryFac
 
     private final CuratorFramework client;
 
-    private final Configuration config;
+    private final ReadableConfig config;
 
     private final Executor executor;
 
     public ZooKeeperCheckpointRecoveryFactory(
-            CuratorFramework client, Configuration config, Executor executor) {
+            CuratorFramework client, ReadableConfig config, Executor executor) {
         this.client = checkNotNull(client, "Curator client");
         this.config = checkNotNull(config, "Configuration");
         this.executor = checkNotNull(executor, "Executor");

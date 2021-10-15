@@ -20,6 +20,7 @@ package org.apache.flink.configuration;
 
 import org.apache.flink.annotation.PublicEvolving;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**

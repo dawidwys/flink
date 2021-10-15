@@ -20,6 +20,7 @@ package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.OperatorIDPair;
 import org.apache.flink.runtime.checkpoint.metadata.CheckpointMetadata;
 import org.apache.flink.runtime.checkpoint.metadata.MetadataSerializer;
@@ -304,7 +305,7 @@ public class Checkpoints {
 
     @Nonnull
     public static StateBackend loadStateBackend(
-            Configuration configuration, ClassLoader classLoader, @Nullable Logger logger) {
+            ReadableConfig configuration, ClassLoader classLoader, @Nullable Logger logger) {
         if (logger != null) {
             logger.info("Attempting to load configured state backend for savepoint disposal");
         }

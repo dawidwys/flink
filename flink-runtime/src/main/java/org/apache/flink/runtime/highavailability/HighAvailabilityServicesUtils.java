@@ -23,6 +23,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.core.fs.Path;
@@ -225,8 +226,8 @@ public class HighAvailabilityServicesUtils {
      * @param configuration containing the configuration values
      * @return Path under which all highly available cluster artifacts are being stored
      */
-    public static Path getClusterHighAvailableStoragePath(Configuration configuration) {
-        final String storagePath = configuration.getValue(HighAvailabilityOptions.HA_STORAGE_PATH);
+    public static Path getClusterHighAvailableStoragePath(ReadableConfig configuration) {
+        final String storagePath = configuration.get(HighAvailabilityOptions.HA_STORAGE_PATH);
 
         if (isNullOrWhitespaceOnly(storagePath)) {
             throw new IllegalConfigurationException(
@@ -245,7 +246,7 @@ public class HighAvailabilityServicesUtils {
                     e);
         }
 
-        final String clusterId = configuration.getValue(HighAvailabilityOptions.HA_CLUSTER_ID);
+        final String clusterId = configuration.get(HighAvailabilityOptions.HA_CLUSTER_ID);
 
         final Path clusterStoragePath;
 

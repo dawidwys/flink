@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.blob;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 import javax.annotation.Nullable;
 
@@ -47,7 +48,7 @@ public class BlobCacheService implements BlobService {
      *     not usable
      */
     public BlobCacheService(
-            final Configuration blobClientConfig,
+            final ReadableConfig blobClientConfig,
             final BlobView blobView,
             @Nullable final InetSocketAddress serverAddress)
             throws IOException {

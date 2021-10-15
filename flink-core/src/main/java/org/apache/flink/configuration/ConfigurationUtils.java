@@ -69,8 +69,8 @@ public class ConfigurationUtils {
      * @return array of configured directories (in order)
      */
     @Nonnull
-    public static String[] parseTempDirectories(Configuration configuration) {
-        return splitPaths(configuration.getString(CoreOptions.TMP_DIRS));
+    public static String[] parseTempDirectories(ReadableConfig configuration) {
+        return splitPaths(configuration.get(CoreOptions.TMP_DIRS));
     }
 
     /**
