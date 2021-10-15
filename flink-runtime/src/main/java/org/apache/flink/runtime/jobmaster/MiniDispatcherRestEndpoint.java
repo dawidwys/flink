@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.jobmaster;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.TransientBlobService;
 import org.apache.flink.runtime.entrypoint.JobClusterEntrypoint;
 import org.apache.flink.runtime.leaderelection.LeaderElectionService;
@@ -40,7 +40,7 @@ public class MiniDispatcherRestEndpoint extends WebMonitorEndpoint<RestfulGatewa
 
     public MiniDispatcherRestEndpoint(
             GatewayRetriever<? extends RestfulGateway> leaderRetriever,
-            Configuration clusterConfiguration,
+            ReadableConfig clusterConfiguration,
             RestHandlerConfiguration restConfiguration,
             GatewayRetriever<ResourceManagerGateway> resourceManagerRetriever,
             TransientBlobService transientBlobService,

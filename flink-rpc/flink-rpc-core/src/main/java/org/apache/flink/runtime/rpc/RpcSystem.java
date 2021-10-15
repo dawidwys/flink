@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.rpc;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.ExceptionUtils;
 
 import javax.annotation.Nullable;
@@ -37,7 +38,7 @@ public interface RpcSystem extends RpcSystemUtils, AutoCloseable {
      * @param configuration Flink configuration
      * @return rpc service builder
      */
-    RpcServiceBuilder localServiceBuilder(Configuration configuration);
+    RpcServiceBuilder localServiceBuilder(ReadableConfig configuration);
 
     /**
      * Returns a builder for an {@link RpcService} that is reachable from other machines.
@@ -49,7 +50,7 @@ public interface RpcSystem extends RpcSystemUtils, AutoCloseable {
      * @return rpc service builder
      */
     RpcServiceBuilder remoteServiceBuilder(
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable String externalAddress,
             String externalPortRange);
 
@@ -89,7 +90,7 @@ public interface RpcSystem extends RpcSystemUtils, AutoCloseable {
      * @param config Flink configuration
      * @return loaded RpcSystem
      */
-    static RpcSystem load(Configuration config) {
+    static RpcSystem load(ReadableConfig config) {
         final Iterator<RpcSystemLoader> iterator =
                 ServiceLoader.load(RpcSystemLoader.class).iterator();
 

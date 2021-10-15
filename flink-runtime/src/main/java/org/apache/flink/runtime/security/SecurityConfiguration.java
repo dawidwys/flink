@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.security;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 
 import org.apache.commons.lang3.StringUtils;
@@ -44,7 +44,7 @@ public class SecurityConfiguration {
 
     private final List<String> securityModuleFactories;
 
-    private final Configuration flinkConfig;
+    private final ReadableConfig flinkConfig;
 
     private final boolean isZkSaslDisable;
 
@@ -65,7 +65,7 @@ public class SecurityConfiguration {
      *
      * @param flinkConf the Flink global configuration.
      */
-    public SecurityConfiguration(Configuration flinkConf) {
+    public SecurityConfiguration(ReadableConfig flinkConf) {
         this(
                 flinkConf,
                 flinkConf.get(SECURITY_CONTEXT_FACTORY_CLASSES),
@@ -79,18 +79,16 @@ public class SecurityConfiguration {
      * @param securityModuleFactories the security modules to apply.
      */
     public SecurityConfiguration(
-            Configuration flinkConf,
+            ReadableConfig flinkConf,
             List<String> securityContextFactory,
             List<String> securityModuleFactories) {
-        this.isZkSaslDisable = flinkConf.getBoolean(SecurityOptions.ZOOKEEPER_SASL_DISABLE);
-        this.keytab = flinkConf.getString(SecurityOptions.KERBEROS_LOGIN_KEYTAB);
-        this.principal = flinkConf.getString(SecurityOptions.KERBEROS_LOGIN_PRINCIPAL);
-        this.useTicketCache = flinkConf.getBoolean(SecurityOptions.KERBEROS_LOGIN_USETICKETCACHE);
-        this.loginContextNames =
-                parseList(flinkConf.getString(SecurityOptions.KERBEROS_LOGIN_CONTEXTS));
-        this.zkServiceName = flinkConf.getString(SecurityOptions.ZOOKEEPER_SASL_SERVICE_NAME);
-        this.zkLoginContextName =
-                flinkConf.getString(SecurityOptions.ZOOKEEPER_SASL_LOGIN_CONTEXT_NAME);
+        this.isZkSaslDisable = flinkConf.get(SecurityOptions.ZOOKEEPER_SASL_DISABLE);
+        this.keytab = flinkConf.get(SecurityOptions.KERBEROS_LOGIN_KEYTAB);
+        this.principal = flinkConf.get(SecurityOptions.KERBEROS_LOGIN_PRINCIPAL);
+        this.useTicketCache = flinkConf.get(SecurityOptions.KERBEROS_LOGIN_USETICKETCACHE);
+        this.loginContextNames = parseList(flinkConf.get(SecurityOptions.KERBEROS_LOGIN_CONTEXTS));
+        this.zkServiceName = flinkConf.get(SecurityOptions.ZOOKEEPER_SASL_SERVICE_NAME);
+        this.zkLoginContextName = flinkConf.get(SecurityOptions.ZOOKEEPER_SASL_LOGIN_CONTEXT_NAME);
         this.securityModuleFactories = Collections.unmodifiableList(securityModuleFactories);
         this.securityContextFactory = securityContextFactory;
         this.flinkConfig = checkNotNull(flinkConf);
@@ -113,7 +111,7 @@ public class SecurityConfiguration {
         return useTicketCache;
     }
 
-    public Configuration getFlinkConfig() {
+    public ReadableConfig getFlinkConfig() {
         return flinkConfig;
     }
 

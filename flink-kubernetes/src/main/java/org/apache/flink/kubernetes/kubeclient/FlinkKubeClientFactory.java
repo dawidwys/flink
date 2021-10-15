@@ -19,6 +19,7 @@
 package org.apache.flink.kubernetes.kubeclient;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.concurrent.ExecutorThreadFactory;
@@ -55,16 +56,16 @@ public class FlinkKubeClientFactory {
      * @return Return the Flink Kubernetes client with the specified configuration and dedicated IO
      *     executor.
      */
-    public FlinkKubeClient fromConfiguration(Configuration flinkConfig, String useCase) {
+    public FlinkKubeClient fromConfiguration(ReadableConfig flinkConfig, String useCase) {
         final Config config;
 
-        final String kubeContext = flinkConfig.getString(KubernetesConfigOptions.CONTEXT);
+        final String kubeContext = flinkConfig.get(KubernetesConfigOptions.CONTEXT);
         if (kubeContext != null) {
             LOG.info("Configuring kubernetes client to use context {}.", kubeContext);
         }
 
         final String kubeConfigFile =
-                flinkConfig.getString(KubernetesConfigOptions.KUBE_CONFIG_FILE);
+                flinkConfig.get(KubernetesConfigOptions.KUBE_CONFIG_FILE);
         if (kubeConfigFile != null) {
             LOG.debug("Trying to load kubernetes config from file: {}.", kubeConfigFile);
             try {
@@ -88,7 +89,7 @@ public class FlinkKubeClientFactory {
             config = Config.autoConfigure(kubeContext);
         }
 
-        final String namespace = flinkConfig.getString(KubernetesConfigOptions.NAMESPACE);
+        final String namespace = flinkConfig.get(KubernetesConfigOptions.NAMESPACE);
         LOG.debug("Setting namespace of Kubernetes client to {}", namespace);
         config.setNamespace(namespace);
 

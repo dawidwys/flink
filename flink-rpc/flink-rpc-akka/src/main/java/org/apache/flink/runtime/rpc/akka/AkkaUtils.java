@@ -20,6 +20,7 @@ package org.apache.flink.runtime.rpc.akka;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.runtime.concurrent.akka.AkkaFutureUtils;
 import org.apache.flink.runtime.rpc.RpcSystem;
@@ -69,12 +70,12 @@ class AkkaUtils {
      * @param configuration instance which contains the user specified values for the configuration
      * @return Flink's basic Akka config
      */
-    private static Config getBasicAkkaConfig(Configuration configuration) {
-        final int akkaThroughput = configuration.getInteger(AkkaOptions.DISPATCHER_THROUGHPUT);
+    private static Config getBasicAkkaConfig(ReadableConfig configuration) {
+        final int akkaThroughput = configuration.get(AkkaOptions.DISPATCHER_THROUGHPUT);
         final String jvmExitOnFatalError =
-                booleanToOnOrOff(configuration.getBoolean(AkkaOptions.JVM_EXIT_ON_FATAL_ERROR));
+                booleanToOnOrOff(configuration.get(AkkaOptions.JVM_EXIT_ON_FATAL_ERROR));
         final String logLifecycleEvents =
-                booleanToOnOrOff(configuration.getBoolean(AkkaOptions.LOG_LIFECYCLE_EVENTS));
+                booleanToOnOrOff(configuration.get(AkkaOptions.LOG_LIFECYCLE_EVENTS));
         final String supervisorStrategy = EscalatingSupervisorStrategy.class.getCanonicalName();
 
         return new AkkaConfigBuilder()
@@ -187,7 +188,7 @@ class AkkaUtils {
      * @return Flink's Akka configuration for remote actor systems
      */
     private static Config getRemoteAkkaConfig(
-            Configuration configuration,
+            ReadableConfig configuration,
             String bindAddress,
             int port,
             String externalHostname,
@@ -203,7 +204,7 @@ class AkkaUtils {
 
     private static void addBaseRemoteAkkaConfig(
             AkkaConfigBuilder akkaConfigBuilder,
-            Configuration configuration,
+            ReadableConfig configuration,
             int port,
             int externalPort) {
         final Duration akkaAskTimeout = configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION);
@@ -211,16 +212,19 @@ class AkkaUtils {
         final String startupTimeout =
                 TimeUtils.getStringInMillis(
                         TimeUtils.parseDuration(
-                                configuration.getString(
-                                        AkkaOptions.STARTUP_TIMEOUT,
-                                        TimeUtils.getStringInMillis(
-                                                akkaAskTimeout.multipliedBy(10L)))));
+                                configuration
+                                        .getOptional(AkkaOptions.STARTUP_TIMEOUT)
+                                        .orElseGet(
+                                                () ->
+                                                        TimeUtils.getStringInMillis(
+                                                                akkaAskTimeout.multipliedBy(
+                                                                        10L)))));
 
         final String akkaTCPTimeout =
                 TimeUtils.getStringInMillis(
-                        TimeUtils.parseDuration(configuration.getString(AkkaOptions.TCP_TIMEOUT)));
+                        TimeUtils.parseDuration(configuration.get(AkkaOptions.TCP_TIMEOUT)));
 
-        final String akkaFramesize = configuration.getString(AkkaOptions.FRAMESIZE);
+        final String akkaFramesize = configuration.get(AkkaOptions.FRAMESIZE);
 
         final int clientSocketWorkerPoolPoolSizeMin =
                 configuration.get(AkkaOptions.CLIENT_SOCKET_WORKER_POOL_SIZE_MIN);
@@ -236,9 +240,9 @@ class AkkaUtils {
                 configuration.get(AkkaOptions.SERVER_SOCKET_WORKER_POOL_SIZE_FACTOR);
 
         final String logLifecycleEvents =
-                booleanToOnOrOff(configuration.getBoolean(AkkaOptions.LOG_LIFECYCLE_EVENTS));
+                booleanToOnOrOff(configuration.get(AkkaOptions.LOG_LIFECYCLE_EVENTS));
 
-        final long retryGateClosedFor = configuration.getLong(AkkaOptions.RETRY_GATE_CLOSED_FOR);
+        final long retryGateClosedFor = configuration.get(AkkaOptions.RETRY_GATE_CLOSED_FOR);
 
         akkaConfigBuilder
                 .add("akka {")
@@ -308,41 +312,42 @@ class AkkaUtils {
     }
 
     private static void addSslRemoteAkkaConfig(
-            AkkaConfigBuilder akkaConfigBuilder, Configuration configuration) {
+            AkkaConfigBuilder akkaConfigBuilder, ReadableConfig configuration) {
 
         final boolean akkaEnableSSLConfig =
-                configuration.getBoolean(AkkaOptions.SSL_ENABLED)
+                configuration.get(AkkaOptions.SSL_ENABLED)
                         && SecurityOptions.isInternalSSLEnabled(configuration);
 
         final String akkaEnableSSL = booleanToOnOrOff(akkaEnableSSLConfig);
 
         final String akkaSSLKeyStore =
-                configuration.getString(
-                        SecurityOptions.SSL_INTERNAL_KEYSTORE,
-                        configuration.getString(SecurityOptions.SSL_KEYSTORE));
+                configuration
+                        .getOptional(SecurityOptions.SSL_INTERNAL_KEYSTORE)
+                        .orElseGet(() -> configuration.get(SecurityOptions.SSL_KEYSTORE));
 
         final String akkaSSLKeyStorePassword =
-                configuration.getString(
-                        SecurityOptions.SSL_INTERNAL_KEYSTORE_PASSWORD,
-                        configuration.getString(SecurityOptions.SSL_KEYSTORE_PASSWORD));
+                configuration
+                        .getOptional(SecurityOptions.SSL_INTERNAL_KEYSTORE_PASSWORD)
+                        .orElseGet(() -> configuration.get(SecurityOptions.SSL_KEYSTORE_PASSWORD));
 
         final String akkaSSLKeyPassword =
-                configuration.getString(
-                        SecurityOptions.SSL_INTERNAL_KEY_PASSWORD,
-                        configuration.getString(SecurityOptions.SSL_KEY_PASSWORD));
+                configuration
+                        .getOptional(SecurityOptions.SSL_INTERNAL_KEY_PASSWORD)
+                        .orElseGet(() -> configuration.get(SecurityOptions.SSL_KEY_PASSWORD));
 
         final String akkaSSLTrustStore =
-                configuration.getString(
-                        SecurityOptions.SSL_INTERNAL_TRUSTSTORE,
-                        configuration.getString(SecurityOptions.SSL_TRUSTSTORE));
+                configuration
+                        .getOptional(SecurityOptions.SSL_INTERNAL_TRUSTSTORE)
+                        .orElseGet(() -> configuration.get(SecurityOptions.SSL_TRUSTSTORE));
 
         final String akkaSSLTrustStorePassword =
-                configuration.getString(
-                        SecurityOptions.SSL_INTERNAL_TRUSTSTORE_PASSWORD,
-                        configuration.getString(SecurityOptions.SSL_TRUSTSTORE_PASSWORD));
+                configuration
+                        .getOptional(SecurityOptions.SSL_INTERNAL_TRUSTSTORE_PASSWORD)
+                        .orElseGet(
+                                () -> configuration.get(SecurityOptions.SSL_TRUSTSTORE_PASSWORD));
 
         final String akkaSSLCertFingerprintString =
-                configuration.getString(SecurityOptions.SSL_INTERNAL_CERT_FINGERPRINT);
+                configuration.get(SecurityOptions.SSL_INTERNAL_CERT_FINGERPRINT);
 
         final String akkaSSLCertFingerprints =
                 akkaSSLCertFingerprintString != null
@@ -350,10 +355,9 @@ class AkkaUtils {
                                 .collect(Collectors.joining("\",\"", "[\"", "\"]"))
                         : "[]";
 
-        final String akkaSSLProtocol = configuration.getString(SecurityOptions.SSL_PROTOCOL);
+        final String akkaSSLProtocol = configuration.get(SecurityOptions.SSL_PROTOCOL);
 
-        final String akkaSSLAlgorithmsString =
-                configuration.getString(SecurityOptions.SSL_ALGORITHMS);
+        final String akkaSSLAlgorithmsString = configuration.get(SecurityOptions.SSL_ALGORITHMS);
         final String akkaSSLAlgorithms =
                 Arrays.stream(akkaSSLAlgorithmsString.split(","))
                         .collect(Collectors.joining(",", "[", "]"));
@@ -475,7 +479,7 @@ class AkkaUtils {
      * @return Akka config
      */
     public static Config getAkkaConfig(
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable HostAndPort externalAddress,
             @Nullable HostAndPort bindAddress,
             Config executorConfig) {

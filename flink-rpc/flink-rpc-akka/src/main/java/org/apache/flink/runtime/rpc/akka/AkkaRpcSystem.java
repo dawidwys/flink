@@ -17,7 +17,7 @@
 
 package org.apache.flink.runtime.rpc.akka;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rpc.AddressResolution;
 import org.apache.flink.runtime.rpc.RpcSystem;
 
@@ -30,13 +30,13 @@ import java.net.UnknownHostException;
 public class AkkaRpcSystem implements RpcSystem {
 
     @Override
-    public RpcServiceBuilder localServiceBuilder(Configuration configuration) {
+    public RpcServiceBuilder localServiceBuilder(ReadableConfig configuration) {
         return AkkaRpcServiceUtils.localServiceBuilder(configuration);
     }
 
     @Override
     public RpcServiceBuilder remoteServiceBuilder(
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable String externalAddress,
             String externalPortRange) {
         return AkkaRpcServiceUtils.remoteServiceBuilder(
@@ -54,14 +54,14 @@ public class AkkaRpcSystem implements RpcSystem {
             int port,
             String endpointName,
             AddressResolution addressResolution,
-            Configuration config)
+            ReadableConfig config)
             throws UnknownHostException {
         return AkkaRpcServiceUtils.getRpcUrl(
                 hostname, port, endpointName, addressResolution, config);
     }
 
     @Override
-    public long getMaximumMessageSizeInBytes(Configuration config) {
+    public long getMaximumMessageSizeInBytes(ReadableConfig config) {
         return AkkaRpcServiceUtils.extractMaximumFramesize(config);
     }
 }

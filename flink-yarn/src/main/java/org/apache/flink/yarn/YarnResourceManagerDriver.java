@@ -21,6 +21,7 @@ package org.apache.flink.yarn;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.configuration.TaskManagerOptionsInternal;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
@@ -118,7 +119,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
             taskExecutorProcessSpecContainerResourcePriorityAdapter;
 
     public YarnResourceManagerDriver(
-            Configuration flinkConfig,
+            ReadableConfig flinkConfig,
             YarnResourceManagerDriverConfiguration configuration,
             YarnResourceManagerClientFactory yarnResourceManagerClientFactory,
             YarnNodeManagerClientFactory yarnNodeManagerClientFactory) {

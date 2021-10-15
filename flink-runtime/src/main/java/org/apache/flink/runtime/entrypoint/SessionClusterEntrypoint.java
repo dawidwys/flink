@@ -22,6 +22,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.ExecutionGraphInfoStore;
 import org.apache.flink.runtime.dispatcher.FileExecutionGraphInfoStore;
 import org.apache.flink.util.concurrent.ScheduledExecutor;
@@ -40,15 +41,14 @@ public abstract class SessionClusterEntrypoint extends ClusterEntrypoint {
 
     @Override
     protected ExecutionGraphInfoStore createSerializableExecutionGraphStore(
-            Configuration configuration, ScheduledExecutor scheduledExecutor) throws IOException {
+            ReadableConfig configuration, ScheduledExecutor scheduledExecutor) throws IOException {
         final File tmpDir = new File(ConfigurationUtils.parseTempDirectories(configuration)[0]);
 
         final Time expirationTime =
-                Time.seconds(configuration.getLong(JobManagerOptions.JOB_STORE_EXPIRATION_TIME));
-        final int maximumCapacity =
-                configuration.getInteger(JobManagerOptions.JOB_STORE_MAX_CAPACITY);
+                Time.seconds(configuration.get(JobManagerOptions.JOB_STORE_EXPIRATION_TIME));
+        final int maximumCapacity = configuration.get(JobManagerOptions.JOB_STORE_MAX_CAPACITY);
         final long maximumCacheSizeBytes =
-                configuration.getLong(JobManagerOptions.JOB_STORE_CACHE_SIZE);
+                configuration.get(JobManagerOptions.JOB_STORE_CACHE_SIZE);
 
         return new FileExecutionGraphInfoStore(
                 tmpDir,

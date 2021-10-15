@@ -20,7 +20,7 @@ package org.apache.flink.runtime.resourcemanager;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.ClusterOptions;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 import org.apache.flink.runtime.resourcemanager.slotmanager.SlotManagerConfiguration;
 import org.apache.flink.util.ConfigurationException;
@@ -60,10 +60,10 @@ public class ResourceManagerRuntimeServicesConfiguration {
     // ---------------------------- Static methods ----------------------------------
 
     public static ResourceManagerRuntimeServicesConfiguration fromConfiguration(
-            Configuration configuration, WorkerResourceSpecFactory defaultWorkerResourceSpecFactory)
+            ReadableConfig configuration, WorkerResourceSpecFactory defaultWorkerResourceSpecFactory)
             throws ConfigurationException {
 
-        final String strJobTimeout = configuration.getString(ResourceManagerOptions.JOB_TIMEOUT);
+        final String strJobTimeout = configuration.get(ResourceManagerOptions.JOB_TIMEOUT);
         final Time jobTimeout;
 
         try {

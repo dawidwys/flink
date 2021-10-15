@@ -18,7 +18,7 @@
 
 package org.apache.flink.kubernetes.highavailability;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.kubeclient.FlinkKubeClientFactory;
 import org.apache.flink.runtime.blob.BlobUtils;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
@@ -30,7 +30,7 @@ import java.util.concurrent.Executor;
 public class KubernetesHaServicesFactory implements HighAvailabilityServicesFactory {
 
     @Override
-    public HighAvailabilityServices createHAServices(Configuration configuration, Executor executor)
+    public HighAvailabilityServices createHAServices(ReadableConfig configuration, Executor executor)
             throws Exception {
         return new KubernetesHaServices(
                 FlinkKubeClientFactory.getInstance()

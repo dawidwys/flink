@@ -19,8 +19,8 @@
 package org.apache.flink.runtime.highavailability.zookeeper;
 
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.highavailability.RunningJobsRegistry;
 
 import org.apache.flink.shaded.curator4.org.apache.curator.framework.CuratorFramework;
@@ -49,10 +49,10 @@ public class ZooKeeperRunningJobsRegistry implements RunningJobsRegistry {
     private final String runningJobPath;
 
     public ZooKeeperRunningJobsRegistry(
-            final CuratorFramework client, final Configuration configuration) {
+            final CuratorFramework client, final ReadableConfig configuration) {
         this.client = checkNotNull(client, "client");
         this.runningJobPath =
-                configuration.getString(
+                configuration.get(
                         HighAvailabilityOptions.ZOOKEEPER_RUNNING_JOB_REGISTRY_PATH);
     }
 

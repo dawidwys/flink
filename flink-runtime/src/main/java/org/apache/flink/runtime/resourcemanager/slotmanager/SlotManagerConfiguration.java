@@ -22,9 +22,9 @@ import org.apache.flink.api.common.resources.CPUResource;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.ClusterOptions;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.resourcemanager.WorkerResourceSpec;
@@ -125,7 +125,7 @@ public class SlotManagerConfiguration {
     }
 
     public static SlotManagerConfiguration fromConfiguration(
-            Configuration configuration, WorkerResourceSpec defaultWorkerResourceSpec)
+            ReadableConfig configuration, WorkerResourceSpec defaultWorkerResourceSpec)
             throws ConfigurationException {
 
         final Time rpcTimeout =
@@ -134,25 +134,25 @@ public class SlotManagerConfiguration {
         final Time slotRequestTimeout = getSlotRequestTimeout(configuration);
         final Time taskManagerTimeout =
                 Time.milliseconds(
-                        configuration.getLong(ResourceManagerOptions.TASK_MANAGER_TIMEOUT));
+                        configuration.get(ResourceManagerOptions.TASK_MANAGER_TIMEOUT));
 
         boolean waitResultConsumedBeforeRelease =
-                configuration.getBoolean(
+                configuration.get(
                         ResourceManagerOptions.TASK_MANAGER_RELEASE_WHEN_RESULT_CONSUMED);
 
         boolean evenlySpreadOutSlots =
-                configuration.getBoolean(ClusterOptions.EVENLY_SPREAD_OUT_SLOTS_STRATEGY);
+                configuration.get(ClusterOptions.EVENLY_SPREAD_OUT_SLOTS_STRATEGY);
         final SlotMatchingStrategy slotMatchingStrategy =
                 evenlySpreadOutSlots
                         ? LeastUtilizationSlotMatchingStrategy.INSTANCE
                         : AnyMatchingSlotMatchingStrategy.INSTANCE;
 
-        int numSlotsPerWorker = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
+        int numSlotsPerWorker = configuration.get(TaskManagerOptions.NUM_TASK_SLOTS);
 
-        int maxSlotNum = configuration.getInteger(ResourceManagerOptions.MAX_SLOT_NUM);
+        int maxSlotNum = configuration.get(ResourceManagerOptions.MAX_SLOT_NUM);
 
         int redundantTaskManagerNum =
-                configuration.getInteger(ResourceManagerOptions.REDUNDANT_TASK_MANAGER_NUM);
+                configuration.get(ResourceManagerOptions.REDUNDANT_TASK_MANAGER_NUM);
 
         return new SlotManagerConfiguration(
                 rpcTimeout,
@@ -168,7 +168,7 @@ public class SlotManagerConfiguration {
                 redundantTaskManagerNum);
     }
 
-    private static Time getSlotRequestTimeout(final Configuration configuration) {
+    private static Time getSlotRequestTimeout(final ReadableConfig configuration) {
         final long slotRequestTimeoutMs;
         if (configuration.contains(ResourceManagerOptions.SLOT_REQUEST_TIMEOUT)) {
             LOGGER.warn(
@@ -176,15 +176,15 @@ public class SlotManagerConfiguration {
                     ResourceManagerOptions.SLOT_REQUEST_TIMEOUT,
                     JobManagerOptions.SLOT_REQUEST_TIMEOUT);
             slotRequestTimeoutMs =
-                    configuration.getLong(ResourceManagerOptions.SLOT_REQUEST_TIMEOUT);
+                    configuration.get(ResourceManagerOptions.SLOT_REQUEST_TIMEOUT);
         } else {
-            slotRequestTimeoutMs = configuration.getLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT);
+            slotRequestTimeoutMs = configuration.get(JobManagerOptions.SLOT_REQUEST_TIMEOUT);
         }
         return Time.milliseconds(slotRequestTimeoutMs);
     }
 
     private static CPUResource getMaxTotalCpu(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final WorkerResourceSpec defaultWorkerResourceSpec,
             final int maxSlotNum) {
         return configuration
@@ -201,7 +201,7 @@ public class SlotManagerConfiguration {
     }
 
     private static MemorySize getMaxTotalMem(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final WorkerResourceSpec defaultWorkerResourceSpec,
             final int maxSlotNum) {
         return configuration

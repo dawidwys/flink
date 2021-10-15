@@ -19,7 +19,7 @@
 package org.apache.flink.kubernetes.highavailability;
 
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.kubernetes.configuration.KubernetesLeaderElectionConfiguration;
 import org.apache.flink.kubernetes.kubeclient.FlinkKubeClient;
@@ -91,7 +91,7 @@ public class KubernetesHaServices extends AbstractHaServices {
     KubernetesHaServices(
             FlinkKubeClient kubeClient,
             Executor executor,
-            Configuration config,
+            ReadableConfig config,
             BlobStoreService blobStoreService) {
 
         super(config, executor, blobStoreService);

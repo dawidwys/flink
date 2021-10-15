@@ -17,7 +17,7 @@
 
 package org.apache.flink.runtime.rpc;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -42,7 +42,7 @@ public interface RpcSystemUtils {
             int port,
             String endpointName,
             AddressResolution addressResolution,
-            Configuration config)
+            ReadableConfig config)
             throws UnknownHostException;
 
     /**
@@ -62,5 +62,5 @@ public interface RpcSystemUtils {
      * @param config Flink configuration
      * @return maximum number of bytes that an RPC message may carry
      */
-    long getMaximumMessageSizeInBytes(Configuration config);
+    long getMaximumMessageSizeInBytes(ReadableConfig config);
 }

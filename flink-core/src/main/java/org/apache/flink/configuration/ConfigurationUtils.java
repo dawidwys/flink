@@ -51,13 +51,12 @@ public class ConfigurationUtils {
      *     Optional.empty()} if {@link MetricOptions#SYSTEM_RESOURCE_METRICS} are disabled.
      */
     public static Optional<Time> getSystemResourceMetricsProbingInterval(
-            Configuration configuration) {
-        if (!configuration.getBoolean(SYSTEM_RESOURCE_METRICS)) {
+            ReadableConfig configuration) {
+        if (!configuration.get(SYSTEM_RESOURCE_METRICS)) {
             return Optional.empty();
         } else {
             return Optional.of(
-                    Time.milliseconds(
-                            configuration.getLong(SYSTEM_RESOURCE_METRICS_PROBING_INTERVAL)));
+                    Time.milliseconds(configuration.get(SYSTEM_RESOURCE_METRICS_PROBING_INTERVAL)));
         }
     }
 
@@ -110,17 +109,17 @@ public class ConfigurationUtils {
                                 ));
     }
 
-    public static Time getStandaloneClusterStartupPeriodTime(Configuration configuration) {
+    public static Time getStandaloneClusterStartupPeriodTime(ReadableConfig configuration) {
         final Time timeout;
         long standaloneClusterStartupPeriodTime =
-                configuration.getLong(
+                configuration.get(
                         ResourceManagerOptions.STANDALONE_CLUSTER_STARTUP_PERIOD_TIME);
         if (standaloneClusterStartupPeriodTime >= 0) {
             timeout = Time.milliseconds(standaloneClusterStartupPeriodTime);
         } else {
             timeout =
                     Time.milliseconds(
-                            configuration.getLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
+                            configuration.get(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
         }
         return timeout;
     }

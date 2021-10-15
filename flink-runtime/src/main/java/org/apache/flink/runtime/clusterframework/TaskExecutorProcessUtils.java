@@ -20,7 +20,6 @@ package org.apache.flink.runtime.clusterframework;
 
 import org.apache.flink.api.common.resources.CPUResource;
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ExternalResourceOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.MemorySize;
@@ -151,7 +150,7 @@ public class TaskExecutorProcessUtils {
     //  Memory Configuration Calculations
     // ------------------------------------------------------------------------
 
-    public static TaskExecutorProcessSpecBuilder newProcessSpecBuilder(final Configuration config) {
+    public static TaskExecutorProcessSpecBuilder newProcessSpecBuilder(final ReadableConfig config) {
         return TaskExecutorProcessSpecBuilder.newBuilder(config);
     }
 
@@ -166,7 +165,7 @@ public class TaskExecutorProcessUtils {
     }
 
     public static TaskExecutorProcessSpec processSpecFromWorkerResourceSpec(
-            final Configuration config, final WorkerResourceSpec workerResourceSpec) {
+            final ReadableConfig config, final WorkerResourceSpec workerResourceSpec) {
 
         final MemorySize frameworkHeapMemorySize =
                 TaskExecutorFlinkMemoryUtils.getFrameworkHeapMemorySize(config);
@@ -242,8 +241,8 @@ public class TaskExecutorProcessUtils {
         return new CPUResource(cpuCores);
     }
 
-    public static Configuration getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
-            final Configuration configuration, final ConfigOption<MemorySize> configOption) {
+    public static ReadableConfig getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
+            final ReadableConfig configuration, final ConfigOption<MemorySize> configOption) {
         try {
             return LEGACY_MEMORY_UTILS.getConfWithLegacyHeapSizeMappedToNewConfigOption(
                     configuration, configOption);

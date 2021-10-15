@@ -18,7 +18,7 @@
 
 package org.apache.flink.kubernetes.kubeclient;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.kubernetes.configuration.KubernetesLeaderElectionConfiguration;
 import org.apache.flink.kubernetes.kubeclient.decorators.ExternalServiceDecorator;
@@ -82,7 +82,7 @@ public class Fabric8FlinkKubeClient implements FlinkKubeClient {
     private final ExecutorService kubeClientExecutorService;
 
     public Fabric8FlinkKubeClient(
-            Configuration flinkConfig,
+            ReadableConfig flinkConfig,
             NamespacedKubernetesClient client,
             ExecutorService executorService) {
         this.clusterId =
@@ -94,9 +94,9 @@ public class Fabric8FlinkKubeClient implements FlinkKubeClient {
                                                 String.format(
                                                         "Configuration option '%s' is not set.",
                                                         KubernetesConfigOptions.CLUSTER_ID.key())));
-        this.namespace = flinkConfig.getString(KubernetesConfigOptions.NAMESPACE);
+        this.namespace = flinkConfig.get(KubernetesConfigOptions.NAMESPACE);
         this.maxRetryAttempts =
-                flinkConfig.getInteger(
+                flinkConfig.get(
                         KubernetesConfigOptions.KUBERNETES_TRANSACTIONAL_OPERATION_MAX_RETRIES);
         this.nodePortAddressType =
                 flinkConfig.get(

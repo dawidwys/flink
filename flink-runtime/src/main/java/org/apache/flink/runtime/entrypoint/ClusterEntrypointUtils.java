@@ -20,7 +20,7 @@ package org.apache.flink.runtime.entrypoint;
 
 import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.ConfigConstants;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.parser.CommandLineParser;
 import org.apache.flink.runtime.entrypoint.parser.ParserResultFactory;
 import org.apache.flink.runtime.util.ClusterUncaughtExceptionHandler;
@@ -105,11 +105,10 @@ public final class ClusterEntrypointUtils {
      * @param config The configuration to read.
      * @return The legal io-executor pool size.
      */
-    public static int getPoolSize(Configuration config) {
+    public static int getPoolSize(ReadableConfig config) {
         final int poolSize =
-                config.getInteger(
-                        ClusterOptions.CLUSTER_IO_EXECUTOR_POOL_SIZE,
-                        4 * Hardware.getNumberCPUCores());
+                config.getOptional(ClusterOptions.CLUSTER_IO_EXECUTOR_POOL_SIZE)
+                        .orElseGet(() -> 4 * Hardware.getNumberCPUCores());
         Preconditions.checkArgument(
                 poolSize > 0,
                 String.format(
@@ -123,7 +122,7 @@ public final class ClusterEntrypointUtils {
      *
      * @param config the configuration to read.
      */
-    public static void configureUncaughtExceptionHandler(Configuration config) {
+    public static void configureUncaughtExceptionHandler(ReadableConfig config) {
         Thread.setDefaultUncaughtExceptionHandler(
                 new ClusterUncaughtExceptionHandler(
                         config.get(ClusterOptions.UNCAUGHT_EXCEPTION_HANDLING)));

@@ -19,7 +19,7 @@
 package org.apache.flink.runtime.rest.handler;
 
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.util.Preconditions;
 
@@ -83,19 +83,19 @@ public class RestHandlerConfiguration {
         return webCancelEnabled;
     }
 
-    public static RestHandlerConfiguration fromConfiguration(Configuration configuration) {
-        final long refreshInterval = configuration.getLong(WebOptions.REFRESH_INTERVAL);
+    public static RestHandlerConfiguration fromConfiguration(ReadableConfig configuration) {
+        final long refreshInterval = configuration.get(WebOptions.REFRESH_INTERVAL);
 
         final int maxCheckpointStatisticCacheEntries =
-                configuration.getInteger(WebOptions.CHECKPOINTS_HISTORY_SIZE);
+                configuration.get(WebOptions.CHECKPOINTS_HISTORY_SIZE);
 
-        final Time timeout = Time.milliseconds(configuration.getLong(WebOptions.TIMEOUT));
+        final Time timeout = Time.milliseconds(configuration.get(WebOptions.TIMEOUT));
 
         final String rootDir = "flink-web-ui";
-        final File webUiDir = new File(configuration.getString(WebOptions.TMP_DIR), rootDir);
+        final File webUiDir = new File(configuration.get(WebOptions.TMP_DIR), rootDir);
 
-        final boolean webSubmitEnabled = configuration.getBoolean(WebOptions.SUBMIT_ENABLE);
-        final boolean webCancelEnabled = configuration.getBoolean(WebOptions.CANCEL_ENABLE);
+        final boolean webSubmitEnabled = configuration.get(WebOptions.SUBMIT_ENABLE);
+        final boolean webCancelEnabled = configuration.get(WebOptions.CANCEL_ENABLE);
 
         return new RestHandlerConfiguration(
                 refreshInterval,

@@ -25,6 +25,7 @@ import org.apache.flink.configuration.ConfigurationUtils;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.util.config.memory.CommonProcessMemorySpec;
 import org.apache.flink.runtime.util.config.memory.JvmMetaspaceAndOverheadOptions;
 import org.apache.flink.runtime.util.config.memory.LegacyMemoryOptions;
@@ -68,7 +69,7 @@ public class JobManagerProcessUtils {
     private JobManagerProcessUtils() {}
 
     public static JobManagerProcessSpec processSpecFromConfigWithNewOptionToInterpretLegacyHeap(
-            Configuration config, ConfigOption<MemorySize> newOptionToInterpretLegacyHeap) {
+            ReadableConfig config, ConfigOption<MemorySize> newOptionToInterpretLegacyHeap) {
         try {
             return processSpecFromConfig(
                     getConfigurationWithLegacyHeapSizeMappedToNewConfigOption(
@@ -79,7 +80,7 @@ public class JobManagerProcessUtils {
         }
     }
 
-    static JobManagerProcessSpec processSpecFromConfig(Configuration config) {
+    static JobManagerProcessSpec processSpecFromConfig(ReadableConfig config) {
         return createMemoryProcessSpec(PROCESS_MEMORY_UTILS.memoryProcessSpecFromConfig(config));
     }
 
@@ -89,8 +90,8 @@ public class JobManagerProcessUtils {
                 processMemory.getFlinkMemory(), processMemory.getJvmMetaspaceAndOverhead());
     }
 
-    static Configuration getConfigurationWithLegacyHeapSizeMappedToNewConfigOption(
-            Configuration configuration, ConfigOption<MemorySize> configOption) {
+    static ReadableConfig getConfigurationWithLegacyHeapSizeMappedToNewConfigOption(
+            ReadableConfig configuration, ConfigOption<MemorySize> configOption) {
         return LEGACY_MEMORY_UTILS.getConfWithLegacyHeapSizeMappedToNewConfigOption(
                 configuration, configOption);
     }

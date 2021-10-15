@@ -29,6 +29,7 @@ import org.apache.flink.client.deployment.application.executors.EmbeddedExecutor
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.PipelineOptionsInternal;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.execution.PipelineExecutorServiceLoader;
 import org.apache.flink.runtime.client.DuplicateJobSubmissionException;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
@@ -100,11 +101,11 @@ public class ApplicationDispatcherBootstrap implements DispatcherBootstrap {
     public ApplicationDispatcherBootstrap(
             final PackagedProgram application,
             final Collection<JobID> recoveredJobIds,
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final DispatcherGateway dispatcherGateway,
             final ScheduledExecutor scheduledExecutor,
             final FatalErrorHandler errorHandler) {
-        this.configuration = checkNotNull(configuration);
+        this.configuration = Configuration.fromMap(checkNotNull(configuration).toMap());
         this.recoveredJobIds = checkNotNull(recoveredJobIds);
         this.application = checkNotNull(application);
         this.errorHandler = checkNotNull(errorHandler);

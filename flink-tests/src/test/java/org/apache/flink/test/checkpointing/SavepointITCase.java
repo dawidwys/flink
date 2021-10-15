@@ -37,6 +37,7 @@ import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.StateBackendOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.testutils.OneShotLatch;
@@ -815,7 +816,7 @@ public class SavepointITCase extends TestLogger {
     public static class FailingSyncSavepointHAFactory implements HighAvailabilityServicesFactory {
         @Override
         public HighAvailabilityServices createHAServices(
-                Configuration configuration, Executor executor) {
+                ReadableConfig configuration, Executor executor) {
             final CheckpointRecoveryFactory checkpointRecoveryFactory =
                     PerJobCheckpointRecoveryFactory.withoutCheckpointStoreRecovery(
                             maxCheckpoints -> new FailingSyncSavepointCompletedCheckpointStore());

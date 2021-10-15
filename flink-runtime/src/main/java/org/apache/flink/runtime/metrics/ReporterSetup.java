@@ -25,6 +25,7 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DelegatingConfiguration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.metrics.MetricConfig;
 import org.apache.flink.metrics.reporter.InstantiateViaFactory;
@@ -169,8 +170,9 @@ public final class ReporterSetup {
     }
 
     public static List<ReporterSetup> fromConfiguration(
-            final Configuration configuration, @Nullable final PluginManager pluginManager) {
-        String includedReportersString = configuration.getString(MetricOptions.REPORTERS_LIST, "");
+            final ReadableConfig configuration, @Nullable final PluginManager pluginManager) {
+        String includedReportersString =
+                configuration.getOptional(MetricOptions.REPORTERS_LIST).orElse("");
 
         Set<String> namedReporters =
                 findEnabledReportersInConfiguration(configuration, includedReportersString);
@@ -189,7 +191,7 @@ public final class ReporterSetup {
     }
 
     private static Set<String> findEnabledReportersInConfiguration(
-            Configuration configuration, String includedReportersString) {
+            ReadableConfig configuration, String includedReportersString) {
         Set<String> includedReporters =
                 reporterListPattern
                         .splitAsStream(includedReportersString)
@@ -202,7 +204,7 @@ public final class ReporterSetup {
 
         // scan entire configuration for keys starting with METRICS_REPORTER_PREFIX and determine
         // the set of enabled reporters
-        for (String key : configuration.keySet()) {
+        for (String key : configuration.toMap().keySet()) {
             if (key.startsWith(ConfigConstants.METRICS_REPORTER_PREFIX)) {
                 Matcher matcher = reporterClassPattern.matcher(key);
                 if (matcher.matches()) {
@@ -228,14 +230,14 @@ public final class ReporterSetup {
     }
 
     private static List<Tuple2<String, Configuration>> loadReporterConfigurations(
-            Configuration configuration, Set<String> namedReporters) {
+            ReadableConfig configuration, Set<String> namedReporters) {
         final List<Tuple2<String, Configuration>> reporterConfigurations =
                 new ArrayList<>(namedReporters.size());
 
         for (String namedReporter : namedReporters) {
             DelegatingConfiguration delegatingConfiguration =
                     new DelegatingConfiguration(
-                            configuration,
+                            Configuration.fromMap(configuration.toMap()),
                             ConfigConstants.METRICS_REPORTER_PREFIX + namedReporter + '.');
 
             reporterConfigurations.add(Tuple2.of(namedReporter, delegatingConfiguration));

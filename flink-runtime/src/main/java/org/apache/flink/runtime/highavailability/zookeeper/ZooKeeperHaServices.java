@@ -19,8 +19,8 @@
 package org.apache.flink.runtime.highavailability.zookeeper;
 
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobStoreService;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.ZooKeeperCheckpointRecoveryFactory;
@@ -106,7 +106,7 @@ public class ZooKeeperHaServices extends AbstractHaServices {
     public ZooKeeperHaServices(
             CuratorFrameworkWithUnhandledErrorListener curatorFrameworkWrapper,
             Executor executor,
-            Configuration configuration,
+            ReadableConfig configuration,
             BlobStoreService blobStoreService) {
         super(configuration, executor, blobStoreService);
         this.curatorFrameworkWrapper = checkNotNull(curatorFrameworkWrapper);

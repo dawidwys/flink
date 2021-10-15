@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.rest;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.TransientBlobService;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
 import org.apache.flink.runtime.dispatcher.DispatcherRestEndpoint;
@@ -38,7 +38,7 @@ public enum SessionRestEndpointFactory implements RestEndpointFactory<Dispatcher
 
     @Override
     public WebMonitorEndpoint<DispatcherGateway> createRestEndpoint(
-            Configuration configuration,
+            ReadableConfig configuration,
             LeaderGatewayRetriever<DispatcherGateway> dispatcherGatewayRetriever,
             LeaderGatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever,
             TransientBlobService transientBlobService,

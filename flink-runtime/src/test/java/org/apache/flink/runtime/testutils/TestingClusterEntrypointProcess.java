@@ -20,6 +20,7 @@ package org.apache.flink.runtime.testutils;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.runtime.dispatcher.ExecutionGraphInfoStore;
 import org.apache.flink.runtime.dispatcher.MemoryExecutionGraphInfoStore;
@@ -118,7 +119,7 @@ public class TestingClusterEntrypointProcess extends TestJvmProcess {
 
         @Override
         protected ExecutionGraphInfoStore createSerializableExecutionGraphStore(
-                Configuration configuration, ScheduledExecutor scheduledExecutor)
+                ReadableConfig configuration, ScheduledExecutor scheduledExecutor)
                 throws IOException {
             return new MemoryExecutionGraphInfoStore();
         }

@@ -22,6 +22,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessSpec;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessUtils;
@@ -71,7 +72,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
         extends ResourceManager<WorkerType> implements ResourceEventHandler<WorkerType> {
 
-    protected final Configuration flinkConfig;
+    protected final ReadableConfig flinkConfig;
 
     private final Time startWorkerRetryInterval;
 
@@ -102,7 +103,7 @@ public class ActiveResourceManager<WorkerType extends ResourceIDRetrievable>
 
     public ActiveResourceManager(
             ResourceManagerDriver<WorkerType> resourceManagerDriver,
-            Configuration flinkConfig,
+            ReadableConfig flinkConfig,
             RpcService rpcService,
             UUID leaderSessionId,
             ResourceID resourceId,

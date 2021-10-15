@@ -29,6 +29,7 @@ import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JMXServerOptions;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.SchedulerExecutionMode;
 import org.apache.flink.configuration.WebOptions;
@@ -117,7 +118,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
     /** The lock to guard startup / shutdown / manipulation methods. */
     private final Object lock = new Object();
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final CompletableFuture<ApplicationStatus> terminationFuture;
 
@@ -152,7 +153,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
     private final Thread shutDownHook;
     private RpcSystem rpcSystem;
 
-    protected ClusterEntrypoint(Configuration configuration) {
+    protected ClusterEntrypoint(ReadableConfig configuration) {
         this.configuration = generateClusterConfiguration(configuration);
         this.terminationFuture = new CompletableFuture<>();
 
@@ -224,12 +225,12 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
         return false;
     }
 
-    private void configureFileSystems(Configuration configuration, PluginManager pluginManager) {
+    private void configureFileSystems(ReadableConfig configuration, PluginManager pluginManager) {
         LOG.info("Install default filesystem.");
         FileSystem.initialize(configuration, pluginManager);
     }
 
-    private SecurityContext installSecurityContext(Configuration configuration) throws Exception {
+    private SecurityContext installSecurityContext(ReadableConfig configuration) throws Exception {
         LOG.info("Install security context.");
 
         SecurityUtils.install(new SecurityConfiguration(configuration));
@@ -237,14 +238,15 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
         return SecurityUtils.getInstalledContext();
     }
 
-    private void runCluster(Configuration configuration, PluginManager pluginManager)
+    private void runCluster(ReadableConfig configuration, PluginManager pluginManager)
             throws Exception {
         synchronized (lock) {
             initializeServices(configuration, pluginManager);
 
             // write host information into configuration
-            configuration.setString(JobManagerOptions.ADDRESS, commonRpcService.getAddress());
-            configuration.setInteger(JobManagerOptions.PORT, commonRpcService.getPort());
+            final Configuration clusterConfig = Configuration.fromMap(configuration.toMap());
+            clusterConfig.setString(JobManagerOptions.ADDRESS, commonRpcService.getAddress());
+            clusterConfig.setInteger(JobManagerOptions.PORT, commonRpcService.getPort());
 
             final DispatcherResourceManagerComponentFactory
                     dispatcherResourceManagerComponentFactory =
@@ -252,7 +254,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 
             clusterComponent =
                     dispatcherResourceManagerComponentFactory.create(
-                            configuration,
+                            clusterConfig,
                             ioExecutor,
                             commonRpcService,
                             haServices,
@@ -288,7 +290,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
         }
     }
 
-    protected void initializeServices(Configuration configuration, PluginManager pluginManager)
+    protected void initializeServices(ReadableConfig configuration, PluginManager pluginManager)
             throws Exception {
 
         LOG.info("Initializing cluster services.");
@@ -300,30 +302,31 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
                     RpcUtils.createRemoteRpcService(
                             rpcSystem,
                             configuration,
-                            configuration.getString(JobManagerOptions.ADDRESS),
+                            configuration.get(JobManagerOptions.ADDRESS),
                             getRPCPortRange(configuration),
-                            configuration.getString(JobManagerOptions.BIND_HOST),
+                            configuration.get(JobManagerOptions.BIND_HOST),
                             configuration.getOptional(JobManagerOptions.RPC_BIND_PORT));
 
-            JMXService.startInstance(configuration.getString(JMXServerOptions.JMX_SERVER_PORT));
+            JMXService.startInstance(configuration.get(JMXServerOptions.JMX_SERVER_PORT));
 
             // update the configuration used to create the high availability services
-            configuration.setString(JobManagerOptions.ADDRESS, commonRpcService.getAddress());
-            configuration.setInteger(JobManagerOptions.PORT, commonRpcService.getPort());
+            final Configuration extendedConfig = Configuration.fromMap(configuration.toMap());
+            extendedConfig.setString(JobManagerOptions.ADDRESS, commonRpcService.getAddress());
+            extendedConfig.setInteger(JobManagerOptions.PORT, commonRpcService.getPort());
 
             ioExecutor =
                     Executors.newFixedThreadPool(
-                            ClusterEntrypointUtils.getPoolSize(configuration),
+                            ClusterEntrypointUtils.getPoolSize(extendedConfig),
                             new ExecutorThreadFactory("cluster-io"));
-            haServices = createHaServices(configuration, ioExecutor, rpcSystem);
-            blobServer = new BlobServer(configuration, haServices.createBlobStore());
+            haServices = createHaServices(extendedConfig, ioExecutor, rpcSystem);
+            blobServer = new BlobServer(extendedConfig, haServices.createBlobStore());
             blobServer.start();
-            heartbeatServices = createHeartbeatServices(configuration);
-            metricRegistry = createMetricRegistry(configuration, pluginManager, rpcSystem);
+            heartbeatServices = createHeartbeatServices(extendedConfig);
+            metricRegistry = createMetricRegistry(extendedConfig, pluginManager, rpcSystem);
 
             final RpcService metricQueryServiceRpcService =
                     MetricUtils.startRemoteMetricsRpcService(
-                            configuration, commonRpcService.getAddress(), rpcSystem);
+                            extendedConfig, commonRpcService.getAddress(), rpcSystem);
             metricRegistry.startQueryService(metricQueryServiceRpcService, null);
 
             final String hostname = RpcUtils.getHostname(commonRpcService);
@@ -347,16 +350,16 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
      * @param configuration to extract the port range from
      * @return Port range for the common {@link RpcService}
      */
-    protected String getRPCPortRange(Configuration configuration) {
+    protected String getRPCPortRange(ReadableConfig configuration) {
         if (ZooKeeperUtils.isZooKeeperRecoveryMode(configuration)) {
-            return configuration.getString(HighAvailabilityOptions.HA_JOB_MANAGER_PORT_RANGE);
+            return configuration.get(HighAvailabilityOptions.HA_JOB_MANAGER_PORT_RANGE);
         } else {
-            return String.valueOf(configuration.getInteger(JobManagerOptions.PORT));
+            return String.valueOf(configuration.get(JobManagerOptions.PORT));
         }
     }
 
     protected HighAvailabilityServices createHaServices(
-            Configuration configuration, Executor executor, RpcSystemUtils rpcSystemUtils)
+            ReadableConfig configuration, Executor executor, RpcSystemUtils rpcSystemUtils)
             throws Exception {
         return HighAvailabilityServicesUtils.createHighAvailabilityServices(
                 configuration,
@@ -371,7 +374,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
     }
 
     protected MetricRegistryImpl createMetricRegistry(
-            Configuration configuration,
+            ReadableConfig configuration,
             PluginManager pluginManager,
             RpcSystemUtils rpcSystemUtils) {
         return new MetricRegistryImpl(
@@ -394,7 +397,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
 
     protected CompletableFuture<Void> stopClusterServices(boolean cleanupHaData) {
         final long shutdownTimeout =
-                configuration.getLong(ClusterOptions.CLUSTER_SERVICES_SHUTDOWN_TIMEOUT);
+                configuration.get(ClusterOptions.CLUSTER_SERVICES_SHUTDOWN_TIMEOUT);
 
         synchronized (lock) {
             Throwable exception = null;
@@ -473,11 +476,11 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
     // Internal methods
     // --------------------------------------------------
 
-    private Configuration generateClusterConfiguration(Configuration configuration) {
+    private ReadableConfig generateClusterConfiguration(ReadableConfig configuration) {
         final Configuration resultConfiguration =
-                new Configuration(Preconditions.checkNotNull(configuration));
+                Configuration.fromMap(Preconditions.checkNotNull(configuration).toMap());
 
-        final String webTmpDir = configuration.getString(WebOptions.TMP_DIR);
+        final String webTmpDir = configuration.get(WebOptions.TMP_DIR);
         final File uniqueWebTmpDir = new File(webTmpDir, "flink-web-" + UUID.randomUUID());
 
         resultConfiguration.setString(WebOptions.TMP_DIR, uniqueWebTmpDir.getAbsolutePath());
@@ -558,7 +561,7 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
      * @throws IOException if the temporary directories could not be cleaned up
      */
     protected void cleanupDirectories() throws IOException {
-        final String webTmpDir = configuration.getString(WebOptions.TMP_DIR);
+        final String webTmpDir = configuration.get(WebOptions.TMP_DIR);
 
         FileUtils.deleteDirectory(new File(webTmpDir));
     }
@@ -568,11 +571,11 @@ public abstract class ClusterEntrypoint implements AutoCloseableAsync, FatalErro
     // --------------------------------------------------
 
     protected abstract DispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(Configuration configuration)
+            createDispatcherResourceManagerComponentFactory(ReadableConfig configuration)
                     throws IOException;
 
     protected abstract ExecutionGraphInfoStore createSerializableExecutionGraphStore(
-            Configuration configuration, ScheduledExecutor scheduledExecutor) throws IOException;
+            ReadableConfig configuration, ScheduledExecutor scheduledExecutor) throws IOException;
 
     protected static EntrypointClusterConfiguration parseArguments(String[] args)
             throws FlinkParseException {

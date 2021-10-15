@@ -49,7 +49,9 @@ public class HadoopModuleFactory implements SecurityModuleFactory {
 
         try {
             Configuration hadoopConfiguration =
-                    HadoopUtils.getHadoopConfiguration(securityConfig.getFlinkConfig());
+                    HadoopUtils.getHadoopConfiguration(
+                            org.apache.flink.configuration.Configuration.fromMap(
+                                    securityConfig.getFlinkConfig().toMap()));
             return new HadoopModule(securityConfig, hadoopConfiguration);
         } catch (LinkageError e) {
             LOG.error("Cannot create Hadoop Security Module.", e);

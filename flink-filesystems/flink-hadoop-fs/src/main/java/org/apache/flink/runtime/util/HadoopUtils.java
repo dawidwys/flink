@@ -20,6 +20,7 @@ package org.apache.flink.runtime.util;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * Utility class for working with Hadoop-related classes. This should only be used if Hadoop is on
@@ -50,8 +52,7 @@ public class HadoopUtils {
     private static final String[] FLINK_CONFIG_PREFIXES = {"flink.hadoop."};
 
     @SuppressWarnings("deprecation")
-    public static Configuration getHadoopConfiguration(
-            org.apache.flink.configuration.Configuration flinkConfiguration) {
+    public static Configuration getHadoopConfiguration(ReadableConfig flinkConfiguration) {
 
         // Instantiate an HdfsConfiguration to load the hdfs-site.xml and hdfs-default.xml
         // from the classpath
@@ -82,8 +83,9 @@ public class HadoopUtils {
         }
 
         // Approach 2: Flink configuration (deprecated)
+        final Map<String, String> flinkProperties = flinkConfiguration.toMap();
         final String hdfsDefaultPath =
-                flinkConfiguration.getString(ConfigConstants.HDFS_DEFAULT_CONFIG, null);
+                flinkProperties.getOrDefault(ConfigConstants.HDFS_DEFAULT_CONFIG, null);
         if (hdfsDefaultPath != null) {
             result.addResource(new org.apache.hadoop.fs.Path(hdfsDefaultPath));
             LOG.debug(
@@ -93,7 +95,7 @@ public class HadoopUtils {
         }
 
         final String hdfsSitePath =
-                flinkConfiguration.getString(ConfigConstants.HDFS_SITE_CONFIG, null);
+                flinkProperties.getOrDefault(ConfigConstants.HDFS_SITE_CONFIG, null);
         if (hdfsSitePath != null) {
             result.addResource(new org.apache.hadoop.fs.Path(hdfsSitePath));
             LOG.debug(
@@ -102,7 +104,7 @@ public class HadoopUtils {
         }
 
         final String hadoopConfigPath =
-                flinkConfiguration.getString(ConfigConstants.PATH_HADOOP_CONFIG, null);
+                flinkProperties.getOrDefault(ConfigConstants.PATH_HADOOP_CONFIG, null);
         if (hadoopConfigPath != null) {
             LOG.debug("Searching Hadoop configuration files in Flink config: {}", hadoopConfigPath);
             foundHadoopConfiguration =
@@ -119,11 +121,11 @@ public class HadoopUtils {
 
         // Approach 4: Flink configuration
         // add all configuration key with prefix 'flink.hadoop.' in flink conf to hadoop conf
-        for (String key : flinkConfiguration.keySet()) {
+        for (String key : flinkProperties.keySet()) {
             for (String prefix : FLINK_CONFIG_PREFIXES) {
                 if (key.startsWith(prefix)) {
                     String newKey = key.substring(prefix.length());
-                    String value = flinkConfiguration.getString(key, null);
+                    String value = flinkProperties.get(key);
                     result.set(newKey, value);
                     LOG.debug(
                             "Adding Flink config entry for {} as {}={} to Hadoop config",

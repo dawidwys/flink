@@ -26,6 +26,7 @@ import org.apache.flink.configuration.ConfigUtils;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DeploymentOptions;
 import org.apache.flink.configuration.PipelineOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.ExecutionGraphInfoStore;
 import org.apache.flink.runtime.dispatcher.MemoryExecutionGraphInfoStore;
 import org.apache.flink.runtime.dispatcher.SessionDispatcherFactory;
@@ -58,7 +59,7 @@ public class ApplicationClusterEntryPoint extends ClusterEntrypoint {
     private final ResourceManagerFactory<?> resourceManagerFactory;
 
     protected ApplicationClusterEntryPoint(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final PackagedProgram program,
             final ResourceManagerFactory<?> resourceManagerFactory) {
         super(configuration);
@@ -68,7 +69,7 @@ public class ApplicationClusterEntryPoint extends ClusterEntrypoint {
 
     @Override
     protected DispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(final Configuration configuration) {
+            createDispatcherResourceManagerComponentFactory(final ReadableConfig configuration) {
         return new DefaultDispatcherResourceManagerComponentFactory(
                 new DefaultDispatcherRunnerFactory(
                         ApplicationDispatcherLeaderProcessFactoryFactory.create(
@@ -79,7 +80,7 @@ public class ApplicationClusterEntryPoint extends ClusterEntrypoint {
 
     @Override
     protected ExecutionGraphInfoStore createSerializableExecutionGraphStore(
-            final Configuration configuration, final ScheduledExecutor scheduledExecutor) {
+            final ReadableConfig configuration, final ScheduledExecutor scheduledExecutor) {
         return new MemoryExecutionGraphInfoStore();
     }
 

@@ -19,6 +19,7 @@
 package org.apache.flink.kubernetes.entrypoint;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.ClusterEntrypoint;
 import org.apache.flink.runtime.entrypoint.ClusterEntrypointUtils;
 import org.apache.flink.runtime.entrypoint.DynamicParametersConfigurationParserFactory;
@@ -38,7 +39,7 @@ public class KubernetesSessionClusterEntrypoint extends SessionClusterEntrypoint
 
     @Override
     protected DispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(Configuration configuration) {
+            createDispatcherResourceManagerComponentFactory(ReadableConfig configuration) {
         return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(
                 KubernetesResourceManagerFactory.getInstance());
     }

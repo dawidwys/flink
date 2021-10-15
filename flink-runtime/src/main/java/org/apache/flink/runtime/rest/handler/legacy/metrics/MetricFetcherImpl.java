@@ -20,8 +20,8 @@ package org.apache.flink.runtime.rest.handler.legacy.metrics;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.messages.webmonitor.JobDetails;
@@ -249,13 +249,13 @@ public class MetricFetcherImpl<T extends RestfulGateway> implements MetricFetche
 
     @Nonnull
     public static <T extends RestfulGateway> MetricFetcherImpl<T> fromConfiguration(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final MetricQueryServiceRetriever metricQueryServiceGatewayRetriever,
             final GatewayRetriever<T> dispatcherGatewayRetriever,
             final ExecutorService executor) {
-        final Time timeout = Time.milliseconds(configuration.getLong(WebOptions.TIMEOUT));
+        final Time timeout = Time.milliseconds(configuration.get(WebOptions.TIMEOUT));
         final long updateInterval =
-                configuration.getLong(MetricOptions.METRIC_FETCHER_UPDATE_INTERVAL);
+                configuration.get(MetricOptions.METRIC_FETCHER_UPDATE_INTERVAL);
 
         return new MetricFetcherImpl<>(
                 dispatcherGatewayRetriever,

@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.resourcemanager.active;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.types.ResourceIDRetrievable;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.concurrent.ScheduledExecutor;
@@ -34,15 +35,15 @@ public abstract class AbstractResourceManagerDriver<WorkerType extends ResourceI
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    protected final Configuration flinkConfig;
-    protected final Configuration flinkClientConfig;
+    protected final ReadableConfig flinkConfig;
+    protected final ReadableConfig flinkClientConfig;
 
     private ResourceEventHandler<WorkerType> resourceEventHandler = null;
     private ScheduledExecutor mainThreadExecutor = null;
     private Executor ioExecutor = null;
 
     public AbstractResourceManagerDriver(
-            final Configuration flinkConfig, final Configuration flinkClientConfig) {
+            final ReadableConfig flinkConfig, final Configuration flinkClientConfig) {
         this.flinkConfig = Preconditions.checkNotNull(flinkConfig);
         this.flinkClientConfig = Preconditions.checkNotNull(flinkClientConfig);
     }

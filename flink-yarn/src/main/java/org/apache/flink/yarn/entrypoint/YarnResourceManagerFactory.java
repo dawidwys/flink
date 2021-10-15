@@ -18,7 +18,7 @@
 
 package org.apache.flink.yarn.entrypoint;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerRuntimeServicesConfiguration;
 import org.apache.flink.runtime.resourcemanager.active.ActiveResourceManager;
 import org.apache.flink.runtime.resourcemanager.active.ActiveResourceManagerFactory;
@@ -46,7 +46,7 @@ public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<Yar
 
     @Override
     protected ResourceManagerDriver<YarnWorkerNode> createResourceManagerDriver(
-            Configuration configuration, String webInterfaceUrl, String rpcAddress) {
+            ReadableConfig configuration, String webInterfaceUrl, String rpcAddress) {
         final YarnResourceManagerDriverConfiguration yarnResourceManagerDriverConfiguration =
                 new YarnResourceManagerDriverConfiguration(
                         System.getenv(), rpcAddress, webInterfaceUrl);
@@ -60,7 +60,7 @@ public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<Yar
 
     @Override
     protected ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                     throws ConfigurationException {
         return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(
                 configuration, YarnWorkerResourceSpecFactory.INSTANCE);

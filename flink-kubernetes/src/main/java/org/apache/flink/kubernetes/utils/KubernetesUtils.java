@@ -23,6 +23,7 @@ import org.apache.flink.client.program.PackagedProgramUtils;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.PipelineOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.highavailability.KubernetesCheckpointStoreUtil;
 import org.apache.flink.kubernetes.highavailability.KubernetesJobGraphStoreUtil;
 import org.apache.flink.kubernetes.highavailability.KubernetesStateHandleStore;
@@ -216,7 +217,7 @@ public class KubernetesUtils {
      * @throws Exception when create the storage helper
      */
     public static JobGraphStore createJobGraphStore(
-            Configuration configuration,
+            ReadableConfig configuration,
             FlinkKubeClient flinkKubeClient,
             String configMapName,
             String lockIdentity)
@@ -242,7 +243,7 @@ public class KubernetesUtils {
      * @throws Exception when create the storage helper
      */
     public static KubernetesStateHandleStore<JobGraph> createJobGraphStateHandleStore(
-            Configuration configuration,
+            ReadableConfig configuration,
             FlinkKubeClient flinkKubeClient,
             String configMapName,
             String lockIdentity)
@@ -276,7 +277,7 @@ public class KubernetesUtils {
      * @throws Exception when create the storage helper failed
      */
     public static CompletedCheckpointStore createCompletedCheckpointStore(
-            Configuration configuration,
+            ReadableConfig configuration,
             FlinkKubeClient kubeClient,
             Executor executor,
             String configMapName,

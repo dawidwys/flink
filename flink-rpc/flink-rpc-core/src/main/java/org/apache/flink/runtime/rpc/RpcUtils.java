@@ -20,6 +20,7 @@ package org.apache.flink.runtime.rpc;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.AutoCloseableAsync;
 import org.apache.flink.util.concurrent.FutureUtils;
 
@@ -170,11 +171,11 @@ public class RpcUtils {
      * Convenient shortcut for constructing a remote RPC Service that takes care of checking for
      * null and empty optionals.
      *
-     * @see RpcSystem#remoteServiceBuilder(Configuration, String, String)
+     * @see RpcSystem#remoteServiceBuilder(ReadableConfig, String, String)
      */
     public static RpcService createRemoteRpcService(
             RpcSystem rpcSystem,
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable String externalAddress,
             String externalPortRange,
             @Nullable String bindAddress,

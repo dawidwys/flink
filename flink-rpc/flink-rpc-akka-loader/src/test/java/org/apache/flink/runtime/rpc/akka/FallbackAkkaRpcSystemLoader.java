@@ -17,7 +17,7 @@
 
 package org.apache.flink.runtime.rpc.akka;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.classloading.SubmoduleClassLoader;
 import org.apache.flink.runtime.rpc.RpcSystem;
 import org.apache.flink.runtime.rpc.RpcSystemLoader;
@@ -47,7 +47,7 @@ public class FallbackAkkaRpcSystemLoader implements RpcSystemLoader {
     private static final Logger LOG = LoggerFactory.getLogger(FallbackAkkaRpcSystemLoader.class);
 
     @Override
-    public RpcSystem loadRpcSystem(Configuration config) {
+    public RpcSystem loadRpcSystem(ReadableConfig config) {
         try {
             LOG.debug(
                     "Using Fallback AkkaRpcSystemLoader; this loader will invoke maven to retrieve the dependencies of flink-rpc-akka.");

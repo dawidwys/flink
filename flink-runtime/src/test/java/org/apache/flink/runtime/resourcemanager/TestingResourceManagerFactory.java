@@ -20,7 +20,7 @@ package org.apache.flink.runtime.resourcemanager;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.entrypoint.ClusterInformation;
@@ -66,7 +66,7 @@ public class TestingResourceManagerFactory extends ResourceManagerFactory<Resour
 
     @Override
     protected ResourceManager<ResourceID> createResourceManager(
-            Configuration configuration,
+            ReadableConfig configuration,
             ResourceID resourceId,
             RpcService rpcService,
             UUID leaderSessionId,
@@ -95,7 +95,7 @@ public class TestingResourceManagerFactory extends ResourceManagerFactory<Resour
 
     @Override
     protected ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                     throws ConfigurationException {
         return StandaloneResourceManagerFactory.getInstance()
                 .createResourceManagerRuntimeServicesConfiguration(configuration);

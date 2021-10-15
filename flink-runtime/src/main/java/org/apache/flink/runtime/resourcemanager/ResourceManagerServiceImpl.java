@@ -19,7 +19,7 @@
 package org.apache.flink.runtime.resourcemanager;
 
 import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.entrypoint.ClusterInformation;
@@ -333,7 +333,7 @@ public class ResourceManagerServiceImpl implements ResourceManagerService, Leade
 
     public static ResourceManagerServiceImpl create(
             ResourceManagerFactory<?> resourceManagerFactory,
-            Configuration configuration,
+            ReadableConfig configuration,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
             HeartbeatServices heartbeatServices,

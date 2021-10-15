@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.metrics.scope;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 
 /** A container for component scope formats. */
 public final class ScopeFormats {
@@ -89,13 +89,13 @@ public final class ScopeFormats {
      * @param config The configuration that defines the formats
      * @return The ScopeFormats parsed from the configuration
      */
-    public static ScopeFormats fromConfig(Configuration config) {
-        String jmFormat = config.getString(MetricOptions.SCOPE_NAMING_JM);
-        String jmJobFormat = config.getString(MetricOptions.SCOPE_NAMING_JM_JOB);
-        String tmFormat = config.getString(MetricOptions.SCOPE_NAMING_TM);
-        String tmJobFormat = config.getString(MetricOptions.SCOPE_NAMING_TM_JOB);
-        String taskFormat = config.getString(MetricOptions.SCOPE_NAMING_TASK);
-        String operatorFormat = config.getString(MetricOptions.SCOPE_NAMING_OPERATOR);
+    public static ScopeFormats fromConfig(ReadableConfig config) {
+        String jmFormat = config.get(MetricOptions.SCOPE_NAMING_JM);
+        String jmJobFormat = config.get(MetricOptions.SCOPE_NAMING_JM_JOB);
+        String tmFormat = config.get(MetricOptions.SCOPE_NAMING_TM);
+        String tmJobFormat = config.get(MetricOptions.SCOPE_NAMING_TM_JOB);
+        String taskFormat = config.get(MetricOptions.SCOPE_NAMING_TASK);
+        String operatorFormat = config.get(MetricOptions.SCOPE_NAMING_OPERATOR);
 
         return new ScopeFormats(
                 jmFormat, jmJobFormat, tmFormat, tmJobFormat, taskFormat, operatorFormat);

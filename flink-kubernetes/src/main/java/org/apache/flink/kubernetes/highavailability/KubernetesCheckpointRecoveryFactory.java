@@ -20,6 +20,7 @@ package org.apache.flink.kubernetes.highavailability;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.kubeclient.FlinkKubeClient;
 import org.apache.flink.kubernetes.utils.KubernetesUtils;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
@@ -42,7 +43,7 @@ public class KubernetesCheckpointRecoveryFactory implements CheckpointRecoveryFa
     // name.
     private final Function<JobID, String> getConfigMapNameFunction;
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final String lockIdentity;
 
@@ -57,7 +58,7 @@ public class KubernetesCheckpointRecoveryFactory implements CheckpointRecoveryFa
      */
     public KubernetesCheckpointRecoveryFactory(
             FlinkKubeClient kubeClient,
-            Configuration configuration,
+            ReadableConfig configuration,
             Executor executor,
             Function<JobID, String> function,
             String lockIdentity) {

@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.clusterframework;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 
 import java.util.HashMap;
@@ -76,17 +76,18 @@ public class ContaineredTaskManagerParameters implements java.io.Serializable {
      * @return The parameters to start the TaskManager processes with.
      */
     public static ContaineredTaskManagerParameters create(
-            Configuration config, TaskExecutorProcessSpec taskExecutorProcessSpec) {
+            ReadableConfig config, TaskExecutorProcessSpec taskExecutorProcessSpec) {
 
         // obtain the additional environment variables from the configuration
         final HashMap<String, String> envVars = new HashMap<>();
         final String prefix = ResourceManagerOptions.CONTAINERIZED_TASK_MANAGER_ENV_PREFIX;
 
-        for (String key : config.keySet()) {
+        final Map<String, String> flinkProperties = config.toMap();
+        for (String key : flinkProperties.keySet()) {
             if (key.startsWith(prefix) && key.length() > prefix.length()) {
                 // remove prefix
                 String envVarKey = key.substring(prefix.length());
-                envVars.put(envVarKey, config.getString(key, null));
+                envVars.put(envVarKey, flinkProperties.get(key));
             }
         }
 

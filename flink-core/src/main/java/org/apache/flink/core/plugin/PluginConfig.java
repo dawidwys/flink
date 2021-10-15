@@ -19,8 +19,8 @@
 package org.apache.flink.core.plugin;
 
 import org.apache.flink.configuration.ConfigConstants;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
+import org.apache.flink.configuration.ReadableConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ public class PluginConfig {
         return alwaysParentFirstPatterns;
     }
 
-    public static PluginConfig fromConfiguration(Configuration configuration) {
+    public static PluginConfig fromConfiguration(ReadableConfig configuration) {
         return new PluginConfig(
                 getPluginsDir().map(File::toPath),
                 CoreOptions.getPluginParentFirstLoaderPatterns(configuration));

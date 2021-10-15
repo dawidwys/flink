@@ -20,6 +20,7 @@ package org.apache.flink.kubernetes;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.kubernetes.configuration.KubernetesResourceManagerDriverConfiguration;
@@ -84,7 +85,7 @@ public class KubernetesResourceManagerDriver
     private FlinkPod taskManagerPodTemplate;
 
     public KubernetesResourceManagerDriver(
-            Configuration flinkConfig,
+            ReadableConfig flinkConfig,
             FlinkKubeClient flinkKubeClient,
             KubernetesResourceManagerDriverConfiguration configuration) {
         super(flinkConfig, GlobalConfiguration.loadConfiguration());
@@ -248,7 +249,7 @@ public class KubernetesResourceManagerDriver
         final ContaineredTaskManagerParameters taskManagerParameters =
                 ContaineredTaskManagerParameters.create(flinkConfig, taskExecutorProcessSpec);
 
-        final Configuration taskManagerConfig = new Configuration(flinkConfig);
+        final Configuration taskManagerConfig = Configuration.fromMap(flinkConfig.toMap());
         taskManagerConfig.set(TaskManagerOptions.TASK_MANAGER_RESOURCE_ID, podName);
 
         final String dynamicProperties =

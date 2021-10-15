@@ -22,6 +22,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.entrypoint.ClusterInformation;
@@ -56,7 +57,7 @@ public final class StandaloneResourceManagerFactory extends ResourceManagerFacto
 
     @Override
     protected ResourceManager<ResourceID> createResourceManager(
-            Configuration configuration,
+            ReadableConfig configuration,
             ResourceID resourceId,
             RpcService rpcService,
             UUID leaderSessionId,
@@ -89,7 +90,7 @@ public final class StandaloneResourceManagerFactory extends ResourceManagerFacto
 
     @Override
     protected ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                     throws ConfigurationException {
         return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(
                 getConfigurationWithoutMaxSlotNumberIfSet(configuration),
@@ -102,9 +103,9 @@ public final class StandaloneResourceManagerFactory extends ResourceManagerFacto
      * @param configuration configuration object
      * @return the configuration for standalone ResourceManager
      */
-    private static Configuration getConfigurationWithoutMaxSlotNumberIfSet(
-            Configuration configuration) {
-        final Configuration copiedConfig = new Configuration(configuration);
+    private static ReadableConfig getConfigurationWithoutMaxSlotNumberIfSet(
+            ReadableConfig configuration) {
+        final Configuration copiedConfig = Configuration.fromMap(configuration.toMap());
         // The max slot limit should not take effect for standalone cluster, we overwrite the
         // configure in case user
         // sets this value by mistake.

@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.entrypoint.component;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
@@ -99,7 +99,7 @@ public class DefaultDispatcherResourceManagerComponentFactory
 
     @Override
     public DispatcherResourceManagerComponent create(
-            Configuration configuration,
+            ReadableConfig configuration,
             Executor ioExecutor,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
@@ -142,12 +142,12 @@ public class DefaultDispatcherResourceManagerComponentFactory
 
             final ScheduledExecutorService executor =
                     WebMonitorEndpoint.createExecutorService(
-                            configuration.getInteger(RestOptions.SERVER_NUM_THREADS),
-                            configuration.getInteger(RestOptions.SERVER_THREAD_PRIORITY),
+                            configuration.get(RestOptions.SERVER_NUM_THREADS),
+                            configuration.get(RestOptions.SERVER_THREAD_PRIORITY),
                             "DispatcherRestEndpoint");
 
             final long updateInterval =
-                    configuration.getLong(MetricOptions.METRIC_FETCHER_UPDATE_INTERVAL);
+                    configuration.get(MetricOptions.METRIC_FETCHER_UPDATE_INTERVAL);
             final MetricFetcher metricFetcher =
                     updateInterval == 0
                             ? VoidMetricFetcher.INSTANCE

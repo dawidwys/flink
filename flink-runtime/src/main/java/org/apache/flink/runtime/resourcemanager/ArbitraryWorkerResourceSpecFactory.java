@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.resourcemanager;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 /**
  * Implementation of {@link WorkerResourceSpecFactory} that creates arbitrary {@link
@@ -33,7 +33,7 @@ public class ArbitraryWorkerResourceSpecFactory extends WorkerResourceSpecFactor
     private ArbitraryWorkerResourceSpecFactory() {}
 
     @Override
-    public WorkerResourceSpec createDefaultWorkerResourceSpec(Configuration configuration) {
+    public WorkerResourceSpec createDefaultWorkerResourceSpec(ReadableConfig configuration) {
         return WorkerResourceSpec.ZERO;
     }
 }

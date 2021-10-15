@@ -21,6 +21,7 @@ package org.apache.flink.client.deployment.application;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.DispatcherFactory;
 import org.apache.flink.runtime.dispatcher.PartialDispatcherServices;
 import org.apache.flink.runtime.dispatcher.runner.DispatcherLeaderProcessFactory;
@@ -42,14 +43,14 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class ApplicationDispatcherLeaderProcessFactoryFactory
         implements DispatcherLeaderProcessFactoryFactory {
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final DispatcherFactory dispatcherFactory;
 
     private final PackagedProgram program;
 
     private ApplicationDispatcherLeaderProcessFactoryFactory(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final DispatcherFactory dispatcherFactory,
             final PackagedProgram program) {
         this.configuration = checkNotNull(configuration);
@@ -78,7 +79,7 @@ public class ApplicationDispatcherLeaderProcessFactoryFactory
     }
 
     public static ApplicationDispatcherLeaderProcessFactoryFactory create(
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final DispatcherFactory dispatcherFactory,
             final PackagedProgram program) {
         return new ApplicationDispatcherLeaderProcessFactoryFactory(

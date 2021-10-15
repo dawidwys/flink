@@ -19,7 +19,7 @@ package org.apache.flink.runtime.rpc.akka;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.AkkaOptions;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rpc.RpcSystem;
 import org.apache.flink.util.NetUtils;
 
@@ -48,7 +48,7 @@ public class AkkaBootstrapTools {
      */
     @VisibleForTesting
     public static ActorSystem startRemoteActorSystem(
-            Configuration configuration,
+            ReadableConfig configuration,
             String externalAddress,
             String externalPortRange,
             Logger logger)
@@ -85,7 +85,7 @@ public class AkkaBootstrapTools {
      * @throws Exception Thrown when actor system cannot be started in specified port range
      */
     public static ActorSystem startRemoteActorSystem(
-            Configuration configuration,
+            ReadableConfig configuration,
             String actorSystemName,
             String externalAddress,
             String externalPortRange,
@@ -152,7 +152,7 @@ public class AkkaBootstrapTools {
      * @throws Exception
      */
     private static ActorSystem startRemoteActorSystem(
-            Configuration configuration,
+            ReadableConfig configuration,
             String actorSystemName,
             String externalAddress,
             int externalPort,
@@ -215,7 +215,7 @@ public class AkkaBootstrapTools {
      * @throws Exception
      */
     public static ActorSystem startLocalActorSystem(
-            Configuration configuration,
+            ReadableConfig configuration,
             String actorSystemName,
             Logger logger,
             Config actorSystemExecutorConfiguration,
@@ -273,13 +273,13 @@ public class AkkaBootstrapTools {
     }
 
     public static RpcSystem.ForkJoinExecutorConfiguration getForkJoinExecutorConfiguration(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         final double parallelismFactor =
-                configuration.getDouble(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_FACTOR);
+                configuration.get(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_FACTOR);
         final int minParallelism =
-                configuration.getInteger(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_MIN);
+                configuration.get(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_MIN);
         final int maxParallelism =
-                configuration.getInteger(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_MAX);
+                configuration.get(AkkaOptions.FORK_JOIN_EXECUTOR_PARALLELISM_MAX);
 
         return new RpcSystem.ForkJoinExecutorConfiguration(
                 parallelismFactor, minParallelism, maxParallelism);

@@ -20,8 +20,8 @@ package org.apache.flink.yarn.entrypoint;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.resources.CPUResource;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessUtils;
 import org.apache.flink.runtime.resourcemanager.WorkerResourceSpec;
 import org.apache.flink.runtime.resourcemanager.WorkerResourceSpecFactory;
@@ -41,13 +41,13 @@ public class YarnWorkerResourceSpecFactory extends WorkerResourceSpecFactory {
     private YarnWorkerResourceSpecFactory() {}
 
     @Override
-    public WorkerResourceSpec createDefaultWorkerResourceSpec(Configuration configuration) {
+    public WorkerResourceSpec createDefaultWorkerResourceSpec(ReadableConfig configuration) {
         return workerResourceSpecFromConfigAndCpu(configuration, getDefaultCpus(configuration));
     }
 
     @VisibleForTesting
-    static CPUResource getDefaultCpus(final Configuration configuration) {
-        int fallback = configuration.getInteger(YarnConfigOptions.VCORES);
+    static CPUResource getDefaultCpus(final ReadableConfig configuration) {
+        int fallback = configuration.get(YarnConfigOptions.VCORES);
         double cpuCoresDouble =
                 TaskExecutorProcessUtils.getCpuCoresWithFallback(configuration, fallback)
                         .getValue()

@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.resourcemanager;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceIDRetrievable;
 import org.apache.flink.runtime.entrypoint.ClusterInformation;
@@ -49,7 +49,7 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     public ResourceManagerProcessContext createResourceManagerProcessContext(
-            Configuration configuration,
+            ReadableConfig configuration,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
             HeartbeatServices heartbeatServices,
@@ -66,13 +66,13 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
         final SlotManagerMetricGroup slotManagerMetricGroup =
                 SlotManagerMetricGroup.create(metricRegistry, hostname);
 
-        final Configuration runtimeServicesAndRmConfig =
+        final ReadableConfig runtimeServicesAndRmConfig =
                 getEffectiveConfigurationForResourceManagerAndRuntimeServices(configuration);
 
         final ResourceManagerRuntimeServicesConfiguration runtimeServiceConfig =
                 createResourceManagerRuntimeServicesConfiguration(runtimeServicesAndRmConfig);
 
-        final Configuration rmConfig =
+        final ReadableConfig rmConfig =
                 getEffectiveConfigurationForResourceManager(runtimeServicesAndRmConfig);
 
         return new ResourceManagerProcessContext(
@@ -119,8 +119,8 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
      * {@link ResourceManagerRuntimeServices}. This can be overwritten by {@link
      * #getEffectiveConfigurationForResourceManager}.
      */
-    protected Configuration getEffectiveConfigurationForResourceManagerAndRuntimeServices(
-            final Configuration configuration) {
+    protected ReadableConfig getEffectiveConfigurationForResourceManagerAndRuntimeServices(
+            final ReadableConfig configuration) {
         return configuration;
     }
 
@@ -128,13 +128,13 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
      * Configuration changes in this method will be visible to only {@link ResourceManager}. This
      * can overwrite {@link #getEffectiveConfigurationForResourceManagerAndRuntimeServices}.
      */
-    protected Configuration getEffectiveConfigurationForResourceManager(
-            final Configuration configuration) {
+    protected ReadableConfig getEffectiveConfigurationForResourceManager(
+            final ReadableConfig configuration) {
         return configuration;
     }
 
     protected abstract ResourceManager<T> createResourceManager(
-            Configuration configuration,
+            ReadableConfig configuration,
             ResourceID resourceId,
             RpcService rpcService,
             UUID leaderSessionId,
@@ -161,6 +161,6 @@ public abstract class ResourceManagerFactory<T extends ResourceIDRetrievable> {
     }
 
     protected abstract ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                     throws ConfigurationException;
 }

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.resourcemanager.active;
 import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.resourcemanager.ResourceManagerRuntimeServicesConfiguration;
@@ -79,14 +80,14 @@ public class ActiveResourceManagerFactoryTest extends TestLogger {
         return new ActiveResourceManagerFactory<ResourceID>() {
             @Override
             protected ResourceManagerRuntimeServicesConfiguration
-                    createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+                    createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                             throws ConfigurationException {
                 return null;
             }
 
             @Override
             protected ResourceManagerDriver<ResourceID> createResourceManagerDriver(
-                    Configuration configuration,
+                    ReadableConfig configuration,
                     @Nullable String webInterfaceUrl,
                     String rpcAddress)
                     throws Exception {

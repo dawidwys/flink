@@ -45,21 +45,22 @@ public class MemoryBackwardsCompatibilityUtils {
         this.legacyMemoryOptions = legacyMemoryOptions;
     }
 
-    public Configuration getConfWithLegacyHeapSizeMappedToNewConfigOption(
-            Configuration configuration, ConfigOption<MemorySize> configOption) {
+    public ReadableConfig getConfWithLegacyHeapSizeMappedToNewConfigOption(
+            ReadableConfig configuration, ConfigOption<MemorySize> configOption) {
         if (configuration.contains(configOption)) {
             return configuration;
         }
         return getLegacyHeapMemoryIfExplicitlyConfigured(configuration)
                 .map(
                         legacyHeapSize -> {
-                            Configuration copiedConfig = new Configuration(configuration);
+                            Configuration copiedConfig =
+                                    Configuration.fromMap(configuration.toMap());
                             copiedConfig.set(configOption, legacyHeapSize);
                             LOG.info(
                                     "'{}' is not specified, use the configured deprecated task manager heap value ({}) for it.",
                                     configOption.key(),
                                     legacyHeapSize.toHumanReadableString());
-                            return copiedConfig;
+                            return (ReadableConfig) copiedConfig;
                         })
                 .orElse(configuration);
     }
@@ -88,8 +89,7 @@ public class MemoryBackwardsCompatibilityUtils {
         }
 
         if (configuration.contains(legacyMemoryOptions.getHeapMb())) {
-            final long legacyHeapMemoryMB =
-                    configuration.get(legacyMemoryOptions.getHeapMb());
+            final long legacyHeapMemoryMB = configuration.get(legacyMemoryOptions.getHeapMb());
             if (legacyHeapMemoryMB < 0) {
                 throw new IllegalConfigurationException(
                         "Configured total process memory size ("

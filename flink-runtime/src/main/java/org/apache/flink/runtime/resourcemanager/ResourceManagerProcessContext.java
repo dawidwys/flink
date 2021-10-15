@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.resourcemanager;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.ClusterInformation;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
@@ -40,7 +40,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * process.
  */
 public class ResourceManagerProcessContext {
-    private final Configuration rmConfig;
+    private final ReadableConfig rmConfig;
     private final ResourceManagerRuntimeServicesConfiguration rmRuntimeServicesConfig;
     private final RpcService rpcService;
     private final HighAvailabilityServices highAvailabilityServices;
@@ -53,7 +53,7 @@ public class ResourceManagerProcessContext {
     private final Executor ioExecutor;
 
     public ResourceManagerProcessContext(
-            Configuration rmConfig,
+            ReadableConfig rmConfig,
             ResourceManagerRuntimeServicesConfiguration rmRuntimeServicesConfig,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
@@ -78,7 +78,7 @@ public class ResourceManagerProcessContext {
         this.webInterfaceUrl = webInterfaceUrl;
     }
 
-    public Configuration getRmConfig() {
+    public ReadableConfig getRmConfig() {
         return rmConfig;
     }
 

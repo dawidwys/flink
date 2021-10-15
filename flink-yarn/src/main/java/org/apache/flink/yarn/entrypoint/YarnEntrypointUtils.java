@@ -22,6 +22,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.SecurityOptions;
@@ -121,7 +122,7 @@ public class YarnEntrypointUtils {
                 yarnClientUsername);
     }
 
-    public static Optional<File> getUsrLibDir(final Configuration configuration) {
+    public static Optional<File> getUsrLibDir(final ReadableConfig configuration) {
         final YarnConfigOptions.UserJarInclusion userJarInclusion =
                 configuration.get(YarnConfigOptions.CLASSPATH_INCLUDE_USER_JAR);
         final Optional<File> userLibDir = tryFindUserLibDirectory();

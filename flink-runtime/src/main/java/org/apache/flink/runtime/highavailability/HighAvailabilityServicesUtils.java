@@ -84,7 +84,7 @@ public class HighAvailabilityServicesUtils {
     }
 
     public static HighAvailabilityServices createHighAvailabilityServices(
-            Configuration configuration,
+            ReadableConfig configuration,
             Executor executor,
             AddressResolution addressResolution,
             RpcSystemUtils rpcSystemUtils,
@@ -164,11 +164,11 @@ public class HighAvailabilityServicesUtils {
      * @throws ConfigurationException if the JobManager's address cannot be extracted from the
      *     configuration
      */
-    public static Tuple2<String, Integer> getJobManagerAddress(Configuration configuration)
+    public static Tuple2<String, Integer> getJobManagerAddress(ReadableConfig configuration)
             throws ConfigurationException {
 
-        final String hostname = configuration.getString(JobManagerOptions.ADDRESS);
-        final int port = configuration.getInteger(JobManagerOptions.PORT);
+        final String hostname = configuration.get(JobManagerOptions.ADDRESS);
+        final int port = configuration.get(JobManagerOptions.PORT);
 
         if (hostname == null) {
             throw new ConfigurationException(
@@ -198,10 +198,10 @@ public class HighAvailabilityServicesUtils {
      * @return Address of WebMonitor.
      */
     public static String getWebMonitorAddress(
-            Configuration configuration, AddressResolution resolution) throws UnknownHostException {
+            ReadableConfig configuration, AddressResolution resolution) throws UnknownHostException {
         final String address =
                 checkNotNull(
-                        configuration.getString(RestOptions.ADDRESS),
+                        configuration.get(RestOptions.ADDRESS),
                         "%s must be set",
                         RestOptions.ADDRESS.key());
 
@@ -211,7 +211,7 @@ public class HighAvailabilityServicesUtils {
             InetAddress.getByName(address);
         }
 
-        final int port = configuration.getInteger(RestOptions.PORT);
+        final int port = configuration.get(RestOptions.PORT);
         final boolean enableSSL = SecurityOptions.isRestSSLEnabled(configuration);
         final String protocol = enableSSL ? "https://" : "http://";
 
@@ -263,10 +263,10 @@ public class HighAvailabilityServicesUtils {
     }
 
     private static HighAvailabilityServices createCustomHAServices(
-            Configuration config, Executor executor) throws FlinkException {
+            ReadableConfig config, Executor executor) throws FlinkException {
         final HighAvailabilityServicesFactory highAvailabilityServicesFactory =
                 loadCustomHighAvailabilityServicesFactory(
-                        config.getString(HighAvailabilityOptions.HA_MODE));
+                        config.get(HighAvailabilityOptions.HA_MODE));
 
         try {
             return highAvailabilityServicesFactory.createHAServices(config, executor);

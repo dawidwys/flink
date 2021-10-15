@@ -20,9 +20,9 @@ package org.apache.flink.core.fs;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.function.SupplierWithException;
 
 import org.slf4j.Logger;
@@ -1036,7 +1036,7 @@ public class LimitedConnectionsFileSystem extends FileSystem {
          * @return The parsed configuration, or null, if no connection limiting is configured.
          */
         @Nullable
-        public static ConnectionLimitingSettings fromConfig(Configuration config, String fsScheme) {
+        public static ConnectionLimitingSettings fromConfig(ReadableConfig config, String fsScheme) {
             checkNotNull(fsScheme, "fsScheme");
             checkNotNull(config, "config");
 
@@ -1047,9 +1047,9 @@ public class LimitedConnectionsFileSystem extends FileSystem {
             final ConfigOption<Integer> limitOutOption =
                     CoreOptions.fileSystemConnectionLimitOut(fsScheme);
 
-            final int totalLimit = config.getInteger(totalLimitOption);
-            final int limitIn = config.getInteger(limitInOption);
-            final int limitOut = config.getInteger(limitOutOption);
+            final int totalLimit = config.get(totalLimitOption);
+            final int limitIn = config.get(limitInOption);
+            final int limitOut = config.get(limitOutOption);
 
             checkLimit(totalLimit, totalLimitOption);
             checkLimit(limitIn, limitInOption);
@@ -1065,8 +1065,8 @@ public class LimitedConnectionsFileSystem extends FileSystem {
                 final ConfigOption<Long> inactivityTimeoutOption =
                         CoreOptions.fileSystemConnectionLimitStreamInactivityTimeout(fsScheme);
 
-                final long openTimeout = config.getLong(openTimeoutOption);
-                final long inactivityTimeout = config.getLong(inactivityTimeoutOption);
+                final long openTimeout = config.get(openTimeoutOption);
+                final long inactivityTimeout = config.get(inactivityTimeoutOption);
 
                 checkTimeout(openTimeout, openTimeoutOption);
                 checkTimeout(inactivityTimeout, inactivityTimeoutOption);

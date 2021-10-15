@@ -31,6 +31,7 @@ import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointsCleaner;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpoint;
@@ -470,7 +471,7 @@ public class RegionFailoverITCase extends TestLogger {
 
         @Override
         public HighAvailabilityServices createHAServices(
-                Configuration configuration, Executor executor) {
+                ReadableConfig configuration, Executor executor) {
             final CheckpointRecoveryFactory checkpointRecoveryFactory =
                     PerJobCheckpointRecoveryFactory.withoutCheckpointStoreRecovery(
                             maxCheckpoints -> new TestingCompletedCheckpointStore());

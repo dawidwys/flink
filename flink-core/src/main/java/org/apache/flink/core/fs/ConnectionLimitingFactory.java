@@ -20,6 +20,7 @@ package org.apache.flink.core.fs;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.LimitedConnectionsFileSystem.ConnectionLimitingSettings;
 
 import java.io.IOException;
@@ -85,7 +86,7 @@ public class ConnectionLimitingFactory implements FileSystemFactory {
      *     otherwise.
      */
     public static FileSystemFactory decorateIfLimited(
-            FileSystemFactory factory, String scheme, Configuration config) {
+            FileSystemFactory factory, String scheme, ReadableConfig config) {
         checkNotNull(factory, "factory");
 
         final ConnectionLimitingSettings settings =

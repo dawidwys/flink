@@ -17,7 +17,7 @@
 
 package org.apache.flink.runtime.rpc.akka;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.classloading.SubmoduleClassLoader;
 import org.apache.flink.runtime.rpc.AddressResolution;
 import org.apache.flink.runtime.rpc.RpcSystem;
@@ -67,13 +67,13 @@ class CleanupOnCloseRpcSystem implements RpcSystem {
     }
 
     @Override
-    public RpcServiceBuilder localServiceBuilder(Configuration config) {
+    public RpcServiceBuilder localServiceBuilder(ReadableConfig config) {
         return rpcSystem.localServiceBuilder(config);
     }
 
     @Override
     public RpcServiceBuilder remoteServiceBuilder(
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable String externalAddress,
             String externalPortRange) {
         return rpcSystem.remoteServiceBuilder(configuration, externalAddress, externalPortRange);
@@ -85,7 +85,7 @@ class CleanupOnCloseRpcSystem implements RpcSystem {
             int port,
             String endpointName,
             AddressResolution addressResolution,
-            Configuration config)
+            ReadableConfig config)
             throws UnknownHostException {
         return rpcSystem.getRpcUrl(hostname, port, endpointName, addressResolution, config);
     }
@@ -96,7 +96,7 @@ class CleanupOnCloseRpcSystem implements RpcSystem {
     }
 
     @Override
-    public long getMaximumMessageSizeInBytes(Configuration config) {
+    public long getMaximumMessageSizeInBytes(ReadableConfig config) {
         return rpcSystem.getMaximumMessageSizeInBytes(config);
     }
 }

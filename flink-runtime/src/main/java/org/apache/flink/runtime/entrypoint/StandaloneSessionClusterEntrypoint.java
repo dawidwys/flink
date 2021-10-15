@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.entrypoint;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.component.DefaultDispatcherResourceManagerComponentFactory;
 import org.apache.flink.runtime.resourcemanager.StandaloneResourceManagerFactory;
 import org.apache.flink.runtime.util.EnvironmentInformation;
@@ -34,7 +35,7 @@ public class StandaloneSessionClusterEntrypoint extends SessionClusterEntrypoint
 
     @Override
     protected DefaultDispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(Configuration configuration) {
+            createDispatcherResourceManagerComponentFactory(ReadableConfig configuration) {
         return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(
                 StandaloneResourceManagerFactory.getInstance());
     }

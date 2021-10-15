@@ -20,7 +20,7 @@ package org.apache.flink.kubernetes.entrypoint;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.resources.CPUResource;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessUtils;
 import org.apache.flink.runtime.resourcemanager.WorkerResourceSpec;
@@ -35,13 +35,13 @@ public class KubernetesWorkerResourceSpecFactory extends WorkerResourceSpecFacto
     private KubernetesWorkerResourceSpecFactory() {}
 
     @Override
-    public WorkerResourceSpec createDefaultWorkerResourceSpec(Configuration configuration) {
+    public WorkerResourceSpec createDefaultWorkerResourceSpec(ReadableConfig configuration) {
         return workerResourceSpecFromConfigAndCpu(configuration, getDefaultCpus(configuration));
     }
 
     @VisibleForTesting
-    static CPUResource getDefaultCpus(Configuration configuration) {
-        double fallback = configuration.getDouble(KubernetesConfigOptions.TASK_MANAGER_CPU);
+    static CPUResource getDefaultCpus(ReadableConfig configuration) {
+        double fallback = configuration.get(KubernetesConfigOptions.TASK_MANAGER_CPU);
         return TaskExecutorProcessUtils.getCpuCoresWithFallback(configuration, fallback);
     }
 }

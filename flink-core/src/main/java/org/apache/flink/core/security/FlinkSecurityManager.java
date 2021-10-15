@@ -20,8 +20,8 @@ package org.apache.flink.core.security;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.ClusterOptions;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.Preconditions;
 
 import org.slf4j.Logger;
@@ -83,7 +83,7 @@ public class FlinkSecurityManager extends SecurityManager {
      *     disabled.
      */
     @VisibleForTesting
-    static FlinkSecurityManager fromConfiguration(Configuration configuration) {
+    static FlinkSecurityManager fromConfiguration(ReadableConfig configuration) {
         final ClusterOptions.UserSystemExitMode userSystemExitMode =
                 configuration.get(ClusterOptions.INTERCEPT_USER_SYSTEM_EXIT);
 
@@ -103,7 +103,7 @@ public class FlinkSecurityManager extends SecurityManager {
         return new FlinkSecurityManager(userSystemExitMode, haltOnSystemExit);
     }
 
-    public static void setFromConfiguration(Configuration configuration) {
+    public static void setFromConfiguration(ReadableConfig configuration) {
         final FlinkSecurityManager flinkSecurityManager =
                 FlinkSecurityManager.fromConfiguration(configuration);
         if (flinkSecurityManager != null) {

@@ -20,6 +20,7 @@ package org.apache.flink.runtime.metrics;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.metrics.scope.ScopeFormats;
 import org.apache.flink.util.Preconditions;
 
@@ -75,7 +76,7 @@ public class MetricRegistryConfiguration {
      * @return Metric registry configuration generated from the configuration
      */
     public static MetricRegistryConfiguration fromConfiguration(
-            Configuration configuration, long maximumFrameSize) {
+            ReadableConfig configuration, long maximumFrameSize) {
         ScopeFormats scopeFormats;
         try {
             scopeFormats = ScopeFormats.fromConfig(configuration);
@@ -86,7 +87,7 @@ public class MetricRegistryConfiguration {
 
         char delim;
         try {
-            delim = configuration.getString(MetricOptions.SCOPE_DELIMITER).charAt(0);
+            delim = configuration.get(MetricOptions.SCOPE_DELIMITER).charAt(0);
         } catch (Exception e) {
             LOG.warn("Failed to parse delimiter, using default delimiter.", e);
             delim = '.';

@@ -19,6 +19,7 @@
 package org.apache.flink.yarn.entrypoint;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.ClusterEntrypoint;
 import org.apache.flink.runtime.entrypoint.ClusterEntrypointUtils;
 import org.apache.flink.runtime.entrypoint.DynamicParametersConfigurationParserFactory;
@@ -44,13 +45,13 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
     }
 
     @Override
-    protected String getRPCPortRange(Configuration configuration) {
-        return configuration.getString(YarnConfigOptions.APPLICATION_MASTER_PORT);
+    protected String getRPCPortRange(ReadableConfig configuration) {
+        return configuration.get(YarnConfigOptions.APPLICATION_MASTER_PORT);
     }
 
     @Override
     protected DefaultDispatcherResourceManagerComponentFactory
-            createDispatcherResourceManagerComponentFactory(Configuration configuration)
+            createDispatcherResourceManagerComponentFactory(ReadableConfig configuration)
                     throws IOException {
         return DefaultDispatcherResourceManagerComponentFactory.createJobComponentFactory(
                 YarnResourceManagerFactory.getInstance(),

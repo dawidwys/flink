@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.entrypoint;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.ExecutionGraphInfoStore;
 import org.apache.flink.runtime.dispatcher.MemoryExecutionGraphInfoStore;
 import org.apache.flink.util.concurrent.ScheduledExecutor;
@@ -32,7 +33,7 @@ public abstract class JobClusterEntrypoint extends ClusterEntrypoint {
 
     @Override
     protected ExecutionGraphInfoStore createSerializableExecutionGraphStore(
-            Configuration configuration, ScheduledExecutor scheduledExecutor) {
+            ReadableConfig configuration, ScheduledExecutor scheduledExecutor) {
         return new MemoryExecutionGraphInfoStore();
     }
 }

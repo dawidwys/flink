@@ -18,7 +18,7 @@
 
 package org.apache.flink.kubernetes.entrypoint;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.kubernetes.KubernetesResourceManagerDriver;
 import org.apache.flink.kubernetes.KubernetesWorkerNode;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
@@ -50,11 +50,11 @@ public class KubernetesResourceManagerFactory
 
     @Override
     protected ResourceManagerDriver<KubernetesWorkerNode> createResourceManagerDriver(
-            Configuration configuration, @Nullable String webInterfaceUrl, String rpcAddress) {
+            ReadableConfig configuration, @Nullable String webInterfaceUrl, String rpcAddress) {
         final KubernetesResourceManagerDriverConfiguration
                 kubernetesResourceManagerDriverConfiguration =
                         new KubernetesResourceManagerDriverConfiguration(
-                                configuration.getString(KubernetesConfigOptions.CLUSTER_ID));
+                                configuration.get(KubernetesConfigOptions.CLUSTER_ID));
 
         return new KubernetesResourceManagerDriver(
                 configuration,
@@ -65,7 +65,7 @@ public class KubernetesResourceManagerFactory
 
     @Override
     protected ResourceManagerRuntimeServicesConfiguration
-            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+            createResourceManagerRuntimeServicesConfiguration(ReadableConfig configuration)
                     throws ConfigurationException {
         return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(
                 configuration, KubernetesWorkerResourceSpecFactory.INSTANCE);

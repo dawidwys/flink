@@ -210,24 +210,18 @@ public class BootstrapTools {
      * @return Dynamic properties as string, separated by whitespace.
      */
     public static String getDynamicPropertiesAsString(
-            Configuration baseConfig, Configuration targetConfig) {
+            ReadableConfig baseConfig, Configuration targetConfig) {
 
         String[] newAddedConfigs =
                 targetConfig.keySet().stream()
                         .flatMap(
                                 (String key) -> {
-                                    final String baseValue =
-                                            baseConfig.getString(
-                                                    ConfigOptions.key(key)
-                                                            .stringType()
-                                                            .noDefaultValue());
-                                    final String targetValue =
-                                            targetConfig.getString(
-                                                    ConfigOptions.key(key)
-                                                            .stringType()
-                                                            .noDefaultValue());
+                                    final ConfigOption<String> optionKey =
+                                            key(key).stringType().noDefaultValue();
+                                    final String baseValue = baseConfig.get(optionKey);
+                                    final String targetValue = targetConfig.getString(optionKey);
 
-                                    if (!baseConfig.keySet().contains(key)
+                                    if (!baseConfig.contains(optionKey)
                                             || !baseValue.equals(targetValue)) {
                                         return Stream.of(
                                                 "-"

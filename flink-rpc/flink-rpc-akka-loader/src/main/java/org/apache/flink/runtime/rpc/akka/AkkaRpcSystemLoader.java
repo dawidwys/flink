@@ -17,8 +17,8 @@
 
 package org.apache.flink.runtime.rpc.akka;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.classloading.SubmoduleClassLoader;
 import org.apache.flink.runtime.rpc.RpcSystem;
 import org.apache.flink.runtime.rpc.RpcSystemLoader;
@@ -43,7 +43,7 @@ import java.util.UUID;
 public class AkkaRpcSystemLoader implements RpcSystemLoader {
 
     @Override
-    public RpcSystem loadRpcSystem(Configuration config) {
+    public RpcSystem loadRpcSystem(ReadableConfig config) {
         try {
             final ClassLoader flinkClassLoader = RpcSystem.class.getClassLoader();
 

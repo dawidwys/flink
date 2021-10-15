@@ -21,8 +21,8 @@ package org.apache.flink.runtime.metrics.util;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
@@ -181,23 +181,23 @@ public class MetricUtils {
     }
 
     public static RpcService startRemoteMetricsRpcService(
-            Configuration configuration, String hostname, RpcSystem rpcSystem) throws Exception {
-        final String portRange = configuration.getString(MetricOptions.QUERY_SERVICE_PORT);
+            ReadableConfig configuration, String hostname, RpcSystem rpcSystem) throws Exception {
+        final String portRange = configuration.get(MetricOptions.QUERY_SERVICE_PORT);
 
         return startMetricRpcService(
                 configuration, rpcSystem.remoteServiceBuilder(configuration, hostname, portRange));
     }
 
     public static RpcService startLocalMetricsRpcService(
-            Configuration configuration, RpcSystem rpcSystem) throws Exception {
+            ReadableConfig configuration, RpcSystem rpcSystem) throws Exception {
         return startMetricRpcService(configuration, rpcSystem.localServiceBuilder(configuration));
     }
 
     private static RpcService startMetricRpcService(
-            Configuration configuration, RpcSystem.RpcServiceBuilder rpcServiceBuilder)
+            ReadableConfig configuration, RpcSystem.RpcServiceBuilder rpcServiceBuilder)
             throws Exception {
         final int threadPriority =
-                configuration.getInteger(MetricOptions.QUERY_SERVICE_THREAD_PRIORITY);
+                configuration.get(MetricOptions.QUERY_SERVICE_THREAD_PRIORITY);
 
         return rpcServiceBuilder
                 .withComponentName(METRICS_ACTOR_SYSTEM_NAME)

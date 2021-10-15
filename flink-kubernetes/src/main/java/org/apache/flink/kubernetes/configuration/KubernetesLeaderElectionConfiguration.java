@@ -18,7 +18,7 @@
 
 package org.apache.flink.kubernetes.configuration;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 import java.time.Duration;
 
@@ -36,8 +36,8 @@ public class KubernetesLeaderElectionConfiguration {
     private final Duration retryPeriod;
 
     public KubernetesLeaderElectionConfiguration(
-            String configMapName, String lockIdentity, Configuration config) {
-        this.clusterId = config.getString(KubernetesConfigOptions.CLUSTER_ID);
+            String configMapName, String lockIdentity, ReadableConfig config) {
+        this.clusterId = config.get(KubernetesConfigOptions.CLUSTER_ID);
         this.configMapName = configMapName;
         this.lockIdentity = lockIdentity;
 

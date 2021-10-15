@@ -795,8 +795,7 @@ public final class Utils {
         return providedLibDirs;
     }
 
-    public static YarnConfiguration getYarnAndHadoopConfiguration(
-            org.apache.flink.configuration.Configuration flinkConfig) {
+    public static YarnConfiguration getYarnAndHadoopConfiguration(ReadableConfig flinkConfig) {
         final YarnConfiguration yarnConfig = getYarnConfiguration(flinkConfig);
         yarnConfig.addResource(HadoopUtils.getHadoopConfiguration(flinkConfig));
 
@@ -810,14 +809,15 @@ public final class Utils {
      * @return The yarn configuration.
      */
     public static YarnConfiguration getYarnConfiguration(
-            org.apache.flink.configuration.Configuration flinkConfig) {
+            ReadableConfig flinkConfig) {
         final YarnConfiguration yarnConfig = new YarnConfiguration();
 
-        for (String key : flinkConfig.keySet()) {
+        final Map<String, String> properties = flinkConfig.toMap();
+        for (String key : properties.keySet()) {
             for (String prefix : FLINK_CONFIG_PREFIXES) {
                 if (key.startsWith(prefix)) {
                     String newKey = key.substring("flink.".length());
-                    String value = flinkConfig.getString(key, null);
+                    String value = properties.get(key);
                     yarnConfig.set(newKey, value);
                     LOG.debug(
                             "Adding Flink config entry for {} as {}={} to Yarn config",

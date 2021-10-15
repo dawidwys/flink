@@ -19,7 +19,7 @@
 package org.apache.flink.runtime.highavailability;
 
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobStore;
 import org.apache.flink.runtime.blob.BlobStoreService;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
@@ -57,7 +57,7 @@ public abstract class AbstractHaServices implements HighAvailabilityServices {
     protected final Executor ioExecutor;
 
     /** The runtime configuration. */
-    protected final Configuration configuration;
+    protected final ReadableConfig configuration;
 
     /** Store for arbitrary blobs. */
     private final BlobStoreService blobStoreService;
@@ -66,7 +66,7 @@ public abstract class AbstractHaServices implements HighAvailabilityServices {
     private RunningJobsRegistry runningJobsRegistry;
 
     public AbstractHaServices(
-            Configuration config, Executor ioExecutor, BlobStoreService blobStoreService) {
+            ReadableConfig config, Executor ioExecutor, BlobStoreService blobStoreService) {
 
         this.configuration = checkNotNull(config);
         this.ioExecutor = checkNotNull(ioExecutor);

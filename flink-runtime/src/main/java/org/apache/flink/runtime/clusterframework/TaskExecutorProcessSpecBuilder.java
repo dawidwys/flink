@@ -21,6 +21,7 @@ package org.apache.flink.runtime.clusterframework;
 import org.apache.flink.api.common.resources.CPUResource;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -30,11 +31,11 @@ public class TaskExecutorProcessSpecBuilder {
 
     private final Configuration configuration;
 
-    private TaskExecutorProcessSpecBuilder(final Configuration configuration) {
-        this.configuration = new Configuration(checkNotNull(configuration));
+    private TaskExecutorProcessSpecBuilder(final ReadableConfig configuration) {
+        this.configuration = Configuration.fromMap(checkNotNull(configuration).toMap());
     }
 
-    static TaskExecutorProcessSpecBuilder newBuilder(final Configuration configuration) {
+    static TaskExecutorProcessSpecBuilder newBuilder(final ReadableConfig configuration) {
         return new TaskExecutorProcessSpecBuilder(configuration);
     }
 

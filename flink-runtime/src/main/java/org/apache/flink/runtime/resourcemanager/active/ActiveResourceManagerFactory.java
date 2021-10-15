@@ -23,6 +23,7 @@ import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.ResourceManagerOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessUtils;
@@ -53,17 +54,17 @@ public abstract class ActiveResourceManagerFactory<WorkerType extends ResourceID
         extends ResourceManagerFactory<WorkerType> {
 
     @Override
-    protected Configuration getEffectiveConfigurationForResourceManagerAndRuntimeServices(
-            Configuration configuration) {
+    protected ReadableConfig getEffectiveConfigurationForResourceManagerAndRuntimeServices(
+            ReadableConfig configuration) {
         return TaskExecutorProcessUtils.getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
                 configuration, TaskManagerOptions.TOTAL_PROCESS_MEMORY);
     }
 
     @Override
-    protected Configuration getEffectiveConfigurationForResourceManager(
-            Configuration configuration) {
+    protected ReadableConfig getEffectiveConfigurationForResourceManager(
+            ReadableConfig configuration) {
         if (ClusterOptions.isFineGrainedResourceManagementEnabled(configuration)) {
-            final Configuration copiedConfig = new Configuration(configuration);
+            final Configuration copiedConfig = Configuration.fromMap(configuration.toMap());
 
             if (copiedConfig.removeConfig(TaskManagerOptions.TOTAL_PROCESS_MEMORY)) {
                 logIgnoreTotalMemory(TaskManagerOptions.TOTAL_PROCESS_MEMORY);
@@ -88,7 +89,7 @@ public abstract class ActiveResourceManagerFactory<WorkerType extends ResourceID
 
     @Override
     public ResourceManager<WorkerType> createResourceManager(
-            Configuration configuration,
+            ReadableConfig configuration,
             ResourceID resourceId,
             RpcService rpcService,
             UUID leaderSessionId,
@@ -127,11 +128,11 @@ public abstract class ActiveResourceManagerFactory<WorkerType extends ResourceID
     }
 
     protected abstract ResourceManagerDriver<WorkerType> createResourceManagerDriver(
-            Configuration configuration, @Nullable String webInterfaceUrl, String rpcAddress)
+            ReadableConfig configuration, @Nullable String webInterfaceUrl, String rpcAddress)
             throws Exception;
 
-    public static ThresholdMeter createStartWorkerFailureRater(Configuration configuration) {
-        double rate = configuration.getDouble(ResourceManagerOptions.START_WORKER_MAX_FAILURE_RATE);
+    public static ThresholdMeter createStartWorkerFailureRater(ReadableConfig configuration) {
+        double rate = configuration.get(ResourceManagerOptions.START_WORKER_MAX_FAILURE_RATE);
         if (rate <= 0) {
             throw new IllegalConfigurationException(
                     String.format(

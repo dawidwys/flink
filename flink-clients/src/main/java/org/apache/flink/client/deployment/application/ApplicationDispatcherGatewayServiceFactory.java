@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.Dispatcher;
 import org.apache.flink.runtime.dispatcher.DispatcherFactory;
 import org.apache.flink.runtime.dispatcher.DispatcherId;
@@ -56,7 +57,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class ApplicationDispatcherGatewayServiceFactory
         implements AbstractDispatcherLeaderProcess.DispatcherGatewayServiceFactory {
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final DispatcherFactory dispatcherFactory;
 
@@ -67,7 +68,7 @@ public class ApplicationDispatcherGatewayServiceFactory
     private final PartialDispatcherServices partialDispatcherServices;
 
     public ApplicationDispatcherGatewayServiceFactory(
-            Configuration configuration,
+            ReadableConfig configuration,
             DispatcherFactory dispatcherFactory,
             PackagedProgram application,
             RpcService rpcService,

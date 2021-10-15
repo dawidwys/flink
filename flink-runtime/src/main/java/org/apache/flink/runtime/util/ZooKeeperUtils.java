@@ -158,9 +158,9 @@ public class ZooKeeperUtils {
      * @return {@link CuratorFrameworkWithUnhandledErrorListener} instance
      */
     public static CuratorFrameworkWithUnhandledErrorListener startCuratorFramework(
-            Configuration configuration, FatalErrorHandler fatalErrorHandler) {
+            ReadableConfig configuration, FatalErrorHandler fatalErrorHandler) {
         checkNotNull(configuration, "configuration");
-        String zkQuorum = configuration.getValue(HighAvailabilityOptions.HA_ZOOKEEPER_QUORUM);
+        String zkQuorum = configuration.get(HighAvailabilityOptions.HA_ZOOKEEPER_QUORUM);
 
         if (zkQuorum == null || StringUtils.isBlank(zkQuorum)) {
             throw new RuntimeException(
@@ -170,23 +170,21 @@ public class ZooKeeperUtils {
                             + "'.");
         }
 
-        int sessionTimeout =
-                configuration.getInteger(HighAvailabilityOptions.ZOOKEEPER_SESSION_TIMEOUT);
+        int sessionTimeout = configuration.get(HighAvailabilityOptions.ZOOKEEPER_SESSION_TIMEOUT);
 
         int connectionTimeout =
-                configuration.getInteger(HighAvailabilityOptions.ZOOKEEPER_CONNECTION_TIMEOUT);
+                configuration.get(HighAvailabilityOptions.ZOOKEEPER_CONNECTION_TIMEOUT);
 
-        int retryWait = configuration.getInteger(HighAvailabilityOptions.ZOOKEEPER_RETRY_WAIT);
+        int retryWait = configuration.get(HighAvailabilityOptions.ZOOKEEPER_RETRY_WAIT);
 
         int maxRetryAttempts =
-                configuration.getInteger(HighAvailabilityOptions.ZOOKEEPER_MAX_RETRY_ATTEMPTS);
+                configuration.get(HighAvailabilityOptions.ZOOKEEPER_MAX_RETRY_ATTEMPTS);
 
-        String root = configuration.getValue(HighAvailabilityOptions.HA_ZOOKEEPER_ROOT);
+        String root = configuration.get(HighAvailabilityOptions.HA_ZOOKEEPER_ROOT);
 
-        String namespace = configuration.getValue(HighAvailabilityOptions.HA_CLUSTER_ID);
+        String namespace = configuration.get(HighAvailabilityOptions.HA_CLUSTER_ID);
 
-        boolean disableSaslClient =
-                configuration.getBoolean(SecurityOptions.ZOOKEEPER_SASL_DISABLE);
+        boolean disableSaslClient = configuration.get(SecurityOptions.ZOOKEEPER_SASL_DISABLE);
 
         ACLProvider aclProvider;
 
@@ -264,7 +262,7 @@ public class ZooKeeperUtils {
     }
 
     /** Returns whether {@link HighAvailabilityMode#ZOOKEEPER} is configured. */
-    public static boolean isZooKeeperRecoveryMode(Configuration flinkConf) {
+    public static boolean isZooKeeperRecoveryMode(ReadableConfig flinkConf) {
         return HighAvailabilityMode.fromConfig(flinkConf).equals(HighAvailabilityMode.ZOOKEEPER);
     }
 
@@ -309,7 +307,7 @@ public class ZooKeeperUtils {
      * @return {@link DefaultLeaderRetrievalService} instance.
      */
     public static DefaultLeaderRetrievalService createLeaderRetrievalService(
-            final CuratorFramework client, final String path, final Configuration configuration) {
+            final CuratorFramework client, final String path, final ReadableConfig configuration) {
         return new DefaultLeaderRetrievalService(
                 createLeaderRetrievalDriverFactory(client, path, configuration));
     }
@@ -334,7 +332,7 @@ public class ZooKeeperUtils {
      * @return {@link LeaderRetrievalDriverFactory} instance.
      */
     public static ZooKeeperLeaderRetrievalDriverFactory createLeaderRetrievalDriverFactory(
-            final CuratorFramework client, final String path, final Configuration configuration) {
+            final CuratorFramework client, final String path, final ReadableConfig configuration) {
         final ZooKeeperLeaderRetrievalDriver.LeaderInformationClearancePolicy
                 leaderInformationClearancePolicy;
 
@@ -411,7 +409,7 @@ public class ZooKeeperUtils {
      * @throws Exception if the submitted job graph store cannot be created
      */
     public static JobGraphStore createJobGraphs(
-            CuratorFramework client, Configuration configuration) throws Exception {
+            CuratorFramework client, ReadableConfig configuration) throws Exception {
 
         checkNotNull(configuration, "Configuration");
 
@@ -420,7 +418,7 @@ public class ZooKeeperUtils {
 
         // ZooKeeper submitted jobs root dir
         String zooKeeperJobsPath =
-                configuration.getString(HighAvailabilityOptions.HA_ZOOKEEPER_JOBGRAPHS_PATH);
+                configuration.get(HighAvailabilityOptions.HA_ZOOKEEPER_JOBGRAPHS_PATH);
 
         // Ensure that the job graphs path exists
         client.newNamespaceAwareEnsurePath(zooKeeperJobsPath).ensure(client.getZookeeperClient());
@@ -683,8 +681,8 @@ public class ZooKeeperUtils {
          * @return Configured ACL mode or the default defined by {@link
          *     HighAvailabilityOptions#ZOOKEEPER_CLIENT_ACL} if not configured.
          */
-        public static ZkClientACLMode fromConfig(Configuration config) {
-            String aclMode = config.getString(HighAvailabilityOptions.ZOOKEEPER_CLIENT_ACL);
+        public static ZkClientACLMode fromConfig(ReadableConfig config) {
+            String aclMode = config.get(HighAvailabilityOptions.ZOOKEEPER_CLIENT_ACL);
             if (aclMode == null || aclMode.equalsIgnoreCase(OPEN.name())) {
                 return OPEN;
             } else if (aclMode.equalsIgnoreCase(CREATOR.name())) {

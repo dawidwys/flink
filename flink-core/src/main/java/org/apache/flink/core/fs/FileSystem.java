@@ -29,6 +29,7 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.local.LocalFileSystem;
 import org.apache.flink.core.fs.local.LocalFileSystemFactory;
 import org.apache.flink.core.plugin.PluginManager;
@@ -236,7 +237,7 @@ public abstract class FileSystem {
 
     /**
      * Mapping of file system schemes to the corresponding factories, populated in {@link
-     * FileSystem#initialize(Configuration, PluginManager)}.
+     * FileSystem#initialize(ReadableConfig, PluginManager)}.
      */
     private static final HashMap<String, FileSystemFactory> FS_FACTORIES = new HashMap<>();
 
@@ -285,7 +286,7 @@ public abstract class FileSystem {
      * '/user/USERNAME/in.txt'} is interpreted as {@code
      * 'hdfs://localhost:9000/user/USERNAME/in.txt'}.
      *
-     * @deprecated use {@link #initialize(Configuration, PluginManager)} instead.
+     * @deprecated use {@link #initialize(ReadableConfig, PluginManager)} instead.
      * @param config the configuration from where to fetch the parameter.
      */
     @Deprecated
@@ -316,7 +317,7 @@ public abstract class FileSystem {
      * @param pluginManager optional plugin manager that is used to initialized filesystems provided
      *     as plugins.
      */
-    public static void initialize(Configuration config, PluginManager pluginManager)
+    public static void initialize(ReadableConfig config, PluginManager pluginManager)
             throws IllegalConfigurationException {
 
         LOCK.lock();
@@ -341,7 +342,7 @@ public abstract class FileSystem {
 
             // configure all file system factories
             for (FileSystemFactory factory : fileSystemFactories) {
-                factory.configure(config);
+                factory.configure(Configuration.fromMap(config.toMap()));
                 String scheme = factory.getScheme();
 
                 FileSystemFactory fsf =
@@ -350,11 +351,11 @@ public abstract class FileSystem {
             }
 
             // configure the default (fallback) factory
-            FALLBACK_FACTORY.configure(config);
+            FALLBACK_FACTORY.configure(Configuration.fromMap(config.toMap()));
 
             // also read the default file system scheme
             final String stringifiedUri =
-                    config.getString(CoreOptions.DEFAULT_FILESYSTEM_SCHEME, null);
+                    config.getOptional(CoreOptions.DEFAULT_FILESYSTEM_SCHEME).orElse(null);
             if (stringifiedUri == null) {
                 defaultScheme = null;
             } else {
@@ -375,7 +376,7 @@ public abstract class FileSystem {
                     Splitter.on(';')
                             .omitEmptyStrings()
                             .trimResults()
-                            .split(config.getString(CoreOptions.ALLOWED_FALLBACK_FILESYSTEMS));
+                            .split(config.get(CoreOptions.ALLOWED_FALLBACK_FILESYSTEMS));
             allowedFallbackFilesystems.forEach(ALLOWED_FALLBACK_FILESYSTEMS::add);
         } finally {
             LOCK.unlock();

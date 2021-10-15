@@ -19,7 +19,7 @@
 package org.apache.flink.kubernetes.kubeclient.parameters;
 
 import org.apache.flink.api.common.resources.ExternalResource;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.kubernetes.configuration.KubernetesConfigOptions;
 import org.apache.flink.kubernetes.utils.KubernetesUtils;
@@ -50,7 +50,7 @@ public class KubernetesTaskManagerParameters extends AbstractKubernetesParameter
     private final Map<String, String> taskManagerExternalResourceConfigKeys;
 
     public KubernetesTaskManagerParameters(
-            Configuration flinkConfig,
+            ReadableConfig flinkConfig,
             String podName,
             String dynamicProperties,
             String jvmMemOptsEnv,

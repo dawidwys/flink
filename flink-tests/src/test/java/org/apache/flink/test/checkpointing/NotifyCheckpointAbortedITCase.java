@@ -455,7 +455,7 @@ public class NotifyCheckpointAbortedITCase extends TestLogger {
 
         @Override
         public HighAvailabilityServices createHAServices(
-                Configuration configuration, Executor executor) {
+                ReadableConfig configuration, Executor executor) {
             final CheckpointRecoveryFactory checkpointRecoveryFactory =
                     PerJobCheckpointRecoveryFactory.withoutCheckpointStoreRecovery(
                             maxCheckpoints -> new TestingCompletedCheckpointStore());

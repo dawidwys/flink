@@ -18,7 +18,7 @@
 
 package org.apache.flink.core.plugin;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import java.io.IOException;
@@ -32,7 +32,7 @@ public final class PluginUtils {
         throw new AssertionError("Singleton class.");
     }
 
-    public static PluginManager createPluginManagerFromRootFolder(Configuration configuration) {
+    public static PluginManager createPluginManagerFromRootFolder(ReadableConfig configuration) {
         return createPluginManagerFromRootFolder(PluginConfig.fromConfiguration(configuration));
     }
 

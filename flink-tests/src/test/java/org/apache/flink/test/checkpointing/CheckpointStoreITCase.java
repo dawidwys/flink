@@ -21,6 +21,7 @@ import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.PerJobCheckpointRecoveryFactory;
@@ -137,7 +138,7 @@ public class CheckpointStoreITCase extends TestLogger {
 
         @Override
         public HighAvailabilityServices createHAServices(
-                Configuration configuration, Executor executor) {
+                ReadableConfig configuration, Executor executor) {
             final CheckpointRecoveryFactory checkpointRecoveryFactory =
                     PerJobCheckpointRecoveryFactory.withoutCheckpointStoreRecovery(
                             maxCheckpoints -> {

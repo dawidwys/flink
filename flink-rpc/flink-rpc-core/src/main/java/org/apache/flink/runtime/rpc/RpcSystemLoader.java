@@ -17,9 +17,9 @@
 
 package org.apache.flink.runtime.rpc;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 /** A loader for an {@link RpcSystem}. */
 public interface RpcSystemLoader {
-    RpcSystem loadRpcSystem(Configuration config);
+    RpcSystem loadRpcSystem(ReadableConfig config);
 }

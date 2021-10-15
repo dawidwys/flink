@@ -22,6 +22,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessSpec;
 import org.apache.flink.runtime.clusterframework.TaskExecutorProcessUtils;
@@ -77,8 +78,8 @@ public class BashJavaUtils {
      * Generate and print JVM parameters and dynamic configs of task executor resources. The last
      * two lines of the output should be JVM parameters and dynamic configs respectively.
      */
-    private static List<String> getTmResourceParams(Configuration configuration) {
-        Configuration configurationWithFallback =
+    private static List<String> getTmResourceParams(ReadableConfig configuration) {
+        ReadableConfig configurationWithFallback =
                 TaskExecutorProcessUtils.getConfigurationMapLegacyTaskManagerHeapSizeToConfigOption(
                         configuration, TaskManagerOptions.TOTAL_FLINK_MEMORY);
         TaskExecutorProcessSpec taskExecutorProcessSpec =

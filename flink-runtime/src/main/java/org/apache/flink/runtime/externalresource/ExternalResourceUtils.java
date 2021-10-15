@@ -79,7 +79,7 @@ public class ExternalResourceUtils {
      *     key for deployment * specific container request
      */
     public static Map<String, String> getExternalResourceConfigurationKeys(
-            Configuration config, String suffix) {
+            ReadableConfig config, String suffix) {
         final Set<String> resourceSet = getExternalResourceSet(config);
         final Map<String, String> configKeysToResourceNameMap = new HashMap<>();
         LOG.info("Enabled external resources: {}", resourceSet);

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.rpc.akka;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.runtime.rpc.AddressResolution;
 import org.apache.flink.runtime.rpc.RpcService;
@@ -90,7 +91,7 @@ public class AkkaRpcServiceUtils {
     }
 
     static AkkaRpcServiceBuilder remoteServiceBuilder(
-            Configuration configuration,
+            ReadableConfig configuration,
             @Nullable String externalAddress,
             String externalPortRange) {
         return new AkkaRpcServiceBuilder(configuration, LOG, externalAddress, externalPortRange);
@@ -98,11 +99,11 @@ public class AkkaRpcServiceUtils {
 
     @VisibleForTesting
     static AkkaRpcServiceBuilder remoteServiceBuilder(
-            Configuration configuration, @Nullable String externalAddress, int externalPort) {
+            ReadableConfig configuration, @Nullable String externalAddress, int externalPort) {
         return remoteServiceBuilder(configuration, externalAddress, String.valueOf(externalPort));
     }
 
-    static AkkaRpcServiceBuilder localServiceBuilder(Configuration configuration) {
+    static AkkaRpcServiceBuilder localServiceBuilder(ReadableConfig configuration) {
         return new AkkaRpcServiceBuilder(configuration, LOG);
     }
 
@@ -124,14 +125,13 @@ public class AkkaRpcServiceUtils {
             int port,
             String endpointName,
             AddressResolution addressResolution,
-            Configuration config)
+            ReadableConfig config)
             throws UnknownHostException {
 
         checkNotNull(config, "config is null");
 
         final boolean sslEnabled =
-                config.getBoolean(AkkaOptions.SSL_ENABLED)
-                        && SecurityOptions.isInternalSSLEnabled(config);
+                config.get(AkkaOptions.SSL_ENABLED) && SecurityOptions.isInternalSSLEnabled(config);
 
         return getRpcUrl(
                 hostname,
@@ -232,8 +232,8 @@ public class AkkaRpcServiceUtils {
     //  RPC service configuration
     // ------------------------------------------------------------------------
 
-    public static long extractMaximumFramesize(Configuration configuration) {
-        String maxFrameSizeStr = configuration.getString(AkkaOptions.FRAMESIZE);
+    public static long extractMaximumFramesize(ReadableConfig configuration) {
+        String maxFrameSizeStr = configuration.get(AkkaOptions.FRAMESIZE);
         String akkaConfigStr = String.format(SIMPLE_AKKA_CONFIG_TEMPLATE, maxFrameSizeStr);
         Config akkaConfig = ConfigFactory.parseString(akkaConfigStr);
         return akkaConfig.getBytes(MAXIMUM_FRAME_SIZE_PATH);
@@ -246,7 +246,7 @@ public class AkkaRpcServiceUtils {
     /** Builder for {@link AkkaRpcService}. */
     static class AkkaRpcServiceBuilder implements RpcSystem.RpcServiceBuilder {
 
-        private final Configuration configuration;
+        private final ReadableConfig configuration;
         private final Logger logger;
         @Nullable private final String externalAddress;
         @Nullable private final String externalPortRange;
@@ -261,7 +261,7 @@ public class AkkaRpcServiceUtils {
 
         /** Builder for creating a remote RPC service. */
         private AkkaRpcServiceBuilder(
-                final Configuration configuration,
+                final ReadableConfig configuration,
                 final Logger logger,
                 @Nullable final String externalAddress,
                 final String externalPortRange) {
@@ -275,7 +275,7 @@ public class AkkaRpcServiceUtils {
         }
 
         /** Builder for creating a local RPC service. */
-        private AkkaRpcServiceBuilder(final Configuration configuration, final Logger logger) {
+        private AkkaRpcServiceBuilder(final ReadableConfig configuration, final Logger logger) {
             this.configuration = Preconditions.checkNotNull(configuration);
             this.logger = Preconditions.checkNotNull(logger);
             this.externalAddress = null;

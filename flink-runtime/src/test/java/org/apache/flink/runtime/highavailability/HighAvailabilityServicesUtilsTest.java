@@ -20,6 +20,7 @@ package org.apache.flink.runtime.highavailability;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
 import org.apache.flink.runtime.rest.util.NoOpFatalErrorHandler;
@@ -135,12 +136,12 @@ public class HighAvailabilityServicesUtilsTest extends TestLogger {
 
         @Override
         public HighAvailabilityServices createHAServices(
-                Configuration configuration, Executor executor) {
+                ReadableConfig configuration, Executor executor) {
             return haServices;
         }
 
         @Override
-        public ClientHighAvailabilityServices createClientHAServices(Configuration configuration)
+        public ClientHighAvailabilityServices createClientHAServices(ReadableConfig configuration)
                 throws Exception {
             return clientHAServices;
         }
