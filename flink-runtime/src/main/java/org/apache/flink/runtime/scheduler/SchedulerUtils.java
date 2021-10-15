@@ -21,7 +21,7 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.CheckpointingOptions;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpointStore;
@@ -43,7 +43,7 @@ public final class SchedulerUtils {
 
     public static CompletedCheckpointStore createCompletedCheckpointStoreIfCheckpointingIsEnabled(
             JobGraph jobGraph,
-            Configuration configuration,
+            ReadableConfig configuration,
             ClassLoader userCodeLoader,
             CheckpointRecoveryFactory checkpointRecoveryFactory,
             Logger log)
@@ -66,14 +66,14 @@ public final class SchedulerUtils {
 
     @VisibleForTesting
     static CompletedCheckpointStore createCompletedCheckpointStore(
-            Configuration jobManagerConfig,
+            ReadableConfig jobManagerConfig,
             ClassLoader classLoader,
             CheckpointRecoveryFactory recoveryFactory,
             Logger log,
             JobID jobId)
             throws Exception {
         int maxNumberOfCheckpointsToRetain =
-                jobManagerConfig.getInteger(CheckpointingOptions.MAX_RETAINED_CHECKPOINTS);
+                jobManagerConfig.get(CheckpointingOptions.MAX_RETAINED_CHECKPOINTS);
 
         if (maxNumberOfCheckpointsToRetain <= 0) {
             // warning and use 1 as the default value if the setting in

@@ -22,6 +22,8 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -52,5 +54,12 @@ public final class PlannerConfiguration implements ReadableConfig {
             return tableValue;
         }
         return executorConfig.getOptional(option);
+    }
+
+    @Override
+    public Map<String, String> toMap() {
+        final Map<String, String> map = new HashMap<>(executorConfig.toMap());
+        map.putAll(tableConfig.toMap());
+        return map;
     }
 }

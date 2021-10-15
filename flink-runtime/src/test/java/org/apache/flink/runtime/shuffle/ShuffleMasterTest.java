@@ -21,7 +21,10 @@ package org.apache.flink.runtime.shuffle;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.configuration.ConfigOption;
+import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.runtime.io.network.NettyShuffleServiceFactory;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
@@ -54,7 +57,8 @@ import static org.junit.Assert.assertTrue;
 /** Tests for {@link ShuffleMaster}. */
 public class ShuffleMasterTest extends TestLogger {
 
-    private static final String STOP_TRACKING_PARTITION_KEY = "stop_tracking_partition_key";
+    private static final ConfigOption<Boolean> STOP_TRACKING_PARTITION_KEY =
+            ConfigOptions.key("stop_tracking_partition_key").booleanType().defaultValue(false);
 
     private static final String PARTITION_REGISTRATION_EVENT = "registerPartitionWithProducer";
 
@@ -162,9 +166,9 @@ public class ShuffleMasterTest extends TestLogger {
 
         private final boolean stopTrackingPartition;
 
-        public TestShuffleMaster(Configuration conf) {
+        public TestShuffleMaster(ReadableConfig conf) {
             super(conf);
-            this.stopTrackingPartition = conf.getBoolean(STOP_TRACKING_PARTITION_KEY, false);
+            this.stopTrackingPartition = conf.get(STOP_TRACKING_PARTITION_KEY);
             currentInstance.set(this);
         }
 

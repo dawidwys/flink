@@ -20,6 +20,7 @@ package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobWriter;
 import org.apache.flink.runtime.checkpoint.CheckpointCoordinator;
 import org.apache.flink.runtime.checkpoint.CheckpointIDCounter;
@@ -48,7 +49,7 @@ import java.util.concurrent.ScheduledExecutorService;
 /** Default {@link ExecutionGraphFactory} implementation. */
 public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
     private final ClassLoader userCodeClassLoader;
     private final ExecutionDeploymentTracker executionDeploymentTracker;
     private final ScheduledExecutorService futureExecutor;
@@ -60,7 +61,7 @@ public class DefaultExecutionGraphFactory implements ExecutionGraphFactory {
     private final JobMasterPartitionTracker jobMasterPartitionTracker;
 
     public DefaultExecutionGraphFactory(
-            Configuration configuration,
+            ReadableConfig configuration,
             ClassLoader userCodeClassLoader,
             ExecutionDeploymentTracker executionDeploymentTracker,
             ScheduledExecutorService futureExecutor,

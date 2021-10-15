@@ -23,6 +23,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SchedulerExecutionMode;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.queryablestate.KvStateID;
@@ -205,7 +206,7 @@ public class AdaptiveScheduler
 
     public AdaptiveScheduler(
             JobGraph jobGraph,
-            Configuration configuration,
+            ReadableConfig configuration,
             DeclarativeSlotPool declarativeSlotPool,
             SlotAllocator slotAllocator,
             Executor ioExecutor,

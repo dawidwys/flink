@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
 import org.apache.flink.runtime.jobgraph.JobGraph;
@@ -57,7 +57,7 @@ public class TestingJobManagerRunnerFactory implements JobManagerRunnerFactory {
     @Override
     public TestingJobManagerRunner createJobManagerRunner(
             JobGraph jobGraph,
-            Configuration configuration,
+            ReadableConfig configuration,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
             HeartbeatServices heartbeatServices,

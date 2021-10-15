@@ -21,7 +21,7 @@ package org.apache.flink.runtime.scheduler;
 
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
@@ -107,7 +107,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
             final Logger log,
             final JobGraph jobGraph,
             final Executor ioExecutor,
-            final Configuration jobMasterConfiguration,
+            final ReadableConfig jobMasterConfiguration,
             final Consumer<ComponentMainThreadExecutor> startUpAction,
             final ScheduledExecutor delayExecutor,
             final ClassLoader userCodeLoader,

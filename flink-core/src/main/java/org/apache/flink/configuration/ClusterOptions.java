@@ -149,7 +149,7 @@ public class ClusterOptions {
                                     UncaughtExceptionHandleMode.LOG.name(),
                                     UncaughtExceptionHandleMode.FAIL.name()));
 
-    public static JobManagerOptions.SchedulerType getSchedulerType(Configuration configuration) {
+    public static JobManagerOptions.SchedulerType getSchedulerType(ReadableConfig configuration) {
         if (isAdaptiveSchedulerEnabled(configuration) || isReactiveModeEnabled(configuration)) {
             return JobManagerOptions.SchedulerType.Adaptive;
         } else {
@@ -157,12 +157,12 @@ public class ClusterOptions {
         }
     }
 
-    private static boolean isReactiveModeEnabled(Configuration configuration) {
+    private static boolean isReactiveModeEnabled(ReadableConfig configuration) {
         return configuration.get(JobManagerOptions.SCHEDULER_MODE)
                 == SchedulerExecutionMode.REACTIVE;
     }
 
-    public static boolean isAdaptiveSchedulerEnabled(Configuration configuration) {
+    public static boolean isAdaptiveSchedulerEnabled(ReadableConfig configuration) {
         if (configuration.contains(JobManagerOptions.SCHEDULER)) {
             return configuration.get(JobManagerOptions.SCHEDULER)
                     == JobManagerOptions.SchedulerType.Adaptive;
@@ -171,7 +171,7 @@ public class ClusterOptions {
         }
     }
 
-    public static boolean isFineGrainedResourceManagementEnabled(Configuration configuration) {
+    public static boolean isFineGrainedResourceManagementEnabled(ReadableConfig configuration) {
         if (configuration.contains(ENABLE_FINE_GRAINED_RESOURCE_MANAGEMENT)) {
             return configuration.get(ENABLE_FINE_GRAINED_RESOURCE_MANAGEMENT);
         } else {

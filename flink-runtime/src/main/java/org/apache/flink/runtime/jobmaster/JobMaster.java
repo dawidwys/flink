@@ -287,7 +287,7 @@ public class JobMaster extends PermanentlyFencedRpcEndpoint<JobMasterId>
         this.retrieveTaskManagerHostName =
                 jobMasterConfiguration
                         .getConfiguration()
-                        .getBoolean(JobManagerOptions.RETRIEVE_TASK_MANAGER_HOSTNAME);
+                        .get(JobManagerOptions.RETRIEVE_TASK_MANAGER_HOSTNAME);
 
         final String jobName = jobGraph.getName();
         final JobID jid = jobGraph.getJobID();

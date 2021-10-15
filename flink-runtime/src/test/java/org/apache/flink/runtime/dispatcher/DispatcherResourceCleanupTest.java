@@ -23,6 +23,7 @@ import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.BlobServerOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.testutils.FlinkMatchers;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.blob.BlobKey;
@@ -677,7 +678,7 @@ public class DispatcherResourceCleanupTest extends TestLogger {
         @Override
         public JobManagerRunner createJobManagerRunner(
                 JobGraph jobGraph,
-                Configuration configuration,
+                ReadableConfig configuration,
                 RpcService rpcService,
                 HighAvailabilityServices highAvailabilityServices,
                 HeartbeatServices heartbeatServices,
@@ -703,7 +704,7 @@ public class DispatcherResourceCleanupTest extends TestLogger {
         @Override
         public JobManagerRunner createJobManagerRunner(
                 JobGraph jobGraph,
-                Configuration configuration,
+                ReadableConfig configuration,
                 RpcService rpcService,
                 HighAvailabilityServices highAvailabilityServices,
                 HeartbeatServices heartbeatServices,

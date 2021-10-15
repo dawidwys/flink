@@ -17,7 +17,7 @@
 
 package org.apache.flink.runtime.scheduler.adaptive.scalingpolicy;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 import static org.apache.flink.configuration.JobManagerOptions.MIN_PARALLELISM_INCREASE;
 
@@ -29,7 +29,7 @@ public class ReactiveScaleUpController implements ScaleUpController {
 
     private final int minParallelismIncrease;
 
-    public ReactiveScaleUpController(Configuration configuration) {
+    public ReactiveScaleUpController(ReadableConfig configuration) {
         minParallelismIncrease = configuration.get(MIN_PARALLELISM_INCREASE);
     }
 

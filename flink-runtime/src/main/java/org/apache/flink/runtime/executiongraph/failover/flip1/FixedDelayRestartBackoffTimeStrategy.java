@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestartStrategyOptions;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -86,9 +87,9 @@ public class FixedDelayRestartBackoffTimeStrategy implements RestartBackoffTimeS
     }
 
     public static FixedDelayRestartBackoffTimeStrategyFactory createFactory(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         int maxAttempts =
-                configuration.getInteger(
+                configuration.get(
                         RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_ATTEMPTS);
         long delay =
                 configuration

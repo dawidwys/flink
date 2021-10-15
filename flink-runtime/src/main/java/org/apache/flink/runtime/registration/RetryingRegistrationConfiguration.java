@@ -20,6 +20,7 @@ package org.apache.flink.runtime.registration;
 
 import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
@@ -72,13 +73,13 @@ public class RetryingRegistrationConfiguration {
     }
 
     public static RetryingRegistrationConfiguration fromConfiguration(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         long initialRegistrationTimeoutMillis =
-                configuration.getLong(ClusterOptions.INITIAL_REGISTRATION_TIMEOUT);
+                configuration.get(ClusterOptions.INITIAL_REGISTRATION_TIMEOUT);
         long maxRegistrationTimeoutMillis =
-                configuration.getLong(ClusterOptions.MAX_REGISTRATION_TIMEOUT);
-        long errorDelayMillis = configuration.getLong(ClusterOptions.ERROR_REGISTRATION_DELAY);
-        long refusedDelayMillis = configuration.getLong(ClusterOptions.REFUSED_REGISTRATION_DELAY);
+                configuration.get(ClusterOptions.MAX_REGISTRATION_TIMEOUT);
+        long errorDelayMillis = configuration.get(ClusterOptions.ERROR_REGISTRATION_DELAY);
+        long refusedDelayMillis = configuration.get(ClusterOptions.REFUSED_REGISTRATION_DELAY);
 
         return new RetryingRegistrationConfiguration(
                 initialRegistrationTimeoutMillis,

@@ -18,9 +18,9 @@
 
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -41,11 +41,11 @@ public final class FailoverStrategyFactoryLoader {
      * @param config which specifies the failover strategy factory to load
      * @return failover strategy factory loaded
      */
-    public static FailoverStrategy.Factory loadFailoverStrategyFactory(final Configuration config) {
+    public static FailoverStrategy.Factory loadFailoverStrategyFactory(final ReadableConfig config) {
         checkNotNull(config);
 
         final String strategyParam =
-                config.getString(JobManagerOptions.EXECUTION_FAILOVER_STRATEGY);
+                config.get(JobManagerOptions.EXECUTION_FAILOVER_STRATEGY);
 
         switch (strategyParam.toLowerCase()) {
             case FULL_RESTART_STRATEGY_NAME:

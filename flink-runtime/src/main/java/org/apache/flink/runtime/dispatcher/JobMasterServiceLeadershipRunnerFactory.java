@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SchedulerExecutionMode;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
@@ -49,7 +49,7 @@ public enum JobMasterServiceLeadershipRunnerFactory implements JobManagerRunnerF
     @Override
     public JobManagerRunner createJobManagerRunner(
             JobGraph jobGraph,
-            Configuration configuration,
+            ReadableConfig configuration,
             RpcService rpcService,
             HighAvailabilityServices highAvailabilityServices,
             HeartbeatServices heartbeatServices,

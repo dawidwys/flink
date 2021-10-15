@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestartStrategyOptions;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.clock.SystemClock;
@@ -109,9 +109,9 @@ public class FailureRateRestartBackoffTimeStrategy implements RestartBackoffTime
     }
 
     public static FailureRateRestartBackoffTimeStrategyFactory createFactory(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         int maxFailuresPerInterval =
-                configuration.getInteger(
+                configuration.get(
                         RestartStrategyOptions
                                 .RESTART_STRATEGY_FAILURE_RATE_MAX_FAILURES_PER_INTERVAL);
         long failuresInterval =

@@ -213,7 +213,7 @@ public class StateBackendLoader {
      */
     private static StateBackend loadFromApplicationOrConfigOrDefaultInternal(
             @Nullable StateBackend fromApplication,
-            Configuration config,
+            ReadableConfig config,
             ClassLoader classLoader,
             @Nullable Logger logger)
             throws IllegalConfigurationException, DynamicCodeLoadingException, IOException {
@@ -286,7 +286,7 @@ public class StateBackendLoader {
     public static StateBackend fromApplicationOrConfigOrDefault(
             @Nullable StateBackend fromApplication,
             TernaryBoolean isChangelogStateBackendEnableFromApplication,
-            Configuration config,
+            ReadableConfig config,
             ClassLoader classLoader,
             @Nullable Logger logger)
             throws IllegalConfigurationException, DynamicCodeLoadingException, IOException {

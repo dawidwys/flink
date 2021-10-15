@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestartStrategyOptions;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.clock.SystemClock;
@@ -161,7 +161,7 @@ public class ExponentialDelayRestartBackoffTimeStrategy implements RestartBackof
     }
 
     public static ExponentialDelayRestartBackoffTimeStrategyFactory createFactory(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         long initialBackoffMS =
                 configuration
                         .get(

@@ -20,9 +20,9 @@ package org.apache.flink.runtime.executiongraph;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.JobException;
@@ -75,7 +75,7 @@ public class DefaultExecutionGraphBuilder {
 
     public static DefaultExecutionGraph buildGraph(
             JobGraph jobGraph,
-            Configuration jobManagerConfig,
+            ReadableConfig jobManagerConfig,
             ScheduledExecutorService futureExecutor,
             Executor ioExecutor,
             ClassLoader classLoader,
@@ -111,7 +111,7 @@ public class DefaultExecutionGraphBuilder {
                         jobGraph.getClasspaths());
 
         final int maxPriorAttemptsHistoryLength =
-                jobManagerConfig.getInteger(JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE);
+                jobManagerConfig.get(JobManagerOptions.MAX_ATTEMPTS_HISTORY_SIZE);
 
         final PartitionGroupReleaseStrategy.Factory partitionGroupReleaseStrategyFactory =
                 PartitionGroupReleaseStrategyFactoryLoader.loadPartitionGroupReleaseStrategyFactory(
@@ -205,7 +205,7 @@ public class DefaultExecutionGraphBuilder {
             JobCheckpointingSettings snapshotSettings = jobGraph.getCheckpointingSettings();
 
             // Maximum number of remembered checkpoints
-            int historySize = jobManagerConfig.getInteger(WebOptions.CHECKPOINTS_HISTORY_SIZE);
+            int historySize = jobManagerConfig.get(WebOptions.CHECKPOINTS_HISTORY_SIZE);
 
             CheckpointStatsTracker checkpointStatsTracker =
                     new CheckpointStatsTracker(

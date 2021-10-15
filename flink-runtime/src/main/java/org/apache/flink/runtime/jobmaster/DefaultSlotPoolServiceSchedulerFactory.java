@@ -25,6 +25,7 @@ import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.ClusterOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.SchedulerExecutionMode;
 import org.apache.flink.runtime.blob.BlobWriter;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
@@ -90,7 +91,7 @@ public final class DefaultSlotPoolServiceSchedulerFactory
             Logger log,
             JobGraph jobGraph,
             Executor ioExecutor,
-            Configuration configuration,
+            ReadableConfig configuration,
             SlotPoolService slotPoolService,
             ScheduledExecutorService futureExecutor,
             ClassLoader userCodeLoader,
@@ -136,14 +137,14 @@ public final class DefaultSlotPoolServiceSchedulerFactory
     }
 
     public static DefaultSlotPoolServiceSchedulerFactory fromConfiguration(
-            Configuration configuration, JobType jobType) {
+            ReadableConfig configuration, JobType jobType) {
 
         final Time rpcTimeout =
                 Time.fromDuration(configuration.get(AkkaOptions.ASK_TIMEOUT_DURATION));
         final Time slotIdleTimeout =
-                Time.milliseconds(configuration.getLong(JobManagerOptions.SLOT_IDLE_TIMEOUT));
+                Time.milliseconds(configuration.get(JobManagerOptions.SLOT_IDLE_TIMEOUT));
         final Time batchSlotTimeout =
-                Time.milliseconds(configuration.getLong(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
+                Time.milliseconds(configuration.get(JobManagerOptions.SLOT_REQUEST_TIMEOUT));
 
         final SlotPoolServiceFactory slotPoolServiceFactory;
         final SchedulerNGFactory schedulerNGFactory;
@@ -185,7 +186,7 @@ public final class DefaultSlotPoolServiceSchedulerFactory
     }
 
     private static AdaptiveSchedulerFactory getAdaptiveSchedulerFactoryFromConfiguration(
-            Configuration configuration) {
+            ReadableConfig configuration) {
         Duration allocationTimeoutDefault = JobManagerOptions.RESOURCE_WAIT_TIMEOUT.defaultValue();
         Duration stabilizationTimeoutDefault =
                 JobManagerOptions.RESOURCE_STABILIZATION_TIMEOUT.defaultValue();

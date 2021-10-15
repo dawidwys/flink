@@ -23,7 +23,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.queryablestate.KvStateID;
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot;
@@ -154,7 +154,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
             final Logger log,
             final JobGraph jobGraph,
             final Executor ioExecutor,
-            final Configuration jobMasterConfiguration,
+            final ReadableConfig jobMasterConfiguration,
             final ClassLoader userCodeLoader,
             final CheckpointRecoveryFactory checkpointRecoveryFactory,
             final JobManagerJobMetricGroup jobManagerJobMetricGroup,
@@ -212,7 +212,7 @@ public abstract class SchedulerBase implements SchedulerNG, CheckpointScheduling
 
         this.exceptionHistory =
                 new BoundedFIFOQueue<>(
-                        jobMasterConfiguration.getInteger(WebOptions.MAX_EXCEPTION_HISTORY_SIZE));
+                        jobMasterConfiguration.get(WebOptions.MAX_EXCEPTION_HISTORY_SIZE));
     }
 
     private void shutDownCheckpointServices(JobStatus jobStatus) {

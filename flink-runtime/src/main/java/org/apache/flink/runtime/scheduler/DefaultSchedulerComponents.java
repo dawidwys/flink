@@ -22,7 +22,7 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.ClusterOptions;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.jobgraph.JobType;
 import org.apache.flink.runtime.jobmaster.slotpool.LocationPreferenceSlotSelectionStrategy;
@@ -76,7 +76,7 @@ public class DefaultSchedulerComponents {
     static DefaultSchedulerComponents createSchedulerComponents(
             final JobType jobType,
             final boolean isApproximateLocalRecoveryEnabled,
-            final Configuration jobMasterConfiguration,
+            final ReadableConfig jobMasterConfiguration,
             final SlotPool slotPool,
             final Time slotRequestTimeout) {
 
@@ -89,7 +89,7 @@ public class DefaultSchedulerComponents {
 
     private static DefaultSchedulerComponents createPipelinedRegionSchedulerComponents(
             final JobType jobType,
-            final Configuration jobMasterConfiguration,
+            final ReadableConfig jobMasterConfiguration,
             final SlotPool slotPool,
             final Time slotRequestTimeout) {
 
@@ -113,9 +113,9 @@ public class DefaultSchedulerComponents {
     }
 
     private static SlotSelectionStrategy selectSlotSelectionStrategy(
-            final Configuration configuration) {
+            final ReadableConfig configuration) {
         final boolean evenlySpreadOutSlots =
-                configuration.getBoolean(ClusterOptions.EVENLY_SPREAD_OUT_SLOTS_STRATEGY);
+                configuration.get(ClusterOptions.EVENLY_SPREAD_OUT_SLOTS_STRATEGY);
 
         final SlotSelectionStrategy locationPreferenceSlotSelectionStrategy;
 
@@ -124,7 +124,7 @@ public class DefaultSchedulerComponents {
                         ? LocationPreferenceSlotSelectionStrategy.createEvenlySpreadOut()
                         : LocationPreferenceSlotSelectionStrategy.createDefault();
 
-        return configuration.getBoolean(CheckpointingOptions.LOCAL_RECOVERY)
+        return configuration.get(CheckpointingOptions.LOCAL_RECOVERY)
                 ? PreviousAllocationSlotSelectionStrategy.create(
                         locationPreferenceSlotSelectionStrategy)
                 : locationPreferenceSlotSelectionStrategy;

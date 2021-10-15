@@ -25,6 +25,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies.FallbackRes
 import org.apache.flink.api.common.restartstrategy.RestartStrategies.FixedDelayRestartStrategyConfiguration;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies.NoRestartStrategyConfiguration;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestartStrategyOptions;
 
 import java.time.Duration;
@@ -65,7 +66,7 @@ public final class RestartBackoffTimeStrategyFactoryLoader {
      */
     public static RestartBackoffTimeStrategy.Factory createRestartBackoffTimeStrategyFactory(
             final RestartStrategies.RestartStrategyConfiguration jobRestartStrategyConfiguration,
-            final Configuration clusterConfiguration,
+            final ReadableConfig clusterConfiguration,
             final boolean isCheckpointingEnabled) {
 
         checkNotNull(jobRestartStrategyConfiguration);
@@ -124,10 +125,10 @@ public final class RestartBackoffTimeStrategyFactoryLoader {
     }
 
     private static Optional<RestartBackoffTimeStrategy.Factory> getClusterRestartStrategyFactory(
-            final Configuration clusterConfiguration) {
+            final ReadableConfig clusterConfiguration) {
 
         final String restartStrategyName =
-                clusterConfiguration.getString(RestartStrategyOptions.RESTART_STRATEGY);
+                clusterConfiguration.get(RestartStrategyOptions.RESTART_STRATEGY);
         if (restartStrategyName == null) {
             return Optional.empty();
         }
