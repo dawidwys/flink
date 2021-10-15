@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
@@ -38,7 +38,7 @@ public class PartialDispatcherServicesWithJobGraphStore extends PartialDispatche
     @Nonnull private final JobGraphWriter jobGraphWriter;
 
     public PartialDispatcherServicesWithJobGraphStore(
-            @Nonnull Configuration configuration,
+            @Nonnull ReadableConfig configuration,
             @Nonnull HighAvailabilityServices highAvailabilityServices,
             @Nonnull GatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever,
             @Nonnull BlobServer blobServer,

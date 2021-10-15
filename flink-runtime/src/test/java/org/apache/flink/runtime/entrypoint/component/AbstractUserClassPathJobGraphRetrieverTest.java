@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.entrypoint.component;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.FileUtilsTest;
@@ -49,7 +49,7 @@ public class AbstractUserClassPathJobGraphRetrieverTest extends TestLogger {
         }
 
         @Override
-        public JobGraph retrieveJobGraph(Configuration configuration) {
+        public JobGraph retrieveJobGraph(ReadableConfig configuration) {
             throw new UnsupportedOperationException("This method should not be called.");
         }
     }

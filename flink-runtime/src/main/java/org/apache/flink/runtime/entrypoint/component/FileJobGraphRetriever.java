@@ -21,6 +21,7 @@ package org.apache.flink.runtime.entrypoint.component;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.util.FlinkException;
 
@@ -56,7 +57,7 @@ public class FileJobGraphRetriever extends AbstractUserClassPathJobGraphRetrieve
     }
 
     @Override
-    public JobGraph retrieveJobGraph(Configuration configuration) throws FlinkException {
+    public JobGraph retrieveJobGraph(ReadableConfig configuration) throws FlinkException {
         final File fp = new File(jobGraphFile);
 
         try (FileInputStream input = new FileInputStream(fp);

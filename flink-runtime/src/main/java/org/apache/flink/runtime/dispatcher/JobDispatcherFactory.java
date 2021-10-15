@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.entrypoint.ClusterEntrypoint;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.rpc.RpcService;
@@ -43,9 +43,9 @@ public enum JobDispatcherFactory implements DispatcherFactory {
             throws Exception {
         final JobGraph jobGraph = Iterables.getOnlyElement(recoveredJobs);
 
-        final Configuration configuration =
+        final ReadableConfig configuration =
                 partialDispatcherServicesWithJobGraphStore.getConfiguration();
-        final String executionModeValue = configuration.getString(INTERNAL_CLUSTER_EXECUTION_MODE);
+        final String executionModeValue = configuration.get(INTERNAL_CLUSTER_EXECUTION_MODE);
         final ClusterEntrypoint.ExecutionMode executionMode =
                 ClusterEntrypoint.ExecutionMode.valueOf(executionModeValue);
 

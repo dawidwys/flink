@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.scheduler.ExecutionGraphInfo;
@@ -40,8 +40,8 @@ public interface HistoryServerArchivist {
     CompletableFuture<Acknowledge> archiveExecutionGraph(ExecutionGraphInfo executionGraphInfo);
 
     static HistoryServerArchivist createHistoryServerArchivist(
-            Configuration configuration, JsonArchivist jsonArchivist, Executor ioExecutor) {
-        final String configuredArchivePath = configuration.getString(JobManagerOptions.ARCHIVE_DIR);
+            ReadableConfig configuration, JsonArchivist jsonArchivist, Executor ioExecutor) {
+        final String configuredArchivePath = configuration.get(JobManagerOptions.ARCHIVE_DIR);
 
         if (configuredArchivePath != null) {
             final Path archivePath = new Path(configuredArchivePath);
