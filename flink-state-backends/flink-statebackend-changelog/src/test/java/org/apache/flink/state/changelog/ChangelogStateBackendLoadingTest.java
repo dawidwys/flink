@@ -84,7 +84,7 @@ public class ChangelogStateBackendLoadingTest {
                 StateBackendLoader.fromApplicationOrConfigOrDefault(
                         null, TernaryBoolean.UNDEFINED, config(), cl, null);
         final CheckpointStorage storage =
-                CheckpointStorageLoader.load(null, null, backend, config(), cl, null);
+                CheckpointStorageLoader.load(null, backend, config(), cl, null);
 
         assertTrue(backend instanceof HashMapStateBackend);
     }
@@ -97,7 +97,7 @@ public class ChangelogStateBackendLoadingTest {
                 StateBackendLoader.fromApplicationOrConfigOrDefault(
                         appBackend, TernaryBoolean.UNDEFINED, config("rocksdb", true), cl, null);
         final CheckpointStorage storage =
-                CheckpointStorageLoader.load(null, null, backend, config(), cl, null);
+                CheckpointStorageLoader.load(null, backend, config(), cl, null);
 
         assertDelegateStateBackend(
                 backend, MockStateBackend.class, storage, MockStateBackend.class);
@@ -114,7 +114,7 @@ public class ChangelogStateBackendLoadingTest {
                 StateBackendLoader.fromApplicationOrConfigOrDefault(
                         appBackend, TernaryBoolean.TRUE, config("rocksdb", false), cl, null);
         final CheckpointStorage storage =
-                CheckpointStorageLoader.load(null, null, backend, config(), cl, null);
+                CheckpointStorageLoader.load(null, backend, config(), cl, null);
 
         assertDelegateStateBackend(
                 backend, MockStateBackend.class, storage, MockStateBackend.class);
@@ -129,7 +129,7 @@ public class ChangelogStateBackendLoadingTest {
                 StateBackendLoader.fromApplicationOrConfigOrDefault(
                         null, TernaryBoolean.TRUE, config(false), cl, null);
         final CheckpointStorage storage =
-                CheckpointStorageLoader.load(null, null, backend, config(), cl, null);
+                CheckpointStorageLoader.load(null, backend, config(), cl, null);
 
         assertDelegateStateBackend(
                 backend, HashMapStateBackend.class, storage, JobManagerCheckpointStorage.class);
@@ -305,7 +305,7 @@ public class ChangelogStateBackendLoadingTest {
         }
 
         final CheckpointStorage storage =
-                CheckpointStorageLoader.load(null, null, backend, config, cl, null);
+                CheckpointStorageLoader.load(null, backend, config, cl, null);
 
         assertDelegateStateBackend(backend, delegatedStateBackendClass, storage, storageClass);
     }

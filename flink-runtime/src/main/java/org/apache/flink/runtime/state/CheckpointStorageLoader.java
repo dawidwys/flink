@@ -157,7 +157,6 @@ public class CheckpointStorageLoader {
      */
     public static CheckpointStorage load(
             @Nullable CheckpointStorage fromApplication,
-            @Nullable Path defaultSavepointDirectory,
             StateBackend configuredStateBackend,
             Configuration config,
             ClassLoader classLoader,
@@ -167,16 +166,6 @@ public class CheckpointStorageLoader {
         Preconditions.checkNotNull(config, "config");
         Preconditions.checkNotNull(classLoader, "classLoader");
         Preconditions.checkNotNull(configuredStateBackend, "statebackend");
-
-        if (defaultSavepointDirectory != null) {
-            // If a savepoint directory was manually specified in code
-            // we override any value set in the flink-conf. This allows
-            // us to pass this value to the CheckpointStorage instance
-            // where it is needed at runtime while keeping its API logically
-            // separated for users.
-            config.set(
-                    CheckpointingOptions.SAVEPOINT_DIRECTORY, defaultSavepointDirectory.toString());
-        }
 
         // Legacy state backends always take precedence for backwards compatibility.
         StateBackend rootStateBackend =

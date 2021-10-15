@@ -268,7 +268,6 @@ public class DefaultExecutionGraphBuilder {
                 rootStorage =
                         CheckpointStorageLoader.load(
                                 applicationConfiguredStorage,
-                                null,
                                 rootBackend,
                                 jobManagerConfig,
                                 classLoader,

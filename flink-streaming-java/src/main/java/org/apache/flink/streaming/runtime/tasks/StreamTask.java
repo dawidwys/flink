@@ -20,6 +20,7 @@ package org.apache.flink.streaming.runtime.tasks;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.operators.MailboxExecutor;
+import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.fs.CloseableRegistry;
@@ -1496,13 +1497,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                 configuration.getCheckpointStorage(getUserCodeClassLoader());
         final Path savepointDir = configuration.getSavepointDir(getUserCodeClassLoader());
 
+        final Configuration taskManagerConfiguration =
+                getEnvironment().getTaskManagerInfo().getConfiguration();
+        if (savepointDir != null) {
+            // If a savepoint directory was manually specified in code
+            // we override any value set in the flink-conf. This allows
+            // us to pass this value to the CheckpointStorage instance
+            // where it is needed at runtime while keeping its API logically
+            // separated for users.
+            taskManagerConfiguration.set(
+                    CheckpointingOptions.SAVEPOINT_DIRECTORY, savepointDir.toString());
+        }
         return CheckpointStorageLoader.load(
-                fromApplication,
-                savepointDir,
-                backend,
-                getEnvironment().getTaskManagerInfo().getConfiguration(),
-                getUserCodeClassLoader(),
-                LOG);
+                fromApplication, backend, taskManagerConfiguration, getUserCodeClassLoader(), LOG);
     }
 
     /**
