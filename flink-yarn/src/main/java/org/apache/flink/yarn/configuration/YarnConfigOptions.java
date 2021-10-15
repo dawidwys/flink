@@ -19,6 +19,7 @@
 package org.apache.flink.yarn.configuration;
 
 import org.apache.flink.configuration.ConfigOption;
+import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.DescribedEnum;
 import org.apache.flink.configuration.ExternalResourceOptions;
 import org.apache.flink.configuration.SecurityOptions;
@@ -39,6 +40,13 @@ import static org.apache.flink.yarn.configuration.YarnConfigOptions.UserJarInclu
  * <p>These options are not expected to be ever configured by users explicitly.
  */
 public class YarnConfigOptions {
+
+    /** Template for the YARN container start invocation. */
+    public static final ConfigOption<String> YARN_CONTAINER_START_COMMAND_TEMPLATE =
+            ConfigOptions.key("yarn.container-start-command-template")
+                    .stringType()
+                    .defaultValue("%java% %jvmmem% %jvmopts% %logging% %class% %args% %redirects%")
+                    .withDescription("Template for the YARN container start invocation.");
 
     /** The vcores used by YARN application master. */
     public static final ConfigOption<Integer> APP_MASTER_VCORES =

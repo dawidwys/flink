@@ -1741,7 +1741,7 @@ public class YarnClusterDescriptor implements ClusterDescriptor<ApplicationId> {
                         ConfigConstants.YARN_CONTAINER_START_COMMAND_TEMPLATE,
                         ConfigConstants.DEFAULT_YARN_CONTAINER_START_COMMAND_TEMPLATE);
         final String amCommand =
-                BootstrapTools.getStartCommand(commandTemplate, startCommandValues);
+                Utils.getStartCommand(commandTemplate, startCommandValues);
 
         amContainer.setCommands(Collections.singletonList(amCommand));
 
