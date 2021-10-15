@@ -23,6 +23,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.runtime.blob.TransientBlobService;
 import org.apache.flink.runtime.leaderelection.LeaderContender;
@@ -175,7 +176,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
         implements LeaderContender, JsonArchivist {
 
     protected final GatewayRetriever<? extends T> leaderRetriever;
-    protected final Configuration clusterConfiguration;
+    protected final ReadableConfig clusterConfiguration;
     protected final RestHandlerConfiguration restConfiguration;
     private final GatewayRetriever<ResourceManagerGateway> resourceManagerRetriever;
     private final TransientBlobService transientBlobService;
@@ -198,7 +199,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 
     public WebMonitorEndpoint(
             GatewayRetriever<? extends T> leaderRetriever,
-            Configuration clusterConfiguration,
+            ReadableConfig clusterConfiguration,
             RestHandlerConfiguration restConfiguration,
             GatewayRetriever<ResourceManagerGateway> resourceManagerRetriever,
             TransientBlobService transientBlobService,
@@ -243,12 +244,12 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
                         restConfiguration.getTimeout())
                 .setCoordinator(threadInfoRequestCoordinator)
                 .setCleanUpInterval(flameGraphCleanUpInterval)
-                .setNumSamples(clusterConfiguration.getInteger(RestOptions.FLAMEGRAPH_NUM_SAMPLES))
+                .setNumSamples(clusterConfiguration.get(RestOptions.FLAMEGRAPH_NUM_SAMPLES))
                 .setStatsRefreshInterval(
                         clusterConfiguration.get(RestOptions.FLAMEGRAPH_REFRESH_INTERVAL))
                 .setDelayBetweenSamples(clusterConfiguration.get(RestOptions.FLAMEGRAPH_DELAY))
                 .setMaxThreadInfoDepth(
-                        clusterConfiguration.getInteger(RestOptions.FLAMEGRAPH_STACK_TRACE_DEPTH))
+                        clusterConfiguration.get(RestOptions.FLAMEGRAPH_STACK_TRACE_DEPTH))
                 .build();
     }
 
@@ -485,7 +486,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
                 new JobExecutionResultHandler(leaderRetriever, timeout, responseHeaders);
 
         final String defaultSavepointDir =
-                clusterConfiguration.getString(CheckpointingOptions.SAVEPOINT_DIRECTORY);
+                clusterConfiguration.get(CheckpointingOptions.SAVEPOINT_DIRECTORY);
 
         final SavepointHandlers savepointHandlers = new SavepointHandlers(defaultSavepointDir);
 

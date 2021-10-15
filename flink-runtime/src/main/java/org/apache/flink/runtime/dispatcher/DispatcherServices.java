@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.dispatcher;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
@@ -36,7 +36,7 @@ import java.util.concurrent.Executor;
 /** {@link Dispatcher} services container. */
 public class DispatcherServices {
 
-    @Nonnull private final Configuration configuration;
+    @Nonnull private final ReadableConfig configuration;
 
     @Nonnull private final HighAvailabilityServices highAvailabilityServices;
 
@@ -63,7 +63,7 @@ public class DispatcherServices {
     @Nonnull private final Executor ioExecutor;
 
     public DispatcherServices(
-            @Nonnull Configuration configuration,
+            @Nonnull ReadableConfig configuration,
             @Nonnull HighAvailabilityServices highAvailabilityServices,
             @Nonnull GatewayRetriever<ResourceManagerGateway> resourceManagerGatewayRetriever,
             @Nonnull BlobServer blobServer,
@@ -92,7 +92,7 @@ public class DispatcherServices {
     }
 
     @Nonnull
-    public Configuration getConfiguration() {
+    public ReadableConfig getConfiguration() {
         return configuration;
     }
 

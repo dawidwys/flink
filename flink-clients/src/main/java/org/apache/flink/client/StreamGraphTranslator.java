@@ -20,7 +20,7 @@
 package org.apache.flink.client;
 
 import org.apache.flink.api.dag.Pipeline;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 
@@ -42,7 +42,7 @@ public class StreamGraphTranslator implements FlinkPipelineTranslator {
 
     @Override
     public JobGraph translateToJobGraph(
-            Pipeline pipeline, Configuration optimizerConfiguration, int defaultParallelism) {
+            Pipeline pipeline, ReadableConfig optimizerConfiguration, int defaultParallelism) {
         checkArgument(
                 pipeline instanceof StreamGraph, "Given pipeline is not a DataStream StreamGraph.");
 

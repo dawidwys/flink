@@ -20,6 +20,7 @@ package org.apache.flink.runtime.rest.messages;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rest.handler.cluster.ClusterConfigHandler;
 
 import java.util.ArrayList;
@@ -41,11 +42,12 @@ public class ClusterConfigurationInfo extends ArrayList<ClusterConfigurationInfo
         super(initialEntries);
     }
 
-    public static ClusterConfigurationInfo from(Configuration config) {
+    public static ClusterConfigurationInfo from(ReadableConfig config) {
+        final Map<String, String> properties = config.toMap();
         final ClusterConfigurationInfo clusterConfig =
-                new ClusterConfigurationInfo(config.keySet().size());
+                new ClusterConfigurationInfo(properties.size());
         final Map<String, String> configurationWithHiddenSensitiveValues =
-                ConfigurationUtils.hideSensitiveValues(config.toMap());
+                ConfigurationUtils.hideSensitiveValues(properties);
 
         for (Map.Entry<String, String> keyValuePair :
                 configurationWithHiddenSensitiveValues.entrySet()) {

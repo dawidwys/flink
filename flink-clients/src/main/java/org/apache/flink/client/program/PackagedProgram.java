@@ -21,6 +21,7 @@ package org.apache.flink.client.program;
 import org.apache.flink.api.common.ProgramDescription;
 import org.apache.flink.client.ClientUtils;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.security.FlinkSecurityManager;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.util.InstantiationUtil;
@@ -116,7 +117,7 @@ public class PackagedProgram implements AutoCloseable {
             @Nullable File jarFile,
             List<URL> classpaths,
             @Nullable String entryPointClassName,
-            Configuration configuration,
+            ReadableConfig configuration,
             SavepointRestoreSettings savepointRestoreSettings,
             String... args)
             throws ProgramInvocationException {
@@ -648,7 +649,7 @@ public class PackagedProgram implements AutoCloseable {
 
         private List<URL> userClassPaths = Collections.emptyList();
 
-        private Configuration configuration = new Configuration();
+        private ReadableConfig configuration = new Configuration();
 
         private SavepointRestoreSettings savepointRestoreSettings = SavepointRestoreSettings.none();
 
@@ -672,7 +673,7 @@ public class PackagedProgram implements AutoCloseable {
             return this;
         }
 
-        public Builder setConfiguration(Configuration configuration) {
+        public Builder setConfiguration(ReadableConfig configuration) {
             this.configuration = configuration;
             return this;
         }

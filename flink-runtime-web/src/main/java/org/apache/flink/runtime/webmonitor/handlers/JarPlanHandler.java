@@ -21,6 +21,7 @@ package org.apache.flink.runtime.webmonitor.handlers;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.jsonplan.JsonPlanGenerator;
 import org.apache.flink.runtime.rest.handler.AbstractRestHandler;
@@ -49,7 +50,7 @@ public class JarPlanHandler
 
     private final Path jarDir;
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final Executor executor;
 
@@ -62,7 +63,7 @@ public class JarPlanHandler
             final MessageHeaders<JarPlanRequestBody, JobPlanInfo, JarPlanMessageParameters>
                     messageHeaders,
             final Path jarDir,
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final Executor executor) {
         this(
                 leaderRetriever,
@@ -82,7 +83,7 @@ public class JarPlanHandler
             final MessageHeaders<JarPlanRequestBody, JobPlanInfo, JarPlanMessageParameters>
                     messageHeaders,
             final Path jarDir,
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final Executor executor,
             final Function<JobGraph, JobPlanInfo> planGenerator) {
         super(leaderRetriever, timeout, responseHeaders, messageHeaders);

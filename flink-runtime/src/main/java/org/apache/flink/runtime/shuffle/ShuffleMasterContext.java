@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.shuffle;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 
 /**
  * Shuffle context used to create {@link ShuffleMaster}. It can work as a proxy to other cluster
@@ -29,7 +29,7 @@ import org.apache.flink.configuration.Configuration;
 public interface ShuffleMasterContext {
 
     /** @return the cluster configuration. */
-    Configuration getConfiguration();
+    ReadableConfig getConfiguration();
 
     /** Handles the fatal error if any. */
     void onFatalError(Throwable throwable);

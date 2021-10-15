@@ -28,6 +28,7 @@ import org.apache.flink.client.program.rest.retry.WaitStrategy;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.DeploymentOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.execution.PipelineExecutorServiceLoader;
 import org.apache.flink.runtime.client.JobInitializationException;
 import org.apache.flink.runtime.execution.librarycache.FlinkUserCodeClassLoaders;
@@ -54,7 +55,7 @@ public enum ClientUtils {
     private static final Logger LOG = LoggerFactory.getLogger(ClientUtils.class);
 
     public static URLClassLoader buildUserCodeClassLoader(
-            List<URL> jars, List<URL> classpaths, ClassLoader parent, Configuration configuration) {
+            List<URL> jars, List<URL> classpaths, ClassLoader parent, ReadableConfig configuration) {
         URL[] urls = new URL[jars.size() + classpaths.size()];
         for (int i = 0; i < jars.size(); i++) {
             urls[i] = jars.get(i);
@@ -65,11 +66,11 @@ public enum ClientUtils {
         final String[] alwaysParentFirstLoaderPatterns =
                 CoreOptions.getParentFirstLoaderPatterns(configuration);
         final String classLoaderResolveOrder =
-                configuration.getString(CoreOptions.CLASSLOADER_RESOLVE_ORDER);
+                configuration.get(CoreOptions.CLASSLOADER_RESOLVE_ORDER);
         FlinkUserCodeClassLoaders.ResolveOrder resolveOrder =
                 FlinkUserCodeClassLoaders.ResolveOrder.fromString(classLoaderResolveOrder);
         final boolean checkClassloaderLeak =
-                configuration.getBoolean(CoreOptions.CHECK_LEAKED_CLASSLOADER);
+                configuration.get(CoreOptions.CHECK_LEAKED_CLASSLOADER);
         return FlinkUserCodeClassLoaders.create(
                 resolveOrder,
                 urls,

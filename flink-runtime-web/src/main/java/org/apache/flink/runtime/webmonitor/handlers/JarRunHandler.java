@@ -24,6 +24,7 @@ import org.apache.flink.client.deployment.application.executors.EmbeddedExecutor
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DeploymentOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.rest.handler.AbstractRestHandler;
@@ -56,7 +57,7 @@ public class JarRunHandler
 
     private final Path jarDir;
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final ApplicationRunner applicationRunner;
 
@@ -69,7 +70,7 @@ public class JarRunHandler
             final MessageHeaders<JarRunRequestBody, JarRunResponseBody, JarRunMessageParameters>
                     messageHeaders,
             final Path jarDir,
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final Executor executor,
             final Supplier<ApplicationRunner> applicationRunnerSupplier) {
         super(leaderRetriever, timeout, responseHeaders, messageHeaders);
@@ -87,7 +88,7 @@ public class JarRunHandler
             @Nonnull final DispatcherGateway gateway)
             throws RestHandlerException {
 
-        final Configuration effectiveConfiguration = new Configuration(configuration);
+        final Configuration effectiveConfiguration = Configuration.fromMap(configuration.toMap());
         effectiveConfiguration.set(DeploymentOptions.ATTACHED, false);
         effectiveConfiguration.set(DeploymentOptions.TARGET, EmbeddedExecutor.NAME);
 

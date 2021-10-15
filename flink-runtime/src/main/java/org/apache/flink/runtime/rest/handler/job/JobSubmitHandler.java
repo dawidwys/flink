@@ -21,6 +21,7 @@ package org.apache.flink.runtime.rest.handler.job;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.blob.BlobClient;
 import org.apache.flink.runtime.client.ClientUtils;
@@ -65,14 +66,14 @@ public final class JobSubmitHandler
     private static final String FILE_TYPE_ARTIFACT = "Artifact";
 
     private final Executor executor;
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     public JobSubmitHandler(
             GatewayRetriever<? extends DispatcherGateway> leaderRetriever,
             Time timeout,
             Map<String, String> headers,
             Executor executor,
-            Configuration configuration) {
+            ReadableConfig configuration) {
         super(leaderRetriever, timeout, headers, JobSubmitHeaders.getInstance());
         this.executor = executor;
         this.configuration = configuration;
@@ -183,7 +184,7 @@ public final class JobSubmitHandler
             CompletableFuture<JobGraph> jobGraphFuture,
             Collection<Path> jarFiles,
             Collection<Tuple2<String, Path>> artifacts,
-            Configuration configuration) {
+            ReadableConfig configuration) {
         CompletableFuture<Integer> blobServerPortFuture = gateway.getBlobServerPort(timeout);
 
         return jobGraphFuture.thenCombine(

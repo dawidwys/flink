@@ -28,6 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.PipelineOptions;
 import org.apache.flink.configuration.PipelineOptionsInternal;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.rest.handler.HandlerRequest;
 import org.apache.flink.runtime.rest.handler.RestHandlerException;
@@ -153,7 +154,7 @@ public class JarHandlerUtils {
 
         public JobGraph toJobGraph(
                 PackagedProgram packagedProgram,
-                Configuration configuration,
+                ReadableConfig configuration,
                 boolean suppressOutput) {
             try {
                 return PackagedProgramUtils.createJobGraph(
@@ -163,7 +164,7 @@ public class JarHandlerUtils {
             }
         }
 
-        public PackagedProgram toPackagedProgram(Configuration configuration) {
+        public PackagedProgram toPackagedProgram(ReadableConfig configuration) {
             checkNotNull(configuration);
 
             if (!Files.exists(jarFile)) {

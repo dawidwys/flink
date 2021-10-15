@@ -21,6 +21,7 @@ package org.apache.flink.runtime.jobmaster;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.blob.BlobWriter;
 import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
@@ -138,22 +139,20 @@ public class JobManagerSharedServices {
     // ------------------------------------------------------------------------
 
     public static JobManagerSharedServices fromConfiguration(
-            Configuration config, BlobServer blobServer, FatalErrorHandler fatalErrorHandler)
+            ReadableConfig config, BlobServer blobServer, FatalErrorHandler fatalErrorHandler)
             throws Exception {
 
         checkNotNull(config);
         checkNotNull(blobServer);
 
-        final String classLoaderResolveOrder =
-                config.getString(CoreOptions.CLASSLOADER_RESOLVE_ORDER);
+        final String classLoaderResolveOrder = config.get(CoreOptions.CLASSLOADER_RESOLVE_ORDER);
 
         final String[] alwaysParentFirstLoaderPatterns =
                 CoreOptions.getParentFirstLoaderPatterns(config);
 
         final boolean failOnJvmMetaspaceOomError =
-                config.getBoolean(CoreOptions.FAIL_ON_USER_CLASS_LOADING_METASPACE_OOM);
-        final boolean checkClassLoaderLeak =
-                config.getBoolean(CoreOptions.CHECK_LEAKED_CLASSLOADER);
+                config.get(CoreOptions.FAIL_ON_USER_CLASS_LOADING_METASPACE_OOM);
+        final boolean checkClassLoaderLeak = config.get(CoreOptions.CHECK_LEAKED_CLASSLOADER);
         final BlobLibraryCacheManager libraryCacheManager =
                 new BlobLibraryCacheManager(
                         blobServer,
@@ -166,13 +165,15 @@ public class JobManagerSharedServices {
 
         final int numberCPUCores = Hardware.getNumberCPUCores();
         final int jobManagerFuturePoolSize =
-                config.getInteger(JobManagerOptions.JOB_MANAGER_FUTURE_POOL_SIZE, numberCPUCores);
+                config.getOptional(JobManagerOptions.JOB_MANAGER_FUTURE_POOL_SIZE)
+                        .orElse(numberCPUCores);
         final ScheduledExecutorService futureExecutor =
                 Executors.newScheduledThreadPool(
                         jobManagerFuturePoolSize, new ExecutorThreadFactory("jobmanager-future"));
 
         final int jobManagerIoPoolSize =
-                config.getInteger(JobManagerOptions.JOB_MANAGER_IO_POOL_SIZE, numberCPUCores);
+                config.getOptional(JobManagerOptions.JOB_MANAGER_IO_POOL_SIZE)
+                        .orElse(numberCPUCores);
         final ExecutorService ioExecutor =
                 Executors.newFixedThreadPool(
                         jobManagerIoPoolSize, new ExecutorThreadFactory("jobmanager-io"));

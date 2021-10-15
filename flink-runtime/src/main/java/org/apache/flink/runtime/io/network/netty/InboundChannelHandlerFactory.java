@@ -20,6 +20,7 @@ package org.apache.flink.runtime.io.network.netty;
 
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.ConfigurationException;
 
 import org.apache.flink.shaded.netty4.io.netty.channel.ChannelHandler;
@@ -52,6 +53,6 @@ public interface InboundChannelHandlerFactory {
      * @throws ConfigurationException Thrown, if the handler configuration is incorrect.
      */
     Optional<ChannelHandler> createHandler(
-            Configuration configuration, Map<String, String> responseHeaders)
+            ReadableConfig configuration, Map<String, String> responseHeaders)
             throws ConfigurationException;
 }

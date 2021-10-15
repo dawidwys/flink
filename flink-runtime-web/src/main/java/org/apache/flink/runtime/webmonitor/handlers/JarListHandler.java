@@ -21,6 +21,7 @@ package org.apache.flink.runtime.webmonitor.handlers;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.client.program.PackagedProgram;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rest.handler.AbstractRestHandler;
 import org.apache.flink.runtime.rest.handler.HandlerRequest;
 import org.apache.flink.runtime.rest.handler.RestHandlerException;
@@ -60,7 +61,7 @@ public class JarListHandler
 
     private final File jarDir;
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final Executor executor;
 
@@ -71,7 +72,7 @@ public class JarListHandler
             MessageHeaders<EmptyRequestBody, JarListInfo, EmptyMessageParameters> messageHeaders,
             CompletableFuture<String> localAddressFuture,
             File jarDir,
-            Configuration configuration,
+            ReadableConfig configuration,
             Executor executor) {
         super(leaderRetriever, timeout, responseHeaders, messageHeaders);
 

@@ -22,6 +22,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.client.deployment.application.DetachedApplicationRunner;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
 import org.apache.flink.runtime.rest.handler.RestHandlerSpecification;
 import org.apache.flink.runtime.webmonitor.handlers.JarDeleteHandler;
@@ -53,7 +54,7 @@ public class WebSubmissionExtension implements WebMonitorExtension {
             webSubmissionHandlers;
 
     public WebSubmissionExtension(
-            Configuration configuration,
+            ReadableConfig configuration,
             GatewayRetriever<? extends DispatcherGateway> leaderRetriever,
             Map<String, String> responseHeaders,
             CompletableFuture<String> localAddressFuture,

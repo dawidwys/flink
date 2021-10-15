@@ -158,7 +158,7 @@ public class CheckpointStorageLoader {
     public static CheckpointStorage load(
             @Nullable CheckpointStorage fromApplication,
             StateBackend configuredStateBackend,
-            Configuration config,
+            ReadableConfig config,
             ClassLoader classLoader,
             @Nullable Logger logger)
             throws IllegalConfigurationException, DynamicCodeLoadingException {

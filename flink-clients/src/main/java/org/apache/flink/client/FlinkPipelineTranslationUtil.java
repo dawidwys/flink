@@ -21,6 +21,7 @@ package org.apache.flink.client;
 
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 
 /**
@@ -32,7 +33,7 @@ public final class FlinkPipelineTranslationUtil {
 
     /** Transmogrifies the given {@link Pipeline} to a {@link JobGraph}. */
     public static JobGraph getJobGraph(
-            Pipeline pipeline, Configuration optimizerConfiguration, int defaultParallelism) {
+            Pipeline pipeline, ReadableConfig optimizerConfiguration, int defaultParallelism) {
 
         FlinkPipelineTranslator pipelineTranslator = getPipelineTranslator(pipeline);
 
@@ -46,7 +47,7 @@ public final class FlinkPipelineTranslationUtil {
     public static JobGraph getJobGraphUnderUserClassLoader(
             final ClassLoader userClassloader,
             final Pipeline pipeline,
-            final Configuration configuration,
+            final ReadableConfig configuration,
             final int defaultParallelism) {
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         try {

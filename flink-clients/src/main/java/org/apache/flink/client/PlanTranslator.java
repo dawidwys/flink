@@ -22,6 +22,7 @@ package org.apache.flink.client;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.optimizer.DataStatistics;
 import org.apache.flink.optimizer.Optimizer;
 import org.apache.flink.optimizer.costs.DefaultCostEstimator;
@@ -42,7 +43,7 @@ public class PlanTranslator implements FlinkPipelineTranslator {
 
     @Override
     public JobGraph translateToJobGraph(
-            Pipeline pipeline, Configuration optimizerConfiguration, int defaultParallelism) {
+            Pipeline pipeline, ReadableConfig optimizerConfiguration, int defaultParallelism) {
         checkArgument(pipeline instanceof Plan, "Given pipeline is not a DataSet Plan.");
 
         Plan plan = (Plan) pipeline;
@@ -79,8 +80,11 @@ public class PlanTranslator implements FlinkPipelineTranslator {
         return new PlanJSONDumpGenerator().getOptimizerPlanAsJSON(optPlan);
     }
 
-    private JobGraph compilePlan(Plan plan, Configuration optimizerConfiguration) {
-        Optimizer optimizer = new Optimizer(new DataStatistics(), optimizerConfiguration);
+    private JobGraph compilePlan(Plan plan, ReadableConfig optimizerConfiguration) {
+        Optimizer optimizer =
+                new Optimizer(
+                        new DataStatistics(),
+                        Configuration.fromMap(optimizerConfiguration.toMap()));
         OptimizedPlan optimizedPlan = optimizer.compile(plan);
 
         JobGraphGenerator jobGraphGenerator = new JobGraphGenerator(optimizerConfiguration);

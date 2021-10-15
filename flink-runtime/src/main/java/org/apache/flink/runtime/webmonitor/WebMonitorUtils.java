@@ -20,6 +20,7 @@ package org.apache.flink.runtime.webmonitor;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
 import org.apache.flink.runtime.rest.handler.legacy.files.StaticFileServerHandler;
@@ -74,13 +75,13 @@ public final class WebMonitorUtils {
         /**
          * Finds the Flink log directory using log.file Java property that is set during startup.
          */
-        public static LogFileLocation find(Configuration config) {
+        public static LogFileLocation find(ReadableConfig config) {
             final String logEnv = "log.file";
             String logFilePath = System.getProperty(logEnv);
 
             if (logFilePath == null) {
                 LOG.warn("Log file environment variable '{}' is not set.", logEnv);
-                logFilePath = config.getString(WebOptions.LOG_PATH);
+                logFilePath = config.get(WebOptions.LOG_PATH);
             }
 
             // not configured, cannot serve log files
@@ -161,7 +162,7 @@ public final class WebMonitorUtils {
             CompletableFuture<String> localAddressFuture,
             java.nio.file.Path uploadDir,
             Executor executor,
-            Configuration configuration)
+            ReadableConfig configuration)
             throws FlinkException {
 
         if (isFlinkRuntimeWebInClassPath()) {

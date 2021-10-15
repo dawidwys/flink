@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.shuffle;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rpc.FatalErrorHandler;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -26,18 +26,18 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 /** The default implementation of {@link ShuffleMasterContext}. */
 public class ShuffleMasterContextImpl implements ShuffleMasterContext {
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
 
     private final FatalErrorHandler fatalErrorHandler;
 
     public ShuffleMasterContextImpl(
-            Configuration configuration, FatalErrorHandler fatalErrorHandler) {
+            ReadableConfig configuration, FatalErrorHandler fatalErrorHandler) {
         this.configuration = checkNotNull(configuration);
         this.fatalErrorHandler = checkNotNull(fatalErrorHandler);
     }
 
     @Override
-    public Configuration getConfiguration() {
+    public ReadableConfig getConfiguration() {
         return configuration;
     }
 

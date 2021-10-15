@@ -23,6 +23,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.io.network.netty.InboundChannelHandlerFactory;
 import org.apache.flink.runtime.io.network.netty.SSLHandlerFactory;
 import org.apache.flink.runtime.net.RedirectingSslHandler;
@@ -88,7 +89,7 @@ public abstract class RestServerEndpoint implements AutoCloseableAsync {
 
     private final Object lock = new Object();
 
-    private final Configuration configuration;
+    private final ReadableConfig configuration;
     private final String restAddress;
     private final String restBindAddress;
     private final String restBindPortRange;
@@ -109,7 +110,7 @@ public abstract class RestServerEndpoint implements AutoCloseableAsync {
 
     @VisibleForTesting List<InboundChannelHandlerFactory> inboundChannelHandlerFactories;
 
-    public RestServerEndpoint(Configuration configuration)
+    public RestServerEndpoint(ReadableConfig configuration)
             throws IOException, ConfigurationException {
         Preconditions.checkNotNull(configuration);
         RestServerEndpointConfiguration restConfiguration =

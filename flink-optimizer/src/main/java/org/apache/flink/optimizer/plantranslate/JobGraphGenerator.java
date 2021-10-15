@@ -34,6 +34,7 @@ import org.apache.flink.configuration.AlgorithmOptions;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.optimizer.CompilerException;
 import org.apache.flink.optimizer.dag.TempMode;
 import org.apache.flink.optimizer.plan.BulkIterationPlanNode;
@@ -171,14 +172,10 @@ public class JobGraphGenerator implements Visitor<PlanNode> {
         this.useLargeRecordHandler = ConfigConstants.DEFAULT_USE_LARGE_RECORD_HANDLER;
     }
 
-    public JobGraphGenerator(Configuration config) {
-        this.defaultMaxFan = config.getInteger(AlgorithmOptions.SPILLING_MAX_FAN);
-        this.defaultSortSpillingThreshold =
-                config.getFloat(AlgorithmOptions.SORT_SPILLING_THRESHOLD);
-        this.useLargeRecordHandler =
-                config.getBoolean(
-                        ConfigConstants.USE_LARGE_RECORD_HANDLER_KEY,
-                        ConfigConstants.DEFAULT_USE_LARGE_RECORD_HANDLER);
+    public JobGraphGenerator(ReadableConfig config) {
+        this.defaultMaxFan = config.get(AlgorithmOptions.SPILLING_MAX_FAN);
+        this.defaultSortSpillingThreshold = config.get(AlgorithmOptions.SORT_SPILLING_THRESHOLD);
+        this.useLargeRecordHandler = config.get(AlgorithmOptions.USE_LARGE_RECORDS_HANDLER);
     }
 
     /**

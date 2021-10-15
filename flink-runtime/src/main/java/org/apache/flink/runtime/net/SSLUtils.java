@@ -134,7 +134,7 @@ public class SSLUtils {
      *
      * @param config The application configuration.
      */
-    public static SSLHandlerFactory createRestServerSSLEngineFactory(final Configuration config)
+    public static SSLHandlerFactory createRestServerSSLEngineFactory(final ReadableConfig config)
             throws Exception {
         ClientAuth clientAuth =
                 SecurityOptions.isRestSSLAuthenticationEnabled(config)
@@ -178,9 +178,9 @@ public class SSLUtils {
     }
 
     @VisibleForTesting
-    static SslProvider getSSLProvider(final Configuration config) {
+    static SslProvider getSSLProvider(final ReadableConfig config) {
         checkNotNull(config, "config must not be null");
-        String providerString = config.getString(SecurityOptions.SSL_PROVIDER);
+        String providerString = config.get(SecurityOptions.SSL_PROVIDER);
         if (providerString.equalsIgnoreCase("OPENSSL")) {
             if (OpenSsl.isAvailable()) {
                 return OPENSSL;
@@ -364,7 +364,7 @@ public class SSLUtils {
 
     @Nullable
     private static SslContext createRestNettySSLContext(
-            Configuration config, boolean clientMode, ClientAuth clientAuth) throws Exception {
+            ReadableConfig config, boolean clientMode, ClientAuth clientAuth) throws Exception {
         return createRestNettySSLContext(config, clientMode, clientAuth, getSSLProvider(config));
     }
 
@@ -374,7 +374,7 @@ public class SSLUtils {
      */
     @Nullable
     public static SslContext createRestNettySSLContext(
-            Configuration config, boolean clientMode, ClientAuth clientAuth, SslProvider provider)
+            ReadableConfig config, boolean clientMode, ClientAuth clientAuth, SslProvider provider)
             throws Exception {
         checkNotNull(config, "config");
 

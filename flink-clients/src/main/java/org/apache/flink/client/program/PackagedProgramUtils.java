@@ -23,6 +23,7 @@ import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.client.FlinkPipelineTranslationUtil;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.optimizer.CompilerException;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 
@@ -73,7 +74,7 @@ public enum PackagedProgramUtils {
      */
     public static JobGraph createJobGraph(
             PackagedProgram packagedProgram,
-            Configuration configuration,
+            ReadableConfig configuration,
             int defaultParallelism,
             @Nullable JobID jobID,
             boolean suppressOutput)
@@ -120,7 +121,7 @@ public enum PackagedProgramUtils {
 
     public static Pipeline getPipelineFromProgram(
             PackagedProgram program,
-            Configuration configuration,
+            ReadableConfig configuration,
             int parallelism,
             boolean suppressOutput)
             throws CompilerException, ProgramInvocationException {
@@ -147,11 +148,15 @@ public enum PackagedProgramUtils {
         // temporary hack to support the optimizer plan preview
         OptimizerPlanEnvironment benv =
                 new OptimizerPlanEnvironment(
-                        configuration, program.getUserCodeClassLoader(), parallelism);
+                        Configuration.fromMap(configuration.toMap()),
+                        program.getUserCodeClassLoader(),
+                        parallelism);
         benv.setAsContext();
         StreamPlanEnvironment senv =
                 new StreamPlanEnvironment(
-                        configuration, program.getUserCodeClassLoader(), parallelism);
+                        Configuration.fromMap(configuration.toMap()),
+                        program.getUserCodeClassLoader(),
+                        parallelism);
         senv.setAsContext();
 
         try {

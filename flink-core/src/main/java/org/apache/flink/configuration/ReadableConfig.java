@@ -55,4 +55,6 @@ public interface ReadableConfig {
     default boolean contains(ConfigOption<?> option) {
         return getOptional(option).isPresent();
     }
+
+    Map<String, String> toMap();
 }

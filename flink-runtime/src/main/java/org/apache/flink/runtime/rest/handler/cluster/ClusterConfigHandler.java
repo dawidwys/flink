@@ -20,6 +20,7 @@ package org.apache.flink.runtime.rest.handler.cluster;
 
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.rest.handler.AbstractRestHandler;
 import org.apache.flink.runtime.rest.handler.HandlerRequest;
 import org.apache.flink.runtime.rest.handler.RestHandlerException;
@@ -52,7 +53,7 @@ public class ClusterConfigHandler
             Map<String, String> responseHeaders,
             MessageHeaders<EmptyRequestBody, ClusterConfigurationInfo, EmptyMessageParameters>
                     messageHeaders,
-            Configuration configuration) {
+            ReadableConfig configuration) {
         super(leaderRetriever, timeout, responseHeaders, messageHeaders);
 
         Preconditions.checkNotNull(configuration);

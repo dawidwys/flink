@@ -18,7 +18,7 @@
 
 package org.apache.flink.runtime.io.network.netty;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.util.ConfigurationException;
 
 import org.apache.flink.shaded.netty4.io.netty.channel.ChannelHandler;
@@ -35,7 +35,7 @@ public class Prio1InboundChannelHandlerFactory implements InboundChannelHandlerF
 
     @Override
     public Optional<ChannelHandler> createHandler(
-            Configuration configuration, Map<String, String> responseHeaders)
+            ReadableConfig configuration, Map<String, String> responseHeaders)
             throws ConfigurationException {
         return Optional.empty();
     }

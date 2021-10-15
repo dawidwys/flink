@@ -289,7 +289,7 @@ public class Checkpoints {
 
     public static void disposeSavepoint(
             String pointer,
-            Configuration configuration,
+            ReadableConfig configuration,
             ClassLoader classLoader,
             @Nullable Logger logger)
             throws IOException, FlinkException {
@@ -339,7 +339,7 @@ public class Checkpoints {
 
     @Nonnull
     public static CheckpointStorage loadCheckpointStorage(
-            Configuration configuration, ClassLoader classLoader, @Nullable Logger logger) {
+            ReadableConfig configuration, ClassLoader classLoader, @Nullable Logger logger) {
         StateBackend backend = loadStateBackend(configuration, classLoader, logger);
 
         if (logger != null) {

@@ -21,6 +21,7 @@ package org.apache.flink.client;
 
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 
 /**
@@ -34,7 +35,7 @@ public interface FlinkPipelineTranslator {
      * and classpaths to the {@link JobGraph}.
      */
     JobGraph translateToJobGraph(
-            Pipeline pipeline, Configuration optimizerConfiguration, int defaultParallelism);
+            Pipeline pipeline, ReadableConfig optimizerConfiguration, int defaultParallelism);
 
     /** Extracts the execution plan (as JSON) from the given {@link Pipeline}. */
     String translateToJSONExecutionPlan(Pipeline pipeline);
