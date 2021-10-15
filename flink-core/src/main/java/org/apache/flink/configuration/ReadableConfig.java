@@ -51,4 +51,8 @@ public interface ReadableConfig {
      * @see #get(ConfigOption)
      */
     <T> Optional<T> getOptional(ConfigOption<T> option);
+
+    default boolean contains(ConfigOption<?> option) {
+        return getOptional(option).isPresent();
+    }
 }

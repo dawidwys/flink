@@ -22,6 +22,7 @@ import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,7 @@ public class MemoryBackwardsCompatibilityUtils {
     }
 
     private Optional<MemorySize> getLegacyHeapMemoryIfExplicitlyConfigured(
-            Configuration configuration) {
+            ReadableConfig configuration) {
         @SuppressWarnings("CallToSystemGetenv")
         String totalProcessEnv = System.getenv(legacyMemoryOptions.getEnvVar());
         if (totalProcessEnv != null) {
@@ -88,7 +89,7 @@ public class MemoryBackwardsCompatibilityUtils {
 
         if (configuration.contains(legacyMemoryOptions.getHeapMb())) {
             final long legacyHeapMemoryMB =
-                    configuration.getInteger(legacyMemoryOptions.getHeapMb());
+                    configuration.get(legacyMemoryOptions.getHeapMb());
             if (legacyHeapMemoryMB < 0) {
                 throw new IllegalConfigurationException(
                         "Configured total process memory size ("

@@ -18,8 +18,8 @@
 
 package org.apache.flink.runtime.util.config.memory;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 
 /**
  * Utility to derive the {@link FlinkMemory} components.
@@ -32,7 +32,7 @@ import org.apache.flink.configuration.MemorySize;
  * @param <FM> the Flink memory components
  */
 public interface FlinkMemoryUtils<FM extends FlinkMemory> {
-    FM deriveFromRequiredFineGrainedOptions(Configuration config);
+    FM deriveFromRequiredFineGrainedOptions(ReadableConfig config);
 
-    FM deriveFromTotalFlinkMemory(Configuration config, MemorySize totalFlinkMemorySize);
+    FM deriveFromTotalFlinkMemory(ReadableConfig config, MemorySize totalFlinkMemorySize);
 }

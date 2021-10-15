@@ -24,6 +24,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ExternalResourceOptions;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.externalresource.ExternalResourceUtils;
 import org.apache.flink.runtime.resourcemanager.WorkerResourceSpec;
@@ -154,7 +155,7 @@ public class TaskExecutorProcessUtils {
         return TaskExecutorProcessSpecBuilder.newBuilder(config);
     }
 
-    public static TaskExecutorProcessSpec processSpecFromConfig(final Configuration config) {
+    public static TaskExecutorProcessSpec processSpecFromConfig(final ReadableConfig config) {
         try {
             return createMemoryProcessSpec(
                     config, PROCESS_MEMORY_UTILS.memoryProcessSpecFromConfig(config));
@@ -194,7 +195,7 @@ public class TaskExecutorProcessUtils {
     }
 
     private static TaskExecutorProcessSpec createMemoryProcessSpec(
-            final Configuration config,
+            final ReadableConfig config,
             final CommonProcessMemorySpec<TaskExecutorFlinkMemory> processMemory) {
         TaskExecutorFlinkMemory flinkMemory = processMemory.getFlinkMemory();
         JvmMetaspaceAndOverhead jvmMetaspaceAndOverhead =
@@ -207,28 +208,28 @@ public class TaskExecutorProcessUtils {
                 ExternalResourceUtils.getExternalResourcesCollection(config));
     }
 
-    private static CPUResource getCpuCores(final Configuration config) {
+    private static CPUResource getCpuCores(final ReadableConfig config) {
         return getCpuCoresWithFallback(config, -1.0);
     }
 
-    private static int getNumSlots(final Configuration config) {
-        return config.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
+    private static int getNumSlots(final ReadableConfig config) {
+        return config.get(TaskManagerOptions.NUM_TASK_SLOTS);
     }
 
     public static double getCpuCoresWithFallbackConfigOption(
-            final Configuration config, ConfigOption<Double> fallbackOption) {
-        double fallbackValue = config.getDouble(fallbackOption);
+            final ReadableConfig config, ConfigOption<Double> fallbackOption) {
+        double fallbackValue = config.get(fallbackOption);
         return getCpuCoresWithFallback(config, fallbackValue).getValue().doubleValue();
     }
 
-    public static CPUResource getCpuCoresWithFallback(final Configuration config, double fallback) {
+    public static CPUResource getCpuCoresWithFallback(final ReadableConfig config, double fallback) {
         final double cpuCores;
         if (config.contains(TaskManagerOptions.CPU_CORES)) {
-            cpuCores = config.getDouble(TaskManagerOptions.CPU_CORES);
+            cpuCores = config.get(TaskManagerOptions.CPU_CORES);
         } else if (fallback > 0.0) {
             cpuCores = fallback;
         } else {
-            cpuCores = config.getInteger(TaskManagerOptions.NUM_TASK_SLOTS);
+            cpuCores = config.get(TaskManagerOptions.NUM_TASK_SLOTS);
         }
 
         if (cpuCores <= 0) {

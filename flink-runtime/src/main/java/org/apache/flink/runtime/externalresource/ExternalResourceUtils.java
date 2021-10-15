@@ -24,9 +24,11 @@ import org.apache.flink.api.common.externalresource.ExternalResourceDriverFactor
 import org.apache.flink.api.common.externalresource.ExternalResourceInfo;
 import org.apache.flink.api.common.resources.ExternalResource;
 import org.apache.flink.configuration.ConfigOption;
+import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DelegatingConfiguration;
 import org.apache.flink.configuration.ExternalResourceOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.util.StringUtils;
 
@@ -55,8 +57,11 @@ public class ExternalResourceUtils {
     }
 
     /** Get the enabled external resource list from configuration. */
-    private static Set<String> getExternalResourceSet(Configuration config) {
-        if (config.getValue(ExternalResourceOptions.EXTERNAL_RESOURCE_LIST)
+    private static Set<String> getExternalResourceSet(ReadableConfig config) {
+        if (config.get(
+                        ConfigOptions.key(ExternalResourceOptions.EXTERNAL_RESOURCE_LIST.key())
+                                .stringType()
+                                .defaultValue(""))
                 .equals(ExternalResourceOptions.NONE)) {
             return Collections.emptySet();
         }
@@ -134,7 +139,7 @@ public class ExternalResourceUtils {
 
     /** Get the map of resource name and amount of all of enabled external resources. */
     @VisibleForTesting
-    static Map<String, Long> getExternalResourceAmountMap(Configuration config) {
+    static Map<String, Long> getExternalResourceAmountMap(ReadableConfig config) {
         final Set<String> resourceSet = getExternalResourceSet(config);
 
         if (resourceSet.isEmpty()) {
@@ -167,7 +172,7 @@ public class ExternalResourceUtils {
 
     /** Get the collection of all enabled external resources. */
     public static Collection<ExternalResource> getExternalResourcesCollection(
-            Configuration config) {
+            ReadableConfig config) {
         return getExternalResourceAmountMap(config).entrySet().stream()
                 .map(entry -> new ExternalResource(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());

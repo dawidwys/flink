@@ -22,6 +22,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ConfigurationUtils;
 import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.flink.configuration.IllegalConfigurationException;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.entrypoint.ClusterConfiguration;
 import org.apache.flink.runtime.entrypoint.ClusterConfigurationParserFactory;
@@ -95,7 +96,7 @@ public class ConfigurationParserUtils {
      * @param configuration configuration object
      * @return size of memory segment
      */
-    public static int getPageSize(Configuration configuration) {
+    public static int getPageSize(ReadableConfig configuration) {
         final int pageSize =
                 checkedDownCast(
                         configuration.get(TaskManagerOptions.MEMORY_SEGMENT_SIZE).getBytes());

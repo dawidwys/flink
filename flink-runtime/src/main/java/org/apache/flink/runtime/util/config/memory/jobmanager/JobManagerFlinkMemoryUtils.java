@@ -18,10 +18,10 @@
 
 package org.apache.flink.runtime.util.config.memory.jobmanager;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.MemorySize;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.runtime.util.config.memory.FlinkMemoryUtils;
 import org.apache.flink.runtime.util.config.memory.ProcessMemoryUtils;
 
@@ -37,7 +37,7 @@ public class JobManagerFlinkMemoryUtils implements FlinkMemoryUtils<JobManagerFl
     private static final Logger LOG = LoggerFactory.getLogger(JobManagerFlinkMemoryUtils.class);
 
     @Override
-    public JobManagerFlinkMemory deriveFromRequiredFineGrainedOptions(Configuration config) {
+    public JobManagerFlinkMemory deriveFromRequiredFineGrainedOptions(ReadableConfig config) {
         MemorySize jvmHeapMemorySize =
                 ProcessMemoryUtils.getMemorySizeFromConfig(
                         config, JobManagerOptions.JVM_HEAP_MEMORY);
@@ -45,12 +45,12 @@ public class JobManagerFlinkMemoryUtils implements FlinkMemoryUtils<JobManagerFl
                 ProcessMemoryUtils.getMemorySizeFromConfig(
                         config, JobManagerOptions.OFF_HEAP_MEMORY);
 
-        if (config.contains(JobManagerOptions.TOTAL_FLINK_MEMORY)) {
+        if (config.getOptional(JobManagerOptions.TOTAL_FLINK_MEMORY).isPresent()) {
             // derive network memory from total flink memory, and check against network min/max
             MemorySize totalFlinkMemorySize =
                     ProcessMemoryUtils.getMemorySizeFromConfig(
                             config, JobManagerOptions.TOTAL_FLINK_MEMORY);
-            if (config.contains(JobManagerOptions.OFF_HEAP_MEMORY)) {
+            if (config.getOptional(JobManagerOptions.OFF_HEAP_MEMORY).isPresent()) {
                 // off-heap memory is explicitly set by user
                 sanityCheckTotalFlinkMemory(
                         totalFlinkMemorySize, jvmHeapMemorySize, offHeapMemorySize);
@@ -111,7 +111,7 @@ public class JobManagerFlinkMemoryUtils implements FlinkMemoryUtils<JobManagerFl
 
     @Override
     public JobManagerFlinkMemory deriveFromTotalFlinkMemory(
-            Configuration config, MemorySize totalFlinkMemorySize) {
+            ReadableConfig config, MemorySize totalFlinkMemorySize) {
         MemorySize offHeapMemorySize =
                 ProcessMemoryUtils.getMemorySizeFromConfig(
                         config, JobManagerOptions.OFF_HEAP_MEMORY);

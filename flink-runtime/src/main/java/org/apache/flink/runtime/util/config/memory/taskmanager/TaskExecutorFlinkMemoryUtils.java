@@ -18,10 +18,10 @@
 
 package org.apache.flink.runtime.util.config.memory.taskmanager;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.configuration.NettyShuffleEnvironmentOptions;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.runtime.util.ConfigurationParserUtils;
 import org.apache.flink.runtime.util.config.memory.FlinkMemoryUtils;
@@ -43,7 +43,7 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
     private static final Logger LOG = LoggerFactory.getLogger(TaskExecutorFlinkMemoryUtils.class);
 
     @Override
-    public TaskExecutorFlinkMemory deriveFromRequiredFineGrainedOptions(Configuration config) {
+    public TaskExecutorFlinkMemory deriveFromRequiredFineGrainedOptions(ReadableConfig config) {
         final MemorySize taskHeapMemorySize = getTaskHeapMemorySize(config);
         final MemorySize managedMemorySize = getManagedMemorySize(config);
 
@@ -105,7 +105,7 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
 
     @Override
     public TaskExecutorFlinkMemory deriveFromTotalFlinkMemory(
-            final Configuration config, final MemorySize totalFlinkMemorySize) {
+            final ReadableConfig config, final MemorySize totalFlinkMemorySize) {
         final MemorySize frameworkHeapMemorySize = getFrameworkHeapMemorySize(config);
         final MemorySize frameworkOffHeapMemorySize = getFrameworkOffHeapMemorySize(config);
         final MemorySize taskOffHeapMemorySize = getTaskOffHeapMemorySize(config);
@@ -195,7 +195,7 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
     }
 
     private static MemorySize deriveManagedMemoryAbsoluteOrWithFraction(
-            final Configuration config, final MemorySize base) {
+            final ReadableConfig config, final MemorySize base) {
         return isManagedMemorySizeExplicitlyConfigured(config)
                 ? getManagedMemorySize(config)
                 : ProcessMemoryUtils.deriveWithFraction(
@@ -203,45 +203,45 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
     }
 
     private static MemorySize deriveNetworkMemoryWithFraction(
-            final Configuration config, final MemorySize base) {
+            final ReadableConfig config, final MemorySize base) {
         return ProcessMemoryUtils.deriveWithFraction(
                 "network memory", base, getNetworkMemoryRangeFraction(config));
     }
 
     private static MemorySize deriveNetworkMemoryWithInverseFraction(
-            final Configuration config, final MemorySize base) {
+            final ReadableConfig config, final MemorySize base) {
         return ProcessMemoryUtils.deriveWithInverseFraction(
                 "network memory", base, getNetworkMemoryRangeFraction(config));
     }
 
-    public static MemorySize getFrameworkHeapMemorySize(final Configuration config) {
+    public static MemorySize getFrameworkHeapMemorySize(final ReadableConfig config) {
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.FRAMEWORK_HEAP_MEMORY);
     }
 
-    public static MemorySize getFrameworkOffHeapMemorySize(final Configuration config) {
+    public static MemorySize getFrameworkOffHeapMemorySize(final ReadableConfig config) {
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.FRAMEWORK_OFF_HEAP_MEMORY);
     }
 
-    private static MemorySize getTaskHeapMemorySize(final Configuration config) {
+    private static MemorySize getTaskHeapMemorySize(final ReadableConfig config) {
         checkArgument(isTaskHeapMemorySizeExplicitlyConfigured(config));
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.TASK_HEAP_MEMORY);
     }
 
-    private static MemorySize getTaskOffHeapMemorySize(final Configuration config) {
+    private static MemorySize getTaskOffHeapMemorySize(final ReadableConfig config) {
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.TASK_OFF_HEAP_MEMORY);
     }
 
-    private static MemorySize getManagedMemorySize(final Configuration config) {
+    private static MemorySize getManagedMemorySize(final ReadableConfig config) {
         checkArgument(isManagedMemorySizeExplicitlyConfigured(config));
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.MANAGED_MEMORY_SIZE);
     }
 
-    private static RangeFraction getManagedMemoryRangeFraction(final Configuration config) {
+    private static RangeFraction getManagedMemoryRangeFraction(final ReadableConfig config) {
         return ProcessMemoryUtils.getRangeFraction(
                 MemorySize.ZERO,
                 MemorySize.MAX_VALUE,
@@ -249,16 +249,16 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
                 config);
     }
 
-    private static MemorySize getNetworkMemorySizeWithLegacyConfig(final Configuration config) {
+    private static MemorySize getNetworkMemorySizeWithLegacyConfig(final ReadableConfig config) {
         checkArgument(isUsingLegacyNetworkConfigs(config));
         @SuppressWarnings("deprecation")
         final long numOfBuffers =
-                config.getInteger(NettyShuffleEnvironmentOptions.NETWORK_NUM_BUFFERS);
+                config.get(NettyShuffleEnvironmentOptions.NETWORK_NUM_BUFFERS);
         final long pageSize = ConfigurationParserUtils.getPageSize(config);
         return new MemorySize(numOfBuffers * pageSize);
     }
 
-    private static RangeFraction getNetworkMemoryRangeFraction(final Configuration config) {
+    private static RangeFraction getNetworkMemoryRangeFraction(final ReadableConfig config) {
         final MemorySize minSize =
                 ProcessMemoryUtils.getMemorySizeFromConfig(
                         config, TaskManagerOptions.NETWORK_MEMORY_MIN);
@@ -269,21 +269,21 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
                 minSize, maxSize, TaskManagerOptions.NETWORK_MEMORY_FRACTION, config);
     }
 
-    private static MemorySize getTotalFlinkMemorySize(final Configuration config) {
+    private static MemorySize getTotalFlinkMemorySize(final ReadableConfig config) {
         checkArgument(isTotalFlinkMemorySizeExplicitlyConfigured(config));
         return ProcessMemoryUtils.getMemorySizeFromConfig(
                 config, TaskManagerOptions.TOTAL_FLINK_MEMORY);
     }
 
-    private static boolean isTaskHeapMemorySizeExplicitlyConfigured(final Configuration config) {
+    private static boolean isTaskHeapMemorySizeExplicitlyConfigured(final ReadableConfig config) {
         return config.contains(TaskManagerOptions.TASK_HEAP_MEMORY);
     }
 
-    private static boolean isManagedMemorySizeExplicitlyConfigured(final Configuration config) {
+    private static boolean isManagedMemorySizeExplicitlyConfigured(final ReadableConfig config) {
         return config.contains(TaskManagerOptions.MANAGED_MEMORY_SIZE);
     }
 
-    private static boolean isUsingLegacyNetworkConfigs(final Configuration config) {
+    private static boolean isUsingLegacyNetworkConfigs(final ReadableConfig config) {
         // use the legacy number-of-buffer config option only when it is explicitly configured and
         // none of new config options is explicitly configured
         final boolean anyNetworkConfigured =
@@ -295,16 +295,16 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
         return !anyNetworkConfigured && legacyConfigured;
     }
 
-    private static boolean isNetworkMemoryFractionExplicitlyConfigured(final Configuration config) {
+    private static boolean isNetworkMemoryFractionExplicitlyConfigured(final ReadableConfig config) {
         return config.contains(TaskManagerOptions.NETWORK_MEMORY_FRACTION);
     }
 
-    private static boolean isTotalFlinkMemorySizeExplicitlyConfigured(final Configuration config) {
+    private static boolean isTotalFlinkMemorySizeExplicitlyConfigured(final ReadableConfig config) {
         return config.contains(TaskManagerOptions.TOTAL_FLINK_MEMORY);
     }
 
     private static void sanityCheckTotalFlinkMemory(
-            final Configuration config, final TaskExecutorFlinkMemory flinkInternalMemory) {
+            final ReadableConfig config, final TaskExecutorFlinkMemory flinkInternalMemory) {
         if (isTotalFlinkMemorySizeExplicitlyConfigured(config)) {
             final MemorySize configuredTotalFlinkMemorySize = getTotalFlinkMemorySize(config);
             if (!configuredTotalFlinkMemorySize.equals(
@@ -335,7 +335,7 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
     }
 
     private static void sanityCheckNetworkMemoryWithExplicitlySetTotalFlinkAndHeapMemory(
-            final Configuration config,
+            final ReadableConfig config,
             final MemorySize derivedNetworkMemorySize,
             final MemorySize totalFlinkMemorySize) {
         try {
@@ -350,7 +350,7 @@ public class TaskExecutorFlinkMemoryUtils implements FlinkMemoryUtils<TaskExecut
     }
 
     private static void sanityCheckNetworkMemory(
-            final Configuration config,
+            final ReadableConfig config,
             final MemorySize derivedNetworkMemorySize,
             final MemorySize totalFlinkMemorySize) {
         if (isUsingLegacyNetworkConfigs(config)) {

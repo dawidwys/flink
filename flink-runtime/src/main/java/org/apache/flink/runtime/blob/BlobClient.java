@@ -371,7 +371,7 @@ public final class BlobClient implements Closeable {
      */
     public static List<PermanentBlobKey> uploadFiles(
             InetSocketAddress serverAddress,
-            Configuration clientConfig,
+            ReadableConfig clientConfig,
             JobID jobId,
             List<Path> files)
             throws IOException {
