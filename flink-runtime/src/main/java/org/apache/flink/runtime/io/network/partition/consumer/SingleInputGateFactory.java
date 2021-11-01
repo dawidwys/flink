@@ -84,6 +84,7 @@ public class SingleInputGateFactory {
     private final int networkBufferSize;
 
     private final BufferDebloatConfiguration debloatConfiguration;
+    private final boolean detailedMetrics;
 
     public SingleInputGateFactory(
             @Nonnull ResourceID taskExecutorResourceId,
@@ -108,6 +109,7 @@ public class SingleInputGateFactory {
         this.taskEventPublisher = taskEventPublisher;
         this.networkBufferPool = networkBufferPool;
         this.debloatConfiguration = networkConfig.getDebloatConfiguration();
+        this.detailedMetrics = networkConfig.isNetworkDetailedMetrics();
     }
 
     /** Creates an input gate and all of its input channels. */
@@ -157,10 +159,13 @@ public class SingleInputGateFactory {
                             debloatConfiguration.getMinBufferSize(),
                             debloatConfiguration.getBufferDebloatThresholdPercentages(),
                             debloatConfiguration.getNumberOfSamples());
-            inputGroup.gauge(
-                    MetricNames.ESTIMATED_TIME_TO_CONSUME_BUFFERS,
-                    () -> bufferDebloater.getLastEstimatedTimeToConsumeBuffers().toMillis());
-            inputGroup.gauge(MetricNames.DEBLOATED_BUFFER_SIZE, bufferDebloater::getLastBufferSize);
+            if (detailedMetrics) {
+                inputGroup.gauge(
+                        MetricNames.ESTIMATED_TIME_TO_CONSUME_BUFFERS,
+                        () -> bufferDebloater.getLastEstimatedTimeToConsumeBuffers().toMillis());
+                inputGroup.gauge(
+                        MetricNames.DEBLOATED_BUFFER_SIZE, bufferDebloater::getLastBufferSize);
+            }
             return bufferDebloater;
         }
 
