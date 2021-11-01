@@ -731,7 +731,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         // final check to exit early before starting to run
         ensureNotCanceled();
 
-        scheduleBufferDebloater();
+        if (shouldScheduleDebloating()) {
+            scheduleBufferDebloater();
+        }
 
         // let the task do its work
         runMailboxLoop();
@@ -744,18 +746,6 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     private void scheduleBufferDebloater() {
-        // See https://issues.apache.org/jira/browse/FLINK-23560
-        // If there are no input gates, there is no point of calculating the throughput and running
-        // the debloater. At the same time, for SourceStreamTask using legacy sources and checkpoint
-        // lock, enqueuing even a single mailbox action can cause performance regression. This is
-        // especially visible in batch, with disabled checkpointing and no processing time timers.
-        if (getEnvironment().getAllInputGates().length == 0
-                || !environment
-                        .getTaskManagerInfo()
-                        .getConfiguration()
-                        .getBoolean(TaskManagerOptions.BUFFER_DEBLOAT_ENABLED)) {
-            return;
-        }
         systemTimerService.registerTimer(
                 systemTimerService.getCurrentProcessingTime() + bufferDebloatPeriod,
                 timestamp ->
@@ -765,6 +755,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
                                     scheduleBufferDebloater();
                                 },
                                 "Buffer size recalculation"));
+    }
+
+    private boolean shouldScheduleDebloating() {
+        // See https://issues.apache.org/jira/browse/FLINK-23560
+        // If there are no input gates, there is no point of calculating the throughput and running
+        // the debloater. At the same time, for SourceStreamTask using legacy sources and checkpoint
+        // lock, enqueuing even a single mailbox action can cause performance regression. This is
+        // especially visible in batch, with disabled checkpointing and no processing time timers.
+        return getEnvironment().getAllInputGates().length != 0
+                && environment
+                        .getTaskManagerInfo()
+                        .getConfiguration()
+                        .getBoolean(TaskManagerOptions.BUFFER_DEBLOAT_ENABLED);
     }
 
     @VisibleForTesting
