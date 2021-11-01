@@ -404,9 +404,8 @@ public class SingleInputGate extends IndexedInputGate {
     public void triggerDebloating() {
         checkState(bufferDebloater != null, "Buffer debloater should not be null");
         final long currentThroughput = throughputCalculator.calculateThroughput();
-        bufferDebloater
-                .recalculateBufferSize(currentThroughput, getBuffersInUseCount())
-                .ifPresent(this::announceBufferSize);
+        bufferDebloater.recalculateBufferSize(
+                currentThroughput, getBuffersInUseCount(), this::announceBufferSize);
     }
 
     public Duration getLastEstimatedTimeToConsume() {
@@ -692,6 +691,7 @@ public class SingleInputGate extends IndexedInputGate {
     private Optional<BufferOrEvent> getNextBufferOrEvent(boolean blocking)
             throws IOException, InterruptedException {
         if (hasReceivedAllEndOfPartitionEvents) {
+            throughputCalculator.pauseMeasurement(System.currentTimeMillis());
             return Optional.empty();
         }
 

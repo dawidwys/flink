@@ -32,8 +32,7 @@ public class BufferDebloater {
     private final int maxBufferSize;
     private final int minBufferSize;
     private final int bufferDebloatThresholdPercentages;
-    private final BufferSizeEMA
-            bufferSizeEMA;
+    private final BufferSizeEMA bufferSizeEMA;
 
     private Duration lastEstimatedTimeToConsumeBuffers = Duration.ZERO;
     private int lastBufferSize;
@@ -90,5 +89,43 @@ public class BufferDebloater {
 
     public Duration getLastEstimatedTimeToConsumeBuffers() {
         return lastEstimatedTimeToConsumeBuffers;
+    }
+
+    public interface NewBufferSizeConsumer {
+        void consume(int newBufferSize);
+    }
+
+    public void recalculateBufferSize(
+            long currentThroughput,
+            int buffersInUseCount,
+            NewBufferSizeConsumer bufferSizeConsumer) {
+        int actualBuffersInUse = Math.max(1, buffersInUseCount);
+        long desiredTotalBufferSizeInBytes =
+                (currentThroughput * targetTotalBufferSize) / MILLIS_IN_SECOND;
+
+        int newSize =
+                bufferSizeEMA.calculateBufferSize(
+                        desiredTotalBufferSizeInBytes, actualBuffersInUse);
+
+        lastEstimatedTimeToConsumeBuffers =
+                Duration.ofMillis(
+                        newSize
+                                * actualBuffersInUse
+                                * MILLIS_IN_SECOND
+                                / Math.max(1, currentThroughput));
+
+        boolean skipUpdate =
+                newSize == lastBufferSize
+                        || (newSize > minBufferSize && newSize < maxBufferSize)
+                                && Math.abs(1 - ((double) lastBufferSize) / newSize) * 100
+                                        < bufferDebloatThresholdPercentages;
+
+        // Skip update if the new value pretty close to the old one.
+        if (skipUpdate) {
+            return;
+        }
+
+        lastBufferSize = newSize;
+        bufferSizeConsumer.consume(newSize);
     }
 }
