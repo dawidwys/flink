@@ -703,11 +703,6 @@ public class SingleInputGate extends IndexedInputGate {
                 waitAndGetNextData(blocking);
         if (!next.isPresent()) {
             throughputCalculator.pauseMeasurement(System.currentTimeMillis());
-            getAvailableFuture()
-                    .whenComplete(
-                            (future, ex) -> {
-                                throughputCalculator.resumeMeasurement(System.currentTimeMillis());
-                            });
             return Optional.empty();
         }
 
