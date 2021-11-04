@@ -933,7 +933,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT> extends RichS
 
         private static final int FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS = 3;
 
-        private int readVersion = VERSION;
+        private int snapshotVersion = VERSION;
 
         @SuppressWarnings("WeakerAccess")
         public StateSerializerSnapshot() {
@@ -942,24 +942,27 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT> extends RichS
 
         StateSerializerSnapshot(StateSerializer<TXN, CONTEXT> serializerInstance) {
             super(serializerInstance);
+            if (!serializerInstance.supportNullPendingTransaction) {
+                this.snapshotVersion = FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS - 1;
+            }
         }
 
         @Override
         protected int getCurrentOuterSnapshotVersion() {
-            return VERSION;
+            return snapshotVersion;
         }
 
         @Override
         protected void readOuterSnapshot(
                 int readOuterSnapshotVersion, DataInputView in, ClassLoader userCodeClassLoader)
                 throws IOException {
-            readVersion = readOuterSnapshotVersion;
+            snapshotVersion = readOuterSnapshotVersion;
         }
 
         @Override
         protected OuterSchemaCompatibility resolveOuterSchemaCompatibility(
                 StateSerializer<TXN, CONTEXT> newSerializer) {
-            if (readVersion < FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS) {
+            if (this.snapshotVersion < FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS) {
                 return OuterSchemaCompatibility.COMPATIBLE_AFTER_MIGRATION;
             }
 
@@ -980,7 +983,7 @@ public abstract class TwoPhaseCommitSinkFunction<IN, TXN, CONTEXT> extends RichS
             return new StateSerializer<>(
                     transactionSerializer,
                     contextSerializer,
-                    readVersion >= FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS);
+                    this.snapshotVersion >= FIRST_VERSION_SUPPORTING_NULL_TRANSACTIONS);
         }
 
         @Override
