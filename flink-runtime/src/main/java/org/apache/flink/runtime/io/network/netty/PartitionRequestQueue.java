@@ -40,6 +40,8 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
@@ -64,6 +66,10 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
     /** All the readers created for the consumers' partition requests. */
     private final ConcurrentMap<InputChannelID, NetworkSequenceViewReader> allReaders =
             new ConcurrentHashMap<>();
+
+    private final Map<InputChannelID, Integer> queuedAnnouncedBufferSize = new HashMap<>();
+
+    private final Object bufferSizeLock = new Object();
 
     private boolean fatalError;
 
@@ -137,7 +143,14 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
     }
 
     public void notifyReaderCreated(final NetworkSequenceViewReader reader) {
-        allReaders.put(reader.getReceiverId(), reader);
+        Integer announcedBufferSize = null;
+        synchronized (bufferSizeLock) {
+            allReaders.put(reader.getReceiverId(), reader);
+            announcedBufferSize = queuedAnnouncedBufferSize.get(reader.getReceiverId());
+        }
+        if (announcedBufferSize != null) {
+            reader.notifyNewBufferSize(announcedBufferSize);
+        }
     }
 
     public void cancel(InputChannelID receiverId) {
@@ -190,6 +203,15 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
         // sends new buffer size into all upstream even if they don't ready yet. In this case, just
         // ignore the new buffer size.
         NetworkSequenceViewReader reader = allReaders.get(receiverId);
+        if (reader == null) {
+            synchronized (bufferSizeLock) {
+                // reader might have been registered by now
+                reader = allReaders.get(receiverId);
+                if (reader == null) {
+                    queuedAnnouncedBufferSize.put(receiverId, newBufferSize);
+                }
+            }
+        }
         if (reader != null) {
             reader.notifyNewBufferSize(newBufferSize);
         }
