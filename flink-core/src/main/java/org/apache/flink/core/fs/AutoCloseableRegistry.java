@@ -20,14 +20,15 @@ package org.apache.flink.core.fs;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.AbstractAutoCloseableRegistry;
+import org.apache.flink.util.IOUtils;
 
 import javax.annotation.Nonnull;
 
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,12 +46,19 @@ import java.util.Map;
  */
 @Internal
 public class AutoCloseableRegistry
-        extends AbstractAutoCloseableRegistry<AutoCloseable, AutoCloseable, Object> {
+        extends AbstractAutoCloseableRegistry<AutoCloseable, AutoCloseable, Object, Exception> {
 
     private static final Object DUMMY = new Object();
 
     public AutoCloseableRegistry() {
-        super(new LinkedHashMap<>(), false);
+        super(new LinkedHashMap<>());
+    }
+
+    @Override
+    protected void doClose(List<AutoCloseable> toClose) throws Exception {
+        final List<AutoCloseable> reversed = new ArrayList<>(toClose);
+        Collections.reverse(toClose);
+        IOUtils.closeAll(reversed);
     }
 
     @Override
@@ -63,12 +71,5 @@ public class AutoCloseableRegistry
     protected boolean doUnRegister(
             @Nonnull AutoCloseable closeable, @Nonnull Map<AutoCloseable, Object> closeableMap) {
         return closeableMap.remove(closeable) != null;
-    }
-
-    @Override
-    protected Collection<AutoCloseable> getReferencesToClose() {
-        ArrayList<AutoCloseable> closeablesToClose = new ArrayList<>(closeableToRef.keySet());
-        Collections.reverse(closeablesToClose);
-        return closeablesToClose;
     }
 }

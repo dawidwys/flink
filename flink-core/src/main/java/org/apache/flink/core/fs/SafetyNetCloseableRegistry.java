@@ -20,7 +20,9 @@ package org.apache.flink.core.fs;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.util.AbstractAutoCloseableRegistry;
 import org.apache.flink.util.AbstractCloseableRegistry;
+import org.apache.flink.util.IOUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.WrappingProxyUtil;
 
@@ -34,6 +36,7 @@ import java.io.IOException;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -52,9 +55,11 @@ import java.util.function.Supplier;
  */
 @Internal
 public class SafetyNetCloseableRegistry
-        extends AbstractCloseableRegistry<
+        extends AbstractAutoCloseableRegistry<
+                Closeable,
                 WrappingProxyCloseable<? extends Closeable>,
-                SafetyNetCloseableRegistry.PhantomDelegatingCloseableRef> {
+                SafetyNetCloseableRegistry.PhantomDelegatingCloseableRef,
+                IOException> {
 
     private static final Logger LOG = LoggerFactory.getLogger(SafetyNetCloseableRegistry.class);
 
@@ -127,9 +132,9 @@ public class SafetyNetCloseableRegistry
     }
 
     @Override
-    public void close() throws IOException {
+    protected void doClose(List<Closeable> toClose) throws IOException {
         try {
-            super.close();
+            IOUtils.closeAllQuietly(toClose);
         } finally {
             synchronized (REAPER_THREAD_LOCK) {
                 --GLOBAL_SAFETY_NET_REGISTRY_COUNT;

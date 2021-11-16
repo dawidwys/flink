@@ -19,6 +19,7 @@
 package org.apache.flink.core.fs;
 
 import org.apache.flink.core.testutils.CheckedThread;
+import org.apache.flink.util.AbstractAutoCloseableRegistry;
 import org.apache.flink.util.AbstractCloseableRegistry;
 import org.apache.flink.util.ExceptionUtils;
 
@@ -59,9 +60,11 @@ public class SafetyNetCloseableRegistryTest
     }
 
     @Override
-    protected AbstractCloseableRegistry<
+    protected AbstractAutoCloseableRegistry<
+                    Closeable,
                     WrappingProxyCloseable<? extends Closeable>,
-                    SafetyNetCloseableRegistry.PhantomDelegatingCloseableRef>
+                    SafetyNetCloseableRegistry.PhantomDelegatingCloseableRef,
+                    IOException>
             createRegistry() {
         // SafetyNetCloseableRegistry has a global reaper thread to reclaim leaking resources,
         // in normal cases, that thread will be interrupted in closing of last active registry

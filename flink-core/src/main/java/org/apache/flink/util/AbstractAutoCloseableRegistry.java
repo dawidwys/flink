@@ -27,8 +27,8 @@ import javax.annotation.concurrent.GuardedBy;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,7 +44,8 @@ import java.util.Map;
  * @param <T> Type for potential meta data associated with the registering closeables
  */
 @Internal
-public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C extends R, T>
+public abstract class AbstractAutoCloseableRegistry<
+                R extends AutoCloseable, C extends R, T, E extends Exception>
         implements AutoCloseable {
 
     /** Lock that guards state of this registry. * */
@@ -58,10 +59,7 @@ public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C e
     @GuardedBy("lock")
     private boolean closed;
 
-    private final boolean closeQuietly;
-
-    public AbstractAutoCloseableRegistry(@Nonnull Map<R, T> closeableToRef, boolean closeQuietly) {
-        this.closeQuietly = closeQuietly;
+    public AbstractAutoCloseableRegistry(@Nonnull Map<R, T> closeableToRef) {
         this.lock = new Object();
         this.closeableToRef = Preconditions.checkNotNull(closeableToRef);
         this.closed = false;
@@ -112,12 +110,14 @@ public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C e
     }
 
     @Override
-    public void close() throws Exception {
-        IOUtils.closeAll(prepareToExceptionalClose());
+    public final void close() throws E {
+        doClose(getResourcesToClose());
     }
 
-    protected Collection<R> prepareToExceptionalClose() {
-        Collection<R> toCloseCopy;
+    protected abstract void doClose(List<R> toClose) throws E;
+
+    private List<R> getResourcesToClose() {
+        List<R> toCloseCopy;
 
         synchronized (getSynchronizationLock()) {
             if (closed) {
@@ -126,15 +126,9 @@ public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C e
 
             closed = true;
 
-            toCloseCopy = getReferencesToClose();
+            toCloseCopy = new ArrayList<>(closeableToRef.keySet());
 
             closeableToRef.clear();
-        }
-
-        if (closeQuietly) {
-            IOUtils.closeAllQuietly(toCloseCopy);
-
-            return Collections.emptyList();
         }
 
         return toCloseCopy;
@@ -144,10 +138,6 @@ public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C e
         synchronized (getSynchronizationLock()) {
             return closed;
         }
-    }
-
-    protected Collection<R> getReferencesToClose() {
-        return new ArrayList<>(closeableToRef.keySet());
     }
 
     /**
@@ -169,13 +159,6 @@ public abstract class AbstractAutoCloseableRegistry<R extends AutoCloseable, C e
      */
     protected final Object getSynchronizationLock() {
         return lock;
-    }
-
-    /** Adds a mapping to the registry map, respecting locking. */
-    protected final void addCloseableInternal(R closeable, T metaData) {
-        synchronized (getSynchronizationLock()) {
-            closeableToRef.put(closeable, metaData);
-        }
     }
 
     /** Removes a mapping from the registry map, respecting locking. */
