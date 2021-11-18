@@ -14,11 +14,7 @@ dependencies {
     implementation(project(":flink-test-utils"))
     implementation(project(":flink-clients"))
     implementation("org.testcontainers:testcontainers:1.16.2")
-    implementation(libs.junit.jupiter)
-    implementation(libs.junit.vintage)
-    implementation(libs.log4j.api)
-    implementation(libs.log4j.core)
-    implementation(libs.log4j.slf4j)
+    implementation(project(":flink-test-utils-junit"))
 }
 
 description = "Flink : Test utils : Testing Framework"
