@@ -14,6 +14,8 @@ dependencies {
     testImplementation(project(":flink-table-planner_2.12"))
     testImplementation(project(":flink-test-utils"))
     testImplementation(project(":flink-table-planner_2.12"))
+    implementation("org.apache.commons:commons-lang3:3.3.2")
+    implementation("org.apache.commons:commons-compress:1.21")
     compileOnly("org.apache.flink:flink-shaded-jackson:2.12.4-14.0")
     compileOnly(project(":flink-core"))
     compileOnly(project(":flink-table-common"))
