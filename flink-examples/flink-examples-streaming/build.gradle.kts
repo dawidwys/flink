@@ -10,9 +10,11 @@ dependencies {
     implementation(project(":flink-streaming-java"))
     implementation(project(":flink-streaming-scala_2.12"))
     implementation(project(":flink-clients"))
+    implementation("org.apache.kafka:kafka-clients:2.8.1")
     implementation(project(":flink-connector-twitter"))
     implementation(project(":flink-connector-files"))
     implementation(project(":flink-connector-kafka"))
+    compileOnly(project(":flink-runtime"))
     implementation("org.apache.flink:flink-shaded-jackson:2.12.4-14.0")
     implementation(project(":flink-statebackend-rocksdb"))
     implementation("org.jcuda:jcuda:10.0.0") {
