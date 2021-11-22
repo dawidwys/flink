@@ -279,6 +279,10 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
                 inputChannel.onError(t);
             }
 
+        } else if (msgClazz == NettyMessage.PartitionRequestAck.class) {
+            final NettyMessage.PartitionRequestAck ack = (NettyMessage.PartitionRequestAck) msg;
+            final RemoteInputChannel inputChannel = inputChannels.get(ack.receiverId);
+            inputChannel.onPartitionRequestAck();
         } else if (msgClazz == NettyMessage.ErrorResponse.class) {
             // ---- Error ---------------------------------------------------------
             NettyMessage.ErrorResponse error = (NettyMessage.ErrorResponse) msg;

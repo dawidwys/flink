@@ -890,6 +890,37 @@ public abstract class NettyMessage {
         }
     }
 
+    static class PartitionRequestAck extends NettyMessage {
+
+        static final byte ID = 11;
+
+        final InputChannelID receiverId;
+
+        PartitionRequestAck(InputChannelID receiverId) {
+            this.receiverId = checkNotNull(receiverId);
+        }
+
+        @Override
+        void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
+                throws IOException {
+            Consumer<ByteBuf> consumer = receiverId::writeTo;
+
+            writeToChannel(
+                    out, promise, allocator, consumer, ID, InputChannelID.getByteBufLength());
+        }
+
+        static PartitionRequestAck readFrom(ByteBuf buffer) {
+            InputChannelID receiverId = InputChannelID.fromByteBuf(buffer);
+
+            return new PartitionRequestAck(receiverId);
+        }
+
+        @Override
+        public String toString() {
+            return "PartitionRequestAck{receiverId=" + receiverId + '}';
+        }
+    }
+
     // ------------------------------------------------------------------------
 
     void writeToChannel(

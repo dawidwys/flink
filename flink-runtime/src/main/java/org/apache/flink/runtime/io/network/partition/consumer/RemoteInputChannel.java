@@ -26,6 +26,7 @@ import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.execution.CancelTaskException;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.ConnectionManager;
 import org.apache.flink.runtime.io.network.PartitionRequestClient;
@@ -56,6 +57,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -112,6 +114,9 @@ public class RemoteInputChannel extends InputChannel {
     private long lastBarrierId = NONE;
 
     private final ChannelStatePersister channelStatePersister;
+
+    private AvailabilityProvider.AvailabilityHelper partitionRequestSucceeded =
+            new AvailabilityProvider.AvailabilityHelper();
 
     public RemoteInputChannel(
             SingleInputGate inputGate,
@@ -295,6 +300,21 @@ public class RemoteInputChannel extends InputChannel {
 
     @Override
     void announceBufferSize(int newBufferSize) {
+        if (partitionRequestSucceeded.isAvailable()) {
+            doAnnounce(newBufferSize);
+        } else {
+            partitionRequestSucceeded
+                    .getAvailableFuture()
+                    .whenComplete(
+                            (ignored, ex) -> {
+                                if (ex == null) {
+                                    doAnnounce(newBufferSize);
+                                }
+                            });
+        }
+    }
+
+    private void doAnnounce(int newBufferSize) {
         try {
             notifyNewBufferSize(newBufferSize);
         } catch (Throwable t) {
@@ -797,6 +817,10 @@ public class RemoteInputChannel extends InputChannel {
         checkState(
                 partitionRequestClient != null,
                 "Bug: partitionRequestClient is not initialized before processing data and no error is detected.");
+    }
+
+    public void onPartitionRequestAck() {
+        partitionRequestSucceeded.getUnavailableToResetAvailable().complete(null);
     }
 
     private static class BufferReorderingException extends IOException {

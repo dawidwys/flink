@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.io.network.netty;
 
+import org.apache.flink.runtime.io.network.netty.NettyMessage.PartitionRequestAck;
+
 import org.apache.flink.shaded.netty4.io.netty.buffer.ByteBuf;
 import org.apache.flink.shaded.netty4.io.netty.channel.ChannelHandlerContext;
 
@@ -60,6 +62,8 @@ class NonBufferResponseDecoder extends NettyMessageDecoder {
         switch (msgId) {
             case ErrorResponse.ID:
                 return DecodingResult.fullMessage(ErrorResponse.readFrom(fullFrameHeaderBuf));
+            case PartitionRequestAck.ID:
+                return DecodingResult.fullMessage(PartitionRequestAck.readFrom(fullFrameHeaderBuf));
             case BacklogAnnouncement.ID:
                 return DecodingResult.fullMessage(BacklogAnnouncement.readFrom(fullFrameHeaderBuf));
             default:

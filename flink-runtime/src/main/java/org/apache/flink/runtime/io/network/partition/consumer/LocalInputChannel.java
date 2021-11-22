@@ -72,6 +72,8 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 
     private final ChannelStatePersister channelStatePersister;
 
+
+
     public LocalInputChannel(
             SingleInputGate inputGate,
             int channelIndex,
