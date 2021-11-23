@@ -20,10 +20,10 @@ package org.apache.flink.connector.testutils.source.reader;
 
 import org.apache.flink.api.common.eventtime.Watermark;
 import org.apache.flink.api.connector.source.Boundedness;
-import org.apache.flink.api.connector.source.ReaderOutput;
-import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceSplit;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.util.TestLogger;
 
@@ -181,7 +181,7 @@ public abstract class SourceReaderTestBase<SplitT extends SourceSplit> extends T
     // ---------------- helper classes -----------------
 
     /** A source output that validates the output. */
-    public class ValidatingSourceOutput implements ReaderOutput<Integer> {
+    public class ValidatingSourceOutput implements InternalReaderOutput<Integer> {
         private Set<Integer> consumedValues = new HashSet<>();
         private int max = Integer.MIN_VALUE;
         private int min = Integer.MAX_VALUE;
@@ -229,8 +229,13 @@ public abstract class SourceReaderTestBase<SplitT extends SourceSplit> extends T
         public void markActive() {}
 
         @Override
-        public SourceOutput<Integer> createOutputForSplit(String splitId) {
+        public InternalSourceOutput<Integer> createOutputForSplit(String splitId) {
             return this;
+        }
+
+        @Override
+        public long getLastWatermark() {
+            return 0;
         }
 
         @Override

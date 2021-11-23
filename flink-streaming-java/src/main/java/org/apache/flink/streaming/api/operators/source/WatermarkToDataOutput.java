@@ -21,6 +21,7 @@ package org.apache.flink.streaming.api.operators.source;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.eventtime.Watermark;
 import org.apache.flink.api.common.eventtime.WatermarkOutput;
+import org.apache.flink.api.connector.source.internal.InternalWatermarkOutput;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
 import org.apache.flink.streaming.runtime.tasks.ExceptionInChainedOperatorException;
 import org.apache.flink.streaming.runtime.watermarkstatus.WatermarkStatus;
@@ -32,7 +33,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * PushingAsyncDataInput.DataOutput}.
  */
 @Internal
-public final class WatermarkToDataOutput implements WatermarkOutput {
+public final class WatermarkToDataOutput implements InternalWatermarkOutput {
 
     private final PushingAsyncDataInput.DataOutput<?> output;
     private long maxWatermarkSoFar;
@@ -63,6 +64,11 @@ public final class WatermarkToDataOutput implements WatermarkOutput {
         } catch (Exception e) {
             throw new ExceptionInChainedOperatorException(e);
         }
+    }
+
+    @Override
+    public long getLastWatermark() {
+        return maxWatermarkSoFar;
     }
 
     @Override

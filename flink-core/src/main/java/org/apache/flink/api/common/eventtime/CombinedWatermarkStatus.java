@@ -100,7 +100,7 @@ final class CombinedWatermarkStatus {
          * Returns the current watermark timestamp. This will throw {@link IllegalStateException} if
          * the output is currently idle.
          */
-        private long getWatermark() {
+        long getWatermark() {
             checkState(!idle, "Output is idle.");
             return watermark;
         }
@@ -118,7 +118,7 @@ final class CombinedWatermarkStatus {
             return updated;
         }
 
-        private boolean isIdle() {
+        boolean isIdle() {
             return idle;
         }
 

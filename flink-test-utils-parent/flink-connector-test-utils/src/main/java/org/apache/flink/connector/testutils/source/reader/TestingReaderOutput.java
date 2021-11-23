@@ -19,13 +19,13 @@
 package org.apache.flink.connector.testutils.source.reader;
 
 import org.apache.flink.api.common.eventtime.Watermark;
-import org.apache.flink.api.connector.source.ReaderOutput;
-import org.apache.flink.api.connector.source.SourceOutput;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
 
 import java.util.ArrayList;
 
 /** A {@code ReaderOutput} for testing that collects the emitted records. */
-public class TestingReaderOutput<E> implements ReaderOutput<E> {
+public class TestingReaderOutput<E> implements InternalReaderOutput<E> {
 
     private final ArrayList<E> emittedRecords = new ArrayList<>();
 
@@ -55,12 +55,17 @@ public class TestingReaderOutput<E> implements ReaderOutput<E> {
     }
 
     @Override
-    public SourceOutput<E> createOutputForSplit(String splitId) {
+    public InternalSourceOutput<E> createOutputForSplit(String splitId) {
         return this;
     }
 
     @Override
     public void releaseOutputForSplit(String splitId) {}
+
+    @Override
+    public long getLastWatermark() {
+        return 0;
+    }
 
     // ------------------------------------------------------------------------
 

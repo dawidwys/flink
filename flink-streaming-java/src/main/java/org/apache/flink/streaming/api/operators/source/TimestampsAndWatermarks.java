@@ -22,7 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.eventtime.TimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkOutput;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.connector.source.ReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
@@ -45,8 +45,10 @@ public interface TimestampsAndWatermarks<T> {
     /**
      * Creates the ReaderOutput for the source reader, than internally runs the timestamp extraction
      * and watermark generation.
+     *
+     * @return
      */
-    ReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output);
+    InternalReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output);
 
     /**
      * Starts emitting periodic watermarks, if this implementation produces watermarks, and if

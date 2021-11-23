@@ -23,6 +23,8 @@ import org.apache.flink.api.common.eventtime.TimestampAssigner;
 import org.apache.flink.api.common.eventtime.Watermark;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceOutput;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.ExceptionInChainedOperatorException;
@@ -47,7 +49,7 @@ public class NoOpTimestampsAndWatermarks<T> implements TimestampsAndWatermarks<T
     }
 
     @Override
-    public ReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output) {
+    public InternalReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output) {
         checkNotNull(output);
         return new TimestampsOnlyOutput<>(output, timestamps);
     }
@@ -71,7 +73,7 @@ public class NoOpTimestampsAndWatermarks<T> implements TimestampsAndWatermarks<T
      *
      * @param <T> The type of the emitted records.
      */
-    private static final class TimestampsOnlyOutput<T> implements ReaderOutput<T> {
+    private static final class TimestampsOnlyOutput<T> implements InternalReaderOutput<T> {
 
         private final PushingAsyncDataInput.DataOutput<T> output;
         private final TimestampAssigner<T> timestampAssigner;
@@ -111,6 +113,11 @@ public class NoOpTimestampsAndWatermarks<T> implements TimestampsAndWatermarks<T
         }
 
         @Override
+        public long getLastWatermark() {
+            return Watermark.MAX_WATERMARK.getTimestamp();
+        }
+
+        @Override
         public void markIdle() {
             // do nothing, because without watermarks there is no idleness
         }
@@ -121,7 +128,7 @@ public class NoOpTimestampsAndWatermarks<T> implements TimestampsAndWatermarks<T
         }
 
         @Override
-        public SourceOutput<T> createOutputForSplit(String splitId) {
+        public InternalSourceOutput<T> createOutputForSplit(String splitId) {
             // we don't need per-partition instances, because we do not generate watermarks
             return this;
         }

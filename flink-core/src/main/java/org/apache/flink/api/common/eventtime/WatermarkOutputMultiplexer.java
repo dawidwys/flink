@@ -20,6 +20,7 @@ package org.apache.flink.api.common.eventtime;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.eventtime.CombinedWatermarkStatus.PartialWatermark;
+import org.apache.flink.api.connector.source.internal.InternalWatermarkOutput;
 import org.apache.flink.util.Preconditions;
 
 import java.util.HashMap;
@@ -104,7 +105,7 @@ public class WatermarkOutputMultiplexer {
      * <p>>See {@link WatermarkOutputMultiplexer} for a description of immediate and deferred
      * outputs.
      */
-    public WatermarkOutput getImmediateOutput(String outputId) {
+    public InternalWatermarkOutput getImmediateOutput(String outputId) {
         final PartialWatermark outputState = watermarkPerOutputId.get(outputId);
         Preconditions.checkArgument(
                 outputState != null, "no output registered under id %s", outputId);
@@ -117,7 +118,7 @@ public class WatermarkOutputMultiplexer {
      * <p>>See {@link WatermarkOutputMultiplexer} for a description of immediate and deferred
      * outputs.
      */
-    public WatermarkOutput getDeferredOutput(String outputId) {
+    public InternalWatermarkOutput getDeferredOutput(String outputId) {
         final PartialWatermark outputState = watermarkPerOutputId.get(outputId);
         Preconditions.checkArgument(
                 outputState != null, "no output registered under id %s", outputId);
@@ -150,7 +151,7 @@ public class WatermarkOutputMultiplexer {
      * Updating the state of an immediate output can possible lead to a combined watermark update to
      * the underlying {@link WatermarkOutput}.
      */
-    private class ImmediateOutput implements WatermarkOutput {
+    private class ImmediateOutput implements InternalWatermarkOutput {
 
         private final PartialWatermark state;
 
@@ -168,6 +169,13 @@ public class WatermarkOutputMultiplexer {
             if (wasUpdated && timestamp > combinedWatermarkStatus.getCombinedWatermark()) {
                 updateCombinedWatermark();
             }
+        }
+
+        @Override
+        public long getLastWatermark() {
+            return state.isIdle()
+                    ? combinedWatermarkStatus.getCombinedWatermark()
+                    : state.getWatermark();
         }
 
         @Override
@@ -193,9 +201,10 @@ public class WatermarkOutputMultiplexer {
      * when {@link WatermarkOutputMultiplexer#onPeriodicEmit()} is called will the deferred updates
      * be combined into a potential combined update of the underlying {@link WatermarkOutput}.
      */
-    private static class DeferredOutput implements WatermarkOutput {
+    private static class DeferredOutput implements InternalWatermarkOutput {
 
         private final PartialWatermark state;
+        private long lastWatermark = Long.MIN_VALUE;
 
         public DeferredOutput(PartialWatermark state) {
             this.state = state;
@@ -203,7 +212,13 @@ public class WatermarkOutputMultiplexer {
 
         @Override
         public void emitWatermark(Watermark watermark) {
+            lastWatermark = watermark.getTimestamp();
             state.setWatermark(watermark.getTimestamp());
+        }
+
+        @Override
+        public long getLastWatermark() {
+            return lastWatermark;
         }
 
         @Override

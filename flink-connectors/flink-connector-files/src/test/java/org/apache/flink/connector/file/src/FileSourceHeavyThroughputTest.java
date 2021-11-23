@@ -23,9 +23,10 @@ import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceEvent;
-import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.file.src.reader.SimpleStreamFormat;
 import org.apache.flink.connector.file.src.reader.StreamFormat;
@@ -227,7 +228,7 @@ public class FileSourceHeavyThroughputTest {
         }
     }
 
-    private static final class NoOpReaderOutput<E> implements ReaderOutput<E> {
+    private static final class NoOpReaderOutput<E> implements InternalReaderOutput<E> {
 
         @Override
         public void collect(E record) {}
@@ -245,11 +246,16 @@ public class FileSourceHeavyThroughputTest {
         public void markActive() {}
 
         @Override
-        public SourceOutput<E> createOutputForSplit(String splitId) {
+        public InternalSourceOutput<E> createOutputForSplit(String splitId) {
             return this;
         }
 
         @Override
         public void releaseOutputForSplit(String splitId) {}
+
+        @Override
+        public long getLastWatermark() {
+            return 0;
+        }
     }
 }

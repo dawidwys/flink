@@ -24,8 +24,10 @@ import org.apache.flink.api.common.eventtime.WatermarkGenerator;
 import org.apache.flink.api.common.eventtime.WatermarkGeneratorSupplier;
 import org.apache.flink.api.common.eventtime.WatermarkOutput;
 import org.apache.flink.api.common.eventtime.WatermarkOutputMultiplexer;
-import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceOutput;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
+import org.apache.flink.api.connector.source.internal.InternalWatermarkOutput;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 
@@ -89,7 +91,7 @@ public class ProgressiveTimestampsAndWatermarks<T> implements TimestampsAndWater
     // ------------------------------------------------------------------------
 
     @Override
-    public ReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output) {
+    public InternalReaderOutput<T> createMainOutput(PushingAsyncDataInput.DataOutput<T> output) {
         // At the moment, we assume only one output is ever created!
         // This assumption is strict, currently, because many of the classes in this implementation
         // do not
@@ -98,7 +100,7 @@ public class ProgressiveTimestampsAndWatermarks<T> implements TimestampsAndWater
                 currentMainOutput == null && currentPerSplitOutputs == null,
                 "already created a main output");
 
-        final WatermarkOutput watermarkOutput = new WatermarkToDataOutput(output);
+        final InternalWatermarkOutput watermarkOutput = new WatermarkToDataOutput(output);
         final WatermarkGenerator<T> watermarkGenerator =
                 watermarksFactory.createWatermarkGenerator(watermarksContext);
 
@@ -157,13 +159,13 @@ public class ProgressiveTimestampsAndWatermarks<T> implements TimestampsAndWater
     // ------------------------------------------------------------------------
 
     private static final class StreamingReaderOutput<T> extends SourceOutputWithWatermarks<T>
-            implements ReaderOutput<T> {
+            implements InternalReaderOutput<T> {
 
         private final SplitLocalOutputs<T> splitLocalOutputs;
 
         StreamingReaderOutput(
                 PushingAsyncDataInput.DataOutput<T> output,
-                WatermarkOutput watermarkOutput,
+                InternalWatermarkOutput watermarkOutput,
                 TimestampAssigner<T> timestampAssigner,
                 WatermarkGenerator<T> watermarkGenerator,
                 SplitLocalOutputs<T> splitLocalOutputs) {
@@ -173,7 +175,7 @@ public class ProgressiveTimestampsAndWatermarks<T> implements TimestampsAndWater
         }
 
         @Override
-        public SourceOutput<T> createOutputForSplit(String splitId) {
+        public InternalSourceOutput<T> createOutputForSplit(String splitId) {
             return splitLocalOutputs.createOutputForSplit(splitId);
         }
 
@@ -217,15 +219,17 @@ public class ProgressiveTimestampsAndWatermarks<T> implements TimestampsAndWater
                     new LinkedHashMap<>(); // we use a LinkedHashMap because it iterates faster
         }
 
-        SourceOutput<T> createOutputForSplit(String splitId) {
+        InternalSourceOutput<T> createOutputForSplit(String splitId) {
             final SourceOutputWithWatermarks<T> previous = localOutputs.get(splitId);
             if (previous != null) {
                 return previous;
             }
 
             watermarkMultiplexer.registerNewOutput(splitId);
-            final WatermarkOutput onEventOutput = watermarkMultiplexer.getImmediateOutput(splitId);
-            final WatermarkOutput periodicOutput = watermarkMultiplexer.getDeferredOutput(splitId);
+            final InternalWatermarkOutput onEventOutput =
+                    watermarkMultiplexer.getImmediateOutput(splitId);
+            final InternalWatermarkOutput periodicOutput =
+                    watermarkMultiplexer.getDeferredOutput(splitId);
 
             final WatermarkGenerator<T> watermarks =
                     watermarksFactory.createWatermarkGenerator(watermarkContext);

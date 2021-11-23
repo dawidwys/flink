@@ -43,6 +43,7 @@ import org.apache.flink.streaming.runtime.tasks.TestProcessingTimeService;
 import org.apache.flink.streaming.util.MockOutput;
 import org.apache.flink.streaming.util.MockStreamConfig;
 
+import org.apache.flink.shaded.guava30.com.google.common.collect.Iterables;
 import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 
 import org.junit.Test;
@@ -60,6 +61,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertThat;
 
@@ -215,8 +217,17 @@ public class SourceOperatorEventTimeTest {
                 createTestOperator(
                         reader, watermarkStrategy, timeService, emitProgressiveWatermarks);
 
+        long lastWatermark =
+                emitProgressiveWatermarks
+                        ? Watermark.UNINITIALIZED.getTimestamp()
+                        : Watermark.MAX_WATERMARK.getTimestamp();
         while (sourceOperator.emitNext(out) != DataInputStatus.END_OF_INPUT) {
             timeService.setCurrentTime(timeService.getCurrentProcessingTime() + 100);
+
+            if (Iterables.getLast(out.events, null) instanceof Watermark) {
+                lastWatermark = ((Watermark) Iterables.getLast(out.events)).getTimestamp();
+            }
+            assertThat(sourceOperator.getLastEmittedWatermark(), equalTo(lastWatermark));
         }
 
         return out.events;

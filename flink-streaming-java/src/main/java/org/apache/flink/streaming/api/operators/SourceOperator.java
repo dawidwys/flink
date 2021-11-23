@@ -23,11 +23,11 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
-import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SourceSplit;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
 import org.apache.flink.core.io.InputStatus;
@@ -123,7 +123,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     /** The source reader that does most of the work. */
     private SourceReader<OUT, SplitT> sourceReader;
 
-    private ReaderOutput<OUT> currentMainOutput;
+    private InternalReaderOutput<OUT> currentMainOutput;
 
     private DataOutput<OUT> lastInvokedOutput;
 
@@ -339,6 +339,11 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 break;
         }
         return finished;
+    }
+
+    @VisibleForTesting
+    public long getLastEmittedWatermark() {
+        return currentMainOutput.getLastWatermark();
     }
 
     @Override
