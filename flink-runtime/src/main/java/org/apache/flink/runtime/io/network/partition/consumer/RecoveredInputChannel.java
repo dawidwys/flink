@@ -24,6 +24,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.event.TaskEvent;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -226,6 +227,12 @@ public abstract class RecoveredInputChannel extends InputChannel implements Chan
     final void requestSubpartition(int subpartitionIndex) {
         throw new UnsupportedOperationException(
                 "RecoveredInputChannel should never request partition.");
+    }
+
+    @Override
+    AvailabilityProvider isSubpartitionAvailable() {
+        throw new UnsupportedOperationException(
+                "RecoveredInputChannel should never ask for subpartition availability.");
     }
 
     @Override

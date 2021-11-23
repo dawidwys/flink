@@ -20,6 +20,7 @@ package org.apache.flink.runtime.io.network.partition.consumer;
 
 import org.apache.flink.metrics.SimpleCounter;
 import org.apache.flink.runtime.event.TaskEvent;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.api.EndOfData;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
@@ -64,6 +65,9 @@ public class TestInputChannel extends InputChannel {
 
     private int currentBufferSize;
 
+    private final AvailabilityProvider.AvailabilityHelper availabilityHelper =
+            new AvailabilityProvider.AvailabilityHelper();
+
     public TestInputChannel(SingleInputGate inputGate, int channelIndex) {
         this(inputGate, channelIndex, true, false);
     }
@@ -83,6 +87,7 @@ public class TestInputChannel extends InputChannel {
                 new SimpleCounter());
         this.reuseLastReturnBuffer = reuseLastReturnBuffer;
         this.notifyChannelNonEmpty = notifyChannelNonEmpty;
+        this.availabilityHelper.resetAvailable();
     }
 
     public TestInputChannel read(Buffer buffer) throws IOException, InterruptedException {
@@ -162,6 +167,11 @@ public class TestInputChannel extends InputChannel {
 
     @Override
     void requestSubpartition(int subpartitionIndex) throws IOException, InterruptedException {}
+
+    @Override
+    AvailabilityProvider isSubpartitionAvailable() {
+        return availabilityHelper;
+    }
 
     @Override
     Optional<BufferAndAvailability> getNextBuffer() throws IOException, InterruptedException {

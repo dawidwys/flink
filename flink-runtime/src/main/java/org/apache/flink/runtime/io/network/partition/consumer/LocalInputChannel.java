@@ -24,6 +24,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.execution.CancelTaskException;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.TaskEventPublisher;
 import org.apache.flink.runtime.io.network.api.CheckpointBarrier;
 import org.apache.flink.runtime.io.network.buffer.Buffer;
@@ -46,6 +47,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
@@ -72,6 +74,8 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 
     private final ChannelStatePersister channelStatePersister;
 
+    private AvailabilityProvider.AvailabilityHelper partitionRequestSucceeded =
+            new AvailabilityProvider.AvailabilityHelper();
 
 
     public LocalInputChannel(
@@ -141,6 +145,7 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
 
                     // make the subpartition view visible
                     this.subpartitionView = subpartitionView;
+                    partitionRequestSucceeded.getUnavailableToResetAvailable().complete(null);
 
                     // check if the channel was released in the meantime
                     if (isReleased) {
@@ -169,6 +174,11 @@ public class LocalInputChannel extends InputChannel implements BufferAvailabilit
         if (retriggerRequest) {
             inputGate.retriggerPartitionRequest(partitionId.getPartitionId());
         }
+    }
+
+    @Override
+    AvailabilityProvider isSubpartitionAvailable() {
+        return partitionRequestSucceeded;
     }
 
     /** Retriggers a subpartition request. */

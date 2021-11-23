@@ -21,6 +21,7 @@ package org.apache.flink.runtime.io.network.partition.consumer;
 import org.apache.flink.runtime.checkpoint.CheckpointException;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.event.TaskEvent;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.ConnectionID;
 import org.apache.flink.runtime.io.network.ConnectionManager;
 import org.apache.flink.runtime.io.network.TaskEventPublisher;
@@ -61,6 +62,8 @@ class UnknownInputChannel extends InputChannel implements ChannelStateHolder {
     private final InputChannelMetrics metrics;
 
     @Nullable private ChannelStateWriter channelStateWriter;
+    private final AvailabilityProvider.AvailabilityHelper availabilityHelper =
+            new AvailabilityProvider.AvailabilityHelper();
 
     public UnknownInputChannel(
             SingleInputGate gate,
@@ -83,6 +86,7 @@ class UnknownInputChannel extends InputChannel implements ChannelStateHolder {
         this.initialBackoff = initialBackoff;
         this.maxBackoff = maxBackoff;
         this.networkBuffersPerChannel = networkBuffersPerChannel;
+        this.availabilityHelper.resetAvailable();
     }
 
     @Override
@@ -99,6 +103,11 @@ class UnknownInputChannel extends InputChannel implements ChannelStateHolder {
     @Override
     public void requestSubpartition(int subpartitionIndex) throws IOException {
         // Nothing to do here
+    }
+
+    @Override
+    AvailabilityProvider isSubpartitionAvailable() {
+        return availabilityHelper;
     }
 
     @Override

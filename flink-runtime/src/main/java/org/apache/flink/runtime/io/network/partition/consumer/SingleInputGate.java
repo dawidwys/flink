@@ -27,6 +27,7 @@ import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.event.TaskEvent;
 import org.apache.flink.runtime.execution.CancelTaskException;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.api.EndOfData;
 import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.serialization.EventSerializer;
@@ -397,7 +398,16 @@ public class SingleInputGate extends IndexedInputGate {
     public void announceBufferSize(int newBufferSize) {
         for (InputChannel channel : channels) {
             if (!channel.isReleased()) {
-                channel.announceBufferSize(newBufferSize);
+                final AvailabilityProvider subpartitionAvailable =
+                        channel.isSubpartitionAvailable();
+                if (subpartitionAvailable.isAvailable()) {
+                    channel.announceBufferSize(newBufferSize);
+                } else {
+                    subpartitionAvailable
+                            .getAvailableFuture()
+                            .whenComplete(
+                                    (ignored, ex) -> channel.announceBufferSize(newBufferSize));
+                }
             }
         }
     }

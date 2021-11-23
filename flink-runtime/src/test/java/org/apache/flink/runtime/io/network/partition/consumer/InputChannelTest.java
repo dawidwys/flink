@@ -20,6 +20,7 @@ package org.apache.flink.runtime.io.network.partition.consumer;
 
 import org.apache.flink.metrics.SimpleCounter;
 import org.apache.flink.runtime.event.TaskEvent;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 
 import org.junit.Test;
@@ -140,6 +141,14 @@ public class InputChannelTest {
 
         @Override
         void requestSubpartition(int subpartitionIndex) throws IOException, InterruptedException {}
+
+        @Override
+        AvailabilityProvider isSubpartitionAvailable() {
+            final AvailabilityProvider.AvailabilityHelper availabilityHelper =
+                    new AvailabilityProvider.AvailabilityHelper();
+            availabilityHelper.resetAvailable();
+            return availabilityHelper;
+        }
 
         @Override
         Optional<BufferAndAvailability> getNextBuffer() throws IOException, InterruptedException {

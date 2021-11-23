@@ -57,7 +57,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -194,6 +193,11 @@ public class RemoteInputChannel extends InputChannel {
 
             partitionRequestClient.requestSubpartition(partitionId, subpartitionIndex, this, 0);
         }
+    }
+
+    @Override
+    AvailabilityProvider isSubpartitionAvailable() {
+        return partitionRequestSucceeded;
     }
 
     /** Retriggers a remote subpartition request. */
