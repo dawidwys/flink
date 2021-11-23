@@ -21,10 +21,13 @@ package org.apache.flink.connector.base.source.reader;
 import org.apache.flink.api.common.accumulators.ListAccumulator;
 import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.api.common.time.Deadline;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
+import org.apache.flink.api.connector.source.SourceOutput;
+import org.apache.flink.api.connector.source.SourceReader;
+import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.connector.source.lib.NumberSequenceSource;
@@ -32,6 +35,8 @@ import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.mocks.MockBaseSource;
 import org.apache.flink.connector.base.source.reader.mocks.MockSplitEnumerator;
+import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
+import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -42,21 +47,32 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.FlinkRuntimeException;
+import org.apache.flink.util.NumberSequenceIterator;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 
 /** IT case for the {@link Source} with a coordinator. */
 public class CoordinatedSourceITCase extends AbstractTestBase {
 
     @Test
+    @Ignore("manual test")
     public void testAlignment() throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.getConfig().setAutoWatermarkInterval(2000);
@@ -65,20 +81,10 @@ public class CoordinatedSourceITCase extends AbstractTestBase {
 
         DataStream<Long> eventStream =
                 env.fromSource(
-                                new NumberSequenceSource(0, Long.MAX_VALUE),
-                                WatermarkStrategy.<Long>forMonotonousTimestamps()
-                                        .withTimestampAssigner(new LongTimestampAssigner()),
-                                "NumberSequenceSource")
-                        .map(
-                                new RichMapFunction<Long, Long>() {
-                                    @Override
-                                    public Long map(Long value) throws Exception {
-                                        if (getRuntimeContext().getIndexOfThisSubtask() == 0) {
-                                            Thread.sleep(1);
-                                        }
-                                        return 1L;
-                                    }
-                                });
+                        new SourceWithLaggingPartitions(),
+                        WatermarkStrategy.<Long>forMonotonousTimestamps()
+                                .withTimestampAssigner(new LongTimestampAssigner()),
+                        "NumberSequenceSource");
 
         eventStream
                 .windowAll(TumblingEventTimeWindows.of(Time.seconds(1)))
@@ -100,11 +106,9 @@ public class CoordinatedSourceITCase extends AbstractTestBase {
     }
 
     private static class LongTimestampAssigner implements SerializableTimestampAssigner<Long> {
-        private long counter = 0;
-
         @Override
         public long extractTimestamp(Long record, long recordTimeStamp) {
-            return counter++;
+            return recordTimeStamp;
         }
     }
 
@@ -305,6 +309,172 @@ public class CoordinatedSourceITCase extends AbstractTestBase {
                                     "Artificial trigger for Global Failover");
                         });
             }
+        }
+    }
+
+    private static class SourceWithLaggingPartitions extends NumberSequenceSource {
+
+        public static final int FROM = 0;
+        public static final long TO = Long.MAX_VALUE;
+
+        public SourceWithLaggingPartitions() {
+            super(FROM, TO);
+        }
+
+        @Override
+        public SplitEnumerator<NumberSequenceSplit, Collection<NumberSequenceSplit>>
+                createEnumerator(final SplitEnumeratorContext<NumberSequenceSplit> enumContext) {
+
+            final List<NumberSequenceSplit> splits = new ArrayList<>();
+
+            for (int splitId = 0; splitId < 2 * enumContext.currentParallelism(); splitId++) {
+                splits.add(new NumberSequenceSplit(String.valueOf(splitId), FROM, TO));
+            }
+
+            return new SourceWithLaggingPartitionEnumerator(splits, enumContext);
+        }
+
+        @Override
+        public SourceReader<Long, NumberSequenceSplit> createReader(
+                SourceReaderContext readerContext) {
+            return new UnalignedSourceReader(readerContext);
+        }
+
+        private static class UnalignedSourceReader
+                extends SingleThreadMultiplexSourceReaderBase<
+                        Long, Long, NumberSequenceSplit, NumberSequenceSplit> {
+
+            public UnalignedSourceReader(SourceReaderContext readerContext) {
+                super(
+                        UnalignedSourceSplitReader::new,
+                        new UnalignedSourceRecordEmitter(),
+                        readerContext.getConfiguration(),
+                        readerContext);
+            }
+
+            @Override
+            protected void onSplitFinished(Map<String, NumberSequenceSplit> finishedSplitIds) {}
+
+            @Override
+            protected NumberSequenceSplit initializedState(NumberSequenceSplit split) {
+                return split;
+            }
+
+            @Override
+            protected NumberSequenceSplit toSplitType(
+                    String splitId, NumberSequenceSplit splitState) {
+                return splitState;
+            }
+        }
+
+        private static class UnalignedSourceRecordEmitter
+                implements RecordEmitter<Long, Long, NumberSequenceSplit> {
+            @Override
+            public void emitRecord(
+                    Long element, SourceOutput<Long> output, NumberSequenceSplit splitState) {
+                output.collect(element, element);
+            }
+        }
+
+        private static class UnalignedSourceSplitReader
+                implements AlignedSplitReader<Long, NumberSequenceSplit> {
+            private static final Duration SLOW_THROTTLE = Duration.ofMillis(1);
+            private final Map<String, NumberSequenceIterator> slowSplits = new HashMap<>();
+            private final Map<String, NumberSequenceIterator> fastSplits = new HashMap<>();
+            private final Set<String> pausedSplitIds = new HashSet<>();
+            private Deadline nextSlowEmission = Deadline.now();
+
+            public UnalignedSourceSplitReader() {}
+
+            @Override
+            public void alignSplits(
+                    Collection<NumberSequenceSplit> splitsToPause,
+                    Collection<NumberSequenceSplit> splitsToResume) {
+                for (NumberSequenceSplit split : splitsToPause) {
+                    pausedSplitIds.add(split.splitId());
+                }
+                for (NumberSequenceSplit split : splitsToResume) {
+                    pausedSplitIds.remove(split.splitId());
+                }
+            }
+
+            @Override
+            public RecordsWithSplitIds<Long> fetch() {
+                Map<String, Collection<Long>> newValues = new HashMap<>();
+                fastSplits.forEach(
+                        (splitId, iter) -> {
+                            if (!pausedSplitIds.contains(splitId)) {
+                                newValues.put(splitId, singleton(iter.next()));
+                            }
+                        });
+                if (!slowSplits.isEmpty() && nextSlowEmission.isOverdue()) {
+                    slowSplits.forEach(
+                            (splitId, iter) -> newValues.put(splitId, singleton(iter.next())));
+                    nextSlowEmission = Deadline.fromNow(SLOW_THROTTLE);
+                }
+
+                return new RecordsBySplits<>(newValues, Collections.emptySet());
+            }
+
+            @Override
+            public void handleSplitsChanges(SplitsChange<NumberSequenceSplit> splitsChanges) {
+                splitsChanges.splits().stream()
+                        .filter(s -> isSlow(s))
+                        .forEach(s -> slowSplits.put(s.splitId(), s.getIterator()));
+                splitsChanges.splits().stream()
+                        .filter(s -> !isSlow(s))
+                        .forEach(s -> fastSplits.put(s.splitId(), s.getIterator()));
+            }
+
+            private boolean isSlow(NumberSequenceSplit s) {
+                return s.splitId().equals("1");
+            }
+
+            @Override
+            public void wakeUp() {}
+
+            @Override
+            public void close() throws Exception {}
+        }
+
+        private static class SourceWithLaggingPartitionEnumerator
+                implements SplitEnumerator<NumberSequenceSplit, Collection<NumberSequenceSplit>> {
+            private final List<NumberSequenceSplit> splits;
+            private final SplitEnumeratorContext<NumberSequenceSplit> enumContext;
+
+            public SourceWithLaggingPartitionEnumerator(
+                    List<NumberSequenceSplit> splits,
+                    SplitEnumeratorContext<NumberSequenceSplit> enumContext) {
+                this.splits = splits;
+                this.enumContext = enumContext;
+            }
+
+            @Override
+            public void start() {}
+
+            @Override
+            public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {}
+
+            @Override
+            public void addSplitsBack(List<NumberSequenceSplit> splits, int subtaskId) {}
+
+            @Override
+            public void addReader(int subtaskId) {
+                for (int index = subtaskId;
+                        index < splits.size();
+                        index += enumContext.currentParallelism()) {
+                    enumContext.assignSplit(splits.get(index), subtaskId);
+                }
+            }
+
+            @Override
+            public Collection<NumberSequenceSplit> snapshotState(long checkpointId)
+                    throws Exception {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public void close() throws IOException {}
         }
     }
 }
