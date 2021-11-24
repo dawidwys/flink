@@ -21,13 +21,18 @@ package org.apache.flink.connector.base.source.reader.mocks;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
+import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A mock split reader for unit tests. The mock split reader provides configurable behaviours. 1.
@@ -35,7 +40,7 @@ import java.util.Map;
  * - A non-blocking fetch do not expect to be interrupted. 2. handle splits changes in one
  * handleSplitsChanges call or handle one change in each call of handleSplitsChanges.
  */
-public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
+public class MockSplitReader implements AlignedSplitReader<int[], MockSourceSplit> {
     // Use LinkedHashMap for determinism.
     private final Map<String, MockSourceSplit> splits = new LinkedHashMap<>();
     private final int numRecordsPerSplitPerFetch;
@@ -45,6 +50,7 @@ public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
     private final Object wakeupLock = new Object();
     private volatile Thread threadInBlocking;
     private boolean wokenUp;
+    private Set<MockSourceSplit> pausedSplits = new HashSet<>();
 
     private MockSplitReader(
             int numRecordsPerSplitPerFetch,
@@ -99,6 +105,10 @@ public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
             while (iterator.hasNext()) {
                 Map.Entry<String, MockSourceSplit> entry = iterator.next();
                 MockSourceSplit split = entry.getValue();
+                if (pausedSplits.contains(split)) {
+                    continue;
+                }
+
                 boolean hasRecords = false;
                 for (int i = 0; i < numRecordsPerSplitPerFetch && !split.isFinished(); i++) {
                     // This call may throw InterruptedException.
@@ -135,6 +145,17 @@ public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
         }
 
         return records.build();
+    }
+
+    @Override
+    public void alignSplits(
+            Collection<MockSourceSplit> splitsToPause, Collection<MockSourceSplit> splitsToResume) {
+        if (!splitsToPause.isEmpty()) {
+            assertThat(pausedSplits).doesNotContainAnyElementsOf(splitsToPause);
+        }
+        pausedSplits.addAll(splitsToPause);
+        assertThat(pausedSplits).containsAll(splitsToResume);
+        pausedSplits.removeAll(splitsToResume);
     }
 
     /** Builder for {@link MockSplitReader}. */

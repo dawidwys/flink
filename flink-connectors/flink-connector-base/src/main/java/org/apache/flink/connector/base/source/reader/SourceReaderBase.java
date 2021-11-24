@@ -19,12 +19,15 @@
 package org.apache.flink.connector.base.source.reader;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.common.eventtime.Watermark;
+import org.apache.flink.api.connector.source.AlignedSourceReader;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SourceSplit;
+import org.apache.flink.api.connector.source.internal.InternalSourceOutput;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -39,7 +42,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,7 +71,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  */
 @PublicEvolving
 public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitStateT>
-        implements SourceReader<T, SplitT> {
+        implements AlignedSourceReader<T, SplitT> {
     private static final Logger LOG = LoggerFactory.getLogger(SourceReaderBase.class);
 
     /** A queue to buffer the elements fetched by the fetcher thread. */
@@ -100,6 +105,8 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 
     /** Indicating whether the SourceReader will be assigned more splits or not. */
     private boolean noMoreSplitsAssignment;
+
+    private final Set<String> currentlyPausedSplits = new HashSet<>();
 
     public SourceReaderBase(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
@@ -198,6 +205,39 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
         }
 
         fetch.recycle();
+    }
+
+    /**
+     * Finds the splits that are beyond the current max watermark and pauses them. At the same time,
+     * splits that have been paused and where the global watermark caught up are resumed.
+     *
+     * <p>Note that newly added splits will currently not be limited before the next {@link
+     * #setCurrentMaxWatermark(Watermark)} call to reduce complexity. Since event time alignment is
+     * a best-effort to reduce state size because of drifted partitions, it should be good enough
+     * for now.
+     */
+    @Override
+    public void setCurrentMaxWatermark(Watermark currentMaxWatermark) {
+        long currentMaxWatermarkTs = currentMaxWatermark.getTimestamp();
+        Collection<String> splitsToPause = new ArrayList<>(splitStates.size());
+        Collection<String> splitsToResume = new ArrayList<>(splitStates.size());
+        splitStates.forEach(
+                (splitId, context) -> {
+                    if (context.sourceOutput == null) {
+                        return;
+                    }
+                    if (currentMaxWatermarkTs < context.sourceOutput.getLastWatermark()) {
+                        splitsToPause.add(splitId);
+                    } else if (currentlyPausedSplits.contains(splitId)) {
+                        splitsToResume.add(splitId);
+                    }
+                });
+        splitsToPause.removeAll(currentlyPausedSplits);
+        if (!splitsToPause.isEmpty() || !splitsToResume.isEmpty()) {
+            splitFetcherManager.alignSplits(splitsToPause, splitsToResume);
+            currentlyPausedSplits.addAll(splitsToPause);
+            currentlyPausedSplits.removeAll(splitsToResume);
+        }
     }
 
     private boolean moveToNextSplit(
@@ -315,16 +355,16 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 
         final String splitId;
         final SplitStateT state;
-        SourceOutput<T> sourceOutput;
+        @Nullable InternalSourceOutput<T> sourceOutput;
 
         private SplitContext(String splitId, SplitStateT state) {
             this.state = state;
             this.splitId = splitId;
         }
 
-        SourceOutput<T> getOrCreateSplitOutput(ReaderOutput<T> mainOutput) {
+        InternalSourceOutput<T> getOrCreateSplitOutput(ReaderOutput<T> mainOutput) {
             if (sourceOutput == null) {
-                sourceOutput = mainOutput.createOutputForSplit(splitId);
+                sourceOutput = (InternalSourceOutput<T>) mainOutput.createOutputForSplit(splitId);
             }
             return sourceOutput;
         }

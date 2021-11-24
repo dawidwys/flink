@@ -18,9 +18,15 @@
 
 package org.apache.flink.connector.base.source.reader;
 
+import org.apache.flink.api.common.eventtime.TimestampAssigner;
+import org.apache.flink.api.common.eventtime.Watermark;
+import org.apache.flink.api.common.eventtime.WatermarkGenerator;
+import org.apache.flink.api.common.eventtime.WatermarkOutput;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceSplit;
+import org.apache.flink.api.connector.source.internal.InternalReaderOutput;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
@@ -37,6 +43,11 @@ import org.apache.flink.connector.testutils.source.reader.SourceReaderTestBase;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderContext;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderOutput;
 import org.apache.flink.core.io.InputStatus;
+import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
+import org.apache.flink.streaming.api.operators.source.CollectingDataOutput;
+import org.apache.flink.streaming.api.operators.source.TimestampsAndWatermarks;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.runtime.tasks.TestProcessingTimeService;
 
 import org.junit.jupiter.api.Test;
 
@@ -239,6 +250,85 @@ public class SourceReaderBaseTest extends SourceReaderTestBase<MockSourceSplit> 
                 .isEqualTo(InputStatus.MORE_AVAILABLE);
     }
 
+    @Test
+    public void testSplitAlignment() throws Exception {
+        FutureCompletingBlockingQueue<RecordsWithSplitIds<int[]>> elementsQueue =
+                new FutureCompletingBlockingQueue<>(1);
+        MockSplitReader mockSplitReader =
+                MockSplitReader.newBuilder()
+                        .setNumRecordsPerSplitPerFetch(1)
+                        .setBlockingFetch(false)
+                        .build();
+        MockSourceReader reader =
+                new MockSourceReader(
+                        elementsQueue,
+                        () -> mockSplitReader,
+                        getConfig(),
+                        new TestingReaderContext());
+
+        reader.start();
+
+        List<MockSourceSplit> splits =
+                Arrays.asList(
+                        getSplit(0, 10, Boundedness.BOUNDED), getSplit(1, 10, Boundedness.BOUNDED));
+        reader.addSplits(splits);
+        reader.notifyNoMoreSplits();
+
+        // add watermark assigner, where watermark = value
+        TimestampsAndWatermarks<Integer> eventTimeLogic =
+                TimestampsAndWatermarks.createProgressiveEventTimeLogic(
+                        WatermarkStrategy.forGenerator(
+                                context -> new EventAsTimestampWatermarkGenerator()),
+                        UnregisteredMetricsGroup.createSourceReaderMetricGroup(),
+                        new TestProcessingTimeService(),
+                        100);
+        CollectingDataOutput<Integer> output = new CollectingDataOutput<>();
+        InternalReaderOutput<Integer> mainOutput = eventTimeLogic.createMainOutput(output);
+
+        // poll twice to init both spits
+        pollOnce(reader, mainOutput);
+        pollOnce(reader, mainOutput);
+        assertThat(output.getEvents())
+                .filteredOn(e1 -> e1 instanceof StreamRecord)
+                .map(e1 -> ((StreamRecord<Integer>) e1).getValue())
+                .contains(0, 10);
+        // now disable one split
+        reader.setCurrentMaxWatermark(new Watermark(9));
+
+        while (true) {
+            if (pollOnce(reader, mainOutput)) {
+                break;
+            }
+
+            // received the last element from first split, re-enable 2. split
+            if (output.getEvents()
+                    .contains(new StreamRecord<>(9, TimestampAssigner.NO_TIMESTAMP))) {
+                reader.setCurrentMaxWatermark(new Watermark(19));
+            }
+        }
+
+        // usually split records are interleaved, 0,10,1,11,...
+        // because of disabled second split, we can now assert ordered after some initial elements
+        // (3 from both splits + watermarks)
+        assertThat(output.getEvents().subList(9, output.getEvents().size()))
+                .filteredOn(e -> e instanceof StreamRecord)
+                .map(e -> ((StreamRecord<Integer>) e).getValue())
+                .isSorted();
+    }
+
+    private boolean pollOnce(MockSourceReader reader, InternalReaderOutput<Integer> mainOutput)
+            throws Exception {
+        InputStatus status = reader.pollNext(mainOutput);
+        if (status == InputStatus.END_OF_INPUT) {
+            return true;
+        }
+        if (status == InputStatus.NOTHING_AVAILABLE) {
+            reader.isAvailable().get();
+            return pollOnce(reader, mainOutput);
+        }
+        return false;
+    }
+
     // ---------------- helper methods -----------------
 
     @Override
@@ -378,5 +468,16 @@ public class SourceReaderBaseTest extends SourceReaderTestBase<MockSourceSplit> 
                 }
             }
         }
+    }
+
+    private static class EventAsTimestampWatermarkGenerator implements WatermarkGenerator<Integer> {
+
+        @Override
+        public void onEvent(Integer event, long eventTimestamp, WatermarkOutput output) {
+            output.emitWatermark(new Watermark(event.longValue()));
+        }
+
+        @Override
+        public void onPeriodicEmit(WatermarkOutput output) {}
     }
 }

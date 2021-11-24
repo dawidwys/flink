@@ -23,4 +23,7 @@ import org.apache.flink.api.connector.source.ReaderOutput;
 
 /** A {@link ReaderOutput} with some internal methods relevant only to the framework. */
 @Internal
-public interface InternalReaderOutput<T> extends ReaderOutput<T>, InternalSourceOutput<T> {}
+public interface InternalReaderOutput<T> extends ReaderOutput<T>, InternalSourceOutput<T> {
+    @Override
+    InternalSourceOutput<T> createOutputForSplit(String splitId);
+}
