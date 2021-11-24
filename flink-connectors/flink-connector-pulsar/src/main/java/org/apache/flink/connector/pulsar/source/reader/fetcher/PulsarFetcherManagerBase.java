@@ -28,6 +28,7 @@ import org.apache.flink.connector.base.source.reader.synchronization.FutureCompl
 import org.apache.flink.connector.pulsar.source.reader.message.PulsarMessage;
 import org.apache.flink.connector.pulsar.source.split.PulsarPartitionSplit;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,17 @@ public abstract class PulsarFetcherManagerBase<T>
             fetcher.addSplits(singletonList(split));
             // This method could be executed multiple times.
             startFetcher(fetcher);
+        }
+    }
+
+    @Override
+    public void alignSplits(
+            Collection<String> splitIdsToPause, Collection<String> splitIdsToResume) {
+        for (String splitId : splitIdsToPause) {
+            getOrCreateFetcher(splitId).pause();
+        }
+        for (String splitId : splitIdsToResume) {
+            getOrCreateFetcher(splitId).resume();
         }
     }
 
