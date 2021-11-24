@@ -23,6 +23,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
+import org.apache.flink.api.connector.source.AlignedSourceReader;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
@@ -63,6 +64,7 @@ import org.apache.flink.util.UserCodeClassLoader;
 import org.apache.flink.util.function.FunctionWithException;
 
 import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -512,6 +514,12 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     public void handleOperatorEvent(OperatorEvent event) {
         if (event instanceof WatermarkAlignmentEvent) {
             currentMaxDesiredWatermark = ((WatermarkAlignmentEvent) event).getMaxWatermark();
+            if (sourceReader instanceof AlignedSourceReader) {
+                ((AlignedSourceReader<?, ?>) sourceReader)
+                        .setCurrentMaxWatermark(
+                                new org.apache.flink.api.common.eventtime.Watermark(
+                                        currentMaxDesiredWatermark));
+            }
             if (!isWaitingForAlignment()) {
                 waitingForAlignmentFuture.complete(null);
             }
