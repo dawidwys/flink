@@ -24,6 +24,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
+import org.apache.flink.api.connector.source.AlignedSourceReader;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceReader;
@@ -559,6 +560,12 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     private void updateMaxDesiredWatermark(WatermarkAlignmentEvent event) {
         currentMaxDesiredWatermark = event.getMaxWatermark();
+        if (sourceReader instanceof AlignedSourceReader) {
+            ((AlignedSourceReader<?, ?>) sourceReader)
+                    .setCurrentMaxWatermark(
+                            new org.apache.flink.api.common.eventtime.Watermark(
+                                    currentMaxDesiredWatermark));
+        }
         sourceMetricGroup.updateMaxDesiredWatermark(currentMaxDesiredWatermark);
     }
 

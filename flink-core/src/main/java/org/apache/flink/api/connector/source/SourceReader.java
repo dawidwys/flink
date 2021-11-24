@@ -32,6 +32,14 @@ import java.util.concurrent.CompletableFuture;
  * The interface for a source reader which is responsible for reading the records from the source
  * splits assigned by {@link SplitEnumerator}.
  *
+ * <p>For most non-trivial source reader, it is recommended to use {@link
+ * org.apache.flink.connector.base.source.reader.SourceReaderBase SourceReaderBase} which provides
+ * an efficient hand-over protocol to avoid blocking I/O inside the task thread and supports various
+ * split-threading models.
+ *
+ * <p>If the source reader reads split in parallel and can align on a global watermark (recommended
+ * for message queues), {@link AlignedSourceReader} should be implemented.
+ *
  * <p>Implementations can provide the following metrics:
  *
  * <ul>
