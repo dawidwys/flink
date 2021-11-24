@@ -24,12 +24,12 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
-import org.apache.flink.api.connector.source.AlignedSourceReader;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SourceSplit;
+import org.apache.flink.api.connector.source.WithSplitsAlignment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
 import org.apache.flink.core.io.InputStatus;
@@ -69,7 +69,13 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -88,7 +94,9 @@ import static org.apache.flink.util.Preconditions.checkState;
  */
 @Internal
 public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStreamOperator<OUT>
-        implements OperatorEventHandler, PushingAsyncDataInput<OUT> {
+        implements OperatorEventHandler,
+                PushingAsyncDataInput<OUT>,
+                TimestampsAndWatermarks.WatermarkUpdateListener {
     private static final long serialVersionUID = 1405537676017904695L;
 
     // Package private for unit test.
@@ -157,6 +165,10 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
             new SourceOperatorAvailabilityHelper();
 
     private final List<SplitT> outputPendingSplits = new ArrayList<>();
+
+    private final Map<String, Long> splitCurrentWatermarks = new HashMap<>();
+    private final Set<String> currentlyPausedSplits = new HashSet<>();
+    private @Nullable WithSplitsAlignment aligningSourceReader;
 
     private enum OperatingMode {
         READING,
@@ -285,6 +297,9 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 };
 
         sourceReader = readerFactory.apply(context);
+        if (sourceReader instanceof WithSplitsAlignment) {
+            this.aligningSourceReader = (WithSplitsAlignment) sourceReader;
+        }
     }
 
     public InternalSourceReaderMetricGroup getSourceMetricGroup() {
@@ -424,7 +439,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
     }
 
     private void initializeMainOutput(DataOutput<OUT> output) {
-        currentMainOutput = eventTimeLogic.createMainOutput(output, this::onWatermarkEmitted);
+        currentMainOutput = eventTimeLogic.createMainOutput(output, this);
         initializeLatencyMarkerEmitter(output);
         lastInvokedOutput = output;
         // Create per-split output for pending splits added before main output is initialized
@@ -560,18 +575,52 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     private void updateMaxDesiredWatermark(WatermarkAlignmentEvent event) {
         currentMaxDesiredWatermark = event.getMaxWatermark();
-        if (sourceReader instanceof AlignedSourceReader) {
-            ((AlignedSourceReader<?, ?>) sourceReader)
-                    .setCurrentMaxWatermark(
-                            new org.apache.flink.api.common.eventtime.Watermark(
-                                    currentMaxDesiredWatermark));
+        if (aligningSourceReader != null) {
+            checkSplitWatermarkAlignment();
         }
         sourceMetricGroup.updateMaxDesiredWatermark(currentMaxDesiredWatermark);
     }
 
-    private void onWatermarkEmitted(long emittedWatermark) {
-        lastEmittedWatermark = emittedWatermark;
+    @Override
+    public void updateCurrentEffectiveWatermark(long watermark) {
+        lastEmittedWatermark = watermark;
         checkWatermarkAlignment();
+    }
+
+    @Override
+    public void updateCurrentSplitWatermark(String splitId, long watermark) {
+        if (aligningSourceReader == null) {
+            return;
+        }
+        splitCurrentWatermarks.put(splitId, watermark);
+        if (currentMaxDesiredWatermark < watermark && !currentlyPausedSplits.contains(splitId)) {
+            aligningSourceReader.alignSplits(
+                    Collections.singletonList(splitId), Collections.emptyList());
+            currentlyPausedSplits.add(splitId);
+        }
+    }
+
+    /**
+     * Finds the splits that are beyond the current max watermark and pauses them. At the same time,
+     * splits that have been paused and where the global watermark caught up are resumed.
+     */
+    private void checkSplitWatermarkAlignment() {
+        Collection<String> splitsToPause = new ArrayList<>();
+        Collection<String> splitsToResume = new ArrayList<>();
+        splitCurrentWatermarks.forEach(
+                (splitId, splitWatermark) -> {
+                    if (currentMaxDesiredWatermark < splitWatermark) {
+                        splitsToPause.add(splitId);
+                    } else if (currentlyPausedSplits.contains(splitId)) {
+                        splitsToResume.add(splitId);
+                    }
+                });
+        splitsToPause.removeAll(currentlyPausedSplits);
+        if (!splitsToPause.isEmpty() || !splitsToResume.isEmpty()) {
+            aligningSourceReader.alignSplits(splitsToPause, splitsToResume);
+            currentlyPausedSplits.addAll(splitsToPause);
+            splitsToResume.forEach(currentlyPausedSplits::remove);
+        }
     }
 
     private void checkWatermarkAlignment() {
