@@ -43,7 +43,7 @@ public class MockSourceReader implements SourceReader<Integer, MockSourceSplit> 
     private final WaitingForSplits waitingForSplitsBehaviour;
     private SplitsAssignmentState splitsAssignmentState = SplitsAssignmentState.NO_SPLITS_ASSIGNED;
 
-    enum WaitingForSplits {
+    protected enum WaitingForSplits {
         WAIT_FOR_INITIAL,
         WAIT_UNTIL_ALL_SPLITS_ASSIGNED,
         DO_NOT_WAIT_FOR_SPLITS

@@ -20,6 +20,7 @@ package org.apache.flink.test.checkpointing;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
@@ -30,6 +31,17 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.time.Deadline;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.connector.source.Boundedness;
+import org.apache.flink.api.connector.source.ExternallyInducedSourceReader;
+import org.apache.flink.api.connector.source.SourceEvent;
+import org.apache.flink.api.connector.source.SourceReader;
+import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.api.connector.source.SplitEnumerator;
+import org.apache.flink.api.connector.source.SplitEnumeratorContext;
+import org.apache.flink.api.connector.source.mocks.MockSource;
+import org.apache.flink.api.connector.source.mocks.MockSourceReader;
+import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
+import org.apache.flink.api.connector.source.mocks.MockSplitEnumerator;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.rest.RestClusterClient;
@@ -111,6 +123,7 @@ import java.net.URISyntaxException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -120,6 +133,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -219,6 +233,127 @@ public class SavepointITCase extends TestLogger {
             }
         } finally {
             cluster.after();
+        }
+    }
+
+    @Test
+    public void testSavepointWithExternallyInducedSources() throws Exception {
+        final int numTaskManagers = 2;
+        final int numSlotsPerTaskManager = 2;
+
+        final MiniClusterResourceFactory clusterFactory =
+                new MiniClusterResourceFactory(
+                        numTaskManagers, numSlotsPerTaskManager, getFileBasedCheckpointsConfig());
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        env.fromSource(
+                        new ExternallyInducedMockSource(Boundedness.CONTINUOUS_UNBOUNDED, 4),
+                        WatermarkStrategy.noWatermarks(),
+                        "externallyInducedSource")
+                .keyBy(i -> i)
+                .map(i -> i)
+                .addSink(new DiscardingSink<>());
+
+        final JobGraph jobGraph = env.getStreamGraph().getJobGraph();
+        final JobID jobId = jobGraph.getJobID();
+
+        MiniClusterWithClientResource cluster = clusterFactory.get();
+        cluster.before();
+        ClusterClient<?> client = cluster.getClusterClient();
+
+        try {
+            client.submitJob(jobGraph).get();
+            waitForAllTaskRunning(cluster.getMiniCluster(), jobId, false);
+
+            final String path =
+                    client.triggerSavepoint(jobId, folder.newFolder().toURI().toString()).get();
+
+            assertTrue(Files.exists(Paths.get(new URI(path))));
+        } finally {
+            cluster.after();
+        }
+    }
+
+    private static class TriggerCheckpointEvent implements SourceEvent {
+        private final long checkpointId;
+
+        private TriggerCheckpointEvent(long checkpointId) {
+            this.checkpointId = checkpointId;
+        }
+    }
+
+    private static class ExternallyInducedMockSource extends MockSource {
+        private final int numSplits;
+
+        public ExternallyInducedMockSource(Boundedness boundedness, int numSplits) {
+            super(boundedness, numSplits);
+            this.numSplits = numSplits;
+        }
+
+        @Override
+        public SourceReader<Integer, MockSourceSplit> createReader(
+                SourceReaderContext readerContext) {
+            final ExternallyInducedMockSourceReader mockSourceReader =
+                    new ExternallyInducedMockSourceReader();
+            createdReaders.add(mockSourceReader);
+            return mockSourceReader;
+        }
+
+        @Override
+        public SplitEnumerator<MockSourceSplit, Set<MockSourceSplit>> createEnumerator(
+                SplitEnumeratorContext<MockSourceSplit> enumContext) {
+            return new ExternallyInducingSplitEnumerator(numSplits, enumContext);
+        }
+
+        @Override
+        public SplitEnumerator<MockSourceSplit, Set<MockSourceSplit>> restoreEnumerator(
+                SplitEnumeratorContext<MockSourceSplit> enumContext,
+                Set<MockSourceSplit> checkpoint)
+                throws IOException {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static class ExternallyInducedMockSourceReader extends MockSourceReader
+            implements ExternallyInducedSourceReader<Integer, MockSourceSplit> {
+        private Long triggerCheckpointId = null;
+
+        public ExternallyInducedMockSourceReader() {
+            super(WaitingForSplits.WAIT_UNTIL_ALL_SPLITS_ASSIGNED, false);
+        }
+
+        @Override
+        public Optional<Long> shouldTriggerCheckpoint() {
+            final Optional<Long> trigger = Optional.ofNullable(triggerCheckpointId);
+            triggerCheckpointId = null;
+            return trigger;
+        }
+
+        @Override
+        public void handleSourceEvents(SourceEvent sourceEvent) {
+            if (sourceEvent instanceof TriggerCheckpointEvent) {
+                this.triggerCheckpointId = ((TriggerCheckpointEvent) sourceEvent).checkpointId;
+            }
+            super.handleSourceEvents(sourceEvent);
+            markAvailable();
+        }
+    }
+
+    private static class ExternallyInducingSplitEnumerator extends MockSplitEnumerator {
+        public ExternallyInducingSplitEnumerator(
+                int numSplits, SplitEnumeratorContext<MockSourceSplit> enumContext) {
+            super(numSplits, enumContext);
+        }
+
+        @Override
+        public Set<MockSourceSplit> snapshotState(long checkpointId) {
+            for (Integer reader : getEnumContext().registeredReaders().keySet()) {
+                getEnumContext()
+                        .sendEventToSourceReader(reader, new TriggerCheckpointEvent(checkpointId));
+            }
+            return super.snapshotState(checkpointId);
         }
     }
 

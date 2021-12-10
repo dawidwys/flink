@@ -139,6 +139,10 @@ public class MockSplitEnumerator implements SplitEnumerator<MockSourceSplit, Set
         return successfulCheckpoints;
     }
 
+    protected SplitEnumeratorContext<MockSourceSplit> getEnumContext() {
+        return enumContext;
+    }
+
     // --------------------
 
     private void assignAllSplits() {
