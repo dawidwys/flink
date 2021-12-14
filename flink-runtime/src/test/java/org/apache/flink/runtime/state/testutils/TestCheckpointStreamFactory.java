@@ -21,7 +21,10 @@ package org.apache.flink.runtime.state.testutils;
 import org.apache.flink.runtime.state.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointedStateScope;
+import org.apache.flink.runtime.state.StreamStateHandle;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -41,5 +44,16 @@ public class TestCheckpointStreamFactory implements CheckpointStreamFactory {
     public CheckpointStateOutputStream createCheckpointStateOutputStream(
             CheckpointedStateScope scope) {
         return supplier.get();
+    }
+
+    @Override
+    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+        return false;
+    }
+
+    @Override
+    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+            throws IOException {
+        throw new UnsupportedEncodingException();
     }
 }

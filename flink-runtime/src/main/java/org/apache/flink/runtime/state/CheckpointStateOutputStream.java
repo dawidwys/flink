@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.fs.FSDataOutputStream;
 
 import javax.annotation.Nullable;
@@ -38,6 +39,7 @@ import java.io.OutputStream;
  * <p>Note: This is an abstract class and not an interface because {@link OutputStream} is an
  * abstract class.
  */
+@Internal
 public abstract class CheckpointStateOutputStream extends FSDataOutputStream {
     /**
      * Closes the stream and gets a state handle that can create an input stream producing the data

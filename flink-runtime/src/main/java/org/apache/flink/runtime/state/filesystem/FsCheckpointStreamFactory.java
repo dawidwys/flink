@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state.filesystem;
 
+import org.apache.flink.core.fs.DuplicatingFileSystem;
 import org.apache.flink.core.fs.EntropyInjector;
 import org.apache.flink.core.fs.FSDataOutputStream;
 import org.apache.flink.core.fs.FileSystem;
@@ -87,6 +88,10 @@ public class FsCheckpointStreamFactory implements CheckpointStreamFactory {
     /** Whether the file system dynamically injects entropy into the file paths. */
     private final boolean entropyInjecting;
 
+    private final FsCheckpointStateToolset privateStateToolset;
+
+    private final FsCheckpointStateToolset sharedStateToolset;
+
     /**
      * Creates a new stream factory that stores its checkpoint data in the file system and location
      * defined by the given Path.
@@ -130,6 +135,16 @@ public class FsCheckpointStreamFactory implements CheckpointStreamFactory {
         this.fileStateThreshold = fileStateSizeThreshold;
         this.writeBufferSize = writeBufferSize;
         this.entropyInjecting = EntropyInjector.isEntropyInjecting(fileSystem);
+        if (fileSystem instanceof DuplicatingFileSystem) {
+            final DuplicatingFileSystem duplicatingFileSystem = (DuplicatingFileSystem) fileSystem;
+            this.privateStateToolset =
+                    new FsCheckpointStateToolset(checkpointDirectory, duplicatingFileSystem);
+            this.sharedStateToolset =
+                    new FsCheckpointStateToolset(sharedStateDirectory, duplicatingFileSystem);
+        } else {
+            this.privateStateToolset = null;
+            this.sharedStateToolset = null;
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -137,15 +152,51 @@ public class FsCheckpointStreamFactory implements CheckpointStreamFactory {
     @Override
     public FsCheckpointStateOutputStream createCheckpointStateOutputStream(
             CheckpointedStateScope scope) throws IOException {
-        Path target =
-                scope == CheckpointedStateScope.EXCLUSIVE
-                        ? checkpointDirectory
-                        : sharedStateDirectory;
+        Path target = getTargetPath(scope);
         int bufferSize = Math.max(writeBufferSize, fileStateThreshold);
 
         final boolean absolutePath = entropyInjecting || scope == CheckpointedStateScope.SHARED;
         return new FsCheckpointStateOutputStream(
                 target, filesystem, bufferSize, fileStateThreshold, !absolutePath);
+    }
+
+    private Path getTargetPath(CheckpointedStateScope scope) {
+        return scope == CheckpointedStateScope.EXCLUSIVE
+                ? checkpointDirectory
+                : sharedStateDirectory;
+    }
+
+    @Override
+    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+            throws IOException {
+        if (privateStateToolset == null || sharedStateToolset == null) {
+            return false;
+        }
+        switch (scope) {
+            case EXCLUSIVE:
+                return privateStateToolset.canDuplicate(stateHandle);
+            case SHARED:
+                return sharedStateToolset.canDuplicate(stateHandle);
+        }
+        return false;
+    }
+
+    @Override
+    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+            throws IOException {
+
+        if (privateStateToolset == null || sharedStateToolset == null) {
+            throw new IllegalArgumentException("The underlying FS does not support duplication.");
+        }
+
+        switch (scope) {
+            case EXCLUSIVE:
+                return privateStateToolset.duplicate(stateHandle);
+            case SHARED:
+                return sharedStateToolset.duplicate(stateHandle);
+            default:
+                throw new IllegalArgumentException("Unknown state scope: " + scope);
+        }
     }
 
     // ------------------------------------------------------------------------

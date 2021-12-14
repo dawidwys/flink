@@ -40,6 +40,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -63,7 +64,27 @@ public class RocksDBStateUploaderTest extends TestLogger {
         CheckpointStateOutputStream outputStream =
                 createFailingCheckpointStateOutputStream(expectedException);
         CheckpointStreamFactory checkpointStreamFactory =
-                (CheckpointedStateScope scope) -> outputStream;
+                new CheckpointStreamFactory() {
+                    @Override
+                    public CheckpointStateOutputStream createCheckpointStateOutputStream(
+                            CheckpointedStateScope scope) throws IOException {
+                        return outputStream;
+                    }
+
+                    @Override
+                    public boolean canDuplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                            throws IOException {
+                        return false;
+                    }
+
+                    @Override
+                    public StreamStateHandle duplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                            throws IOException {
+                        throw new UnsupportedEncodingException();
+                    }
+                };
 
         File file = temporaryFolder.newFile(String.valueOf(UUID.randomUUID()));
         generateRandomFileContent(file.getPath(), 20);

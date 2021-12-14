@@ -29,10 +29,13 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
+import org.apache.flink.runtime.state.CheckpointStateOutputStream;
+import org.apache.flink.runtime.state.CheckpointStateToolset;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.CheckpointStorageWorkerView;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
+import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupedInternalPriorityQueue;
 import org.apache.flink.runtime.state.Keyed;
@@ -45,6 +48,7 @@ import org.apache.flink.runtime.state.RegisteredPriorityQueueStateBackendMetaInf
 import org.apache.flink.runtime.state.SavepointResources;
 import org.apache.flink.runtime.state.SnapshotResult;
 import org.apache.flink.runtime.state.StateSnapshotTransformer;
+import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.TestableKeyedStateBackend;
 import org.apache.flink.runtime.state.changelog.ChangelogStateBackendHandle;
 import org.apache.flink.runtime.state.changelog.ChangelogStateBackendHandle.ChangelogStateBackendHandleImpl;
@@ -220,7 +224,31 @@ public class ChangelogKeyedStateBackend<K>
         this.stateChangelogWriter = stateChangelogWriter;
         this.changelogStates = new HashMap<>();
         this.changelogSnapshotState = completeRestore(initialState);
-        this.streamFactory = shared -> checkpointStorageWorkerView.createTaskOwnedStateStream();
+        final CheckpointStateToolset stateToolset =
+                checkpointStorageWorkerView.createTaskOwnedCheckpointStateToolset();
+        this.streamFactory =
+                new CheckpointStreamFactory() {
+
+                    @Override
+                    public CheckpointStateOutputStream createCheckpointStateOutputStream(
+                            CheckpointedStateScope scope) throws IOException {
+                        return checkpointStorageWorkerView.createTaskOwnedStateStream();
+                    }
+
+                    @Override
+                    public boolean canDuplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                            throws IOException {
+                        return false;
+                    }
+
+                    @Override
+                    public StreamStateHandle duplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                            throws IOException {
+                        return null;
+                    }
+                };
         this.closer.register(keyedStateBackend);
     }
 

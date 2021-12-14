@@ -24,9 +24,11 @@ import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.state.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointedStateScope;
+import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -85,5 +87,16 @@ public class BlockerCheckpointStreamFactory implements CheckpointStreamFactory {
         allCreatedStreams.add(blockingStream);
 
         return blockingStream;
+    }
+
+    @Override
+    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+        return false;
+    }
+
+    @Override
+    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+            throws IOException {
+        throw new UnsupportedEncodingException();
     }
 }

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.state.ttl.mock;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.state.CheckpointMetadataOutputStream;
 import org.apache.flink.runtime.state.CheckpointStateOutputStream;
+import org.apache.flink.runtime.state.CheckpointStateToolset;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageAccess;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
@@ -28,8 +29,11 @@ import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.StreamStateHandle;
 
 import javax.annotation.Nullable;
+
+import java.io.IOException;
 
 public class MockCheckpointStorage implements CheckpointStorage {
     @Override
@@ -69,6 +73,19 @@ public class MockCheckpointStorage implements CheckpointStorage {
                     }
 
                     @Override
+                    public boolean canDuplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+                        return false;
+                    }
+
+                    @Override
+                    public StreamStateHandle duplicate(
+                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                            throws IOException {
+                        return null;
+                    }
+
+                    @Override
                     public CheckpointMetadataOutputStream createMetadataOutputStream() {
                         return null;
                     }
@@ -97,6 +114,11 @@ public class MockCheckpointStorage implements CheckpointStorage {
 
             @Override
             public CheckpointStateOutputStream createTaskOwnedStateStream() {
+                return null;
+            }
+
+            @Override
+            public CheckpointStateToolset createTaskOwnedCheckpointStateToolset() {
                 return null;
             }
         };

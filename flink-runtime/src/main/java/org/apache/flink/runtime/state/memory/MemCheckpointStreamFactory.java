@@ -54,6 +54,17 @@ public class MemCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
+    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+        return false;
+    }
+
+    @Override
+    public StreamStateHandle duplicate(
+            StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+        throw new UnsupportedOperationException("We can not duplicate handles in memory.");
+    }
+
+    @Override
     public String toString() {
         return "In-Memory Stream Factory";
     }
