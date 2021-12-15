@@ -21,6 +21,7 @@ package org.apache.flink.contrib.streaming.state;
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.runtime.state.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.StateHandleID;
@@ -59,7 +60,7 @@ public class RocksDBStateUploaderTest extends TestLogger {
         SpecifiedException expectedException =
                 new SpecifiedException("throw exception while multi thread upload states.");
 
-        CheckpointStreamFactory.CheckpointStateOutputStream outputStream =
+        CheckpointStateOutputStream outputStream =
                 createFailingCheckpointStateOutputStream(expectedException);
         CheckpointStreamFactory checkpointStreamFactory =
                 (CheckpointedStateScope scope) -> outputStream;
@@ -119,9 +120,9 @@ public class RocksDBStateUploaderTest extends TestLogger {
         }
     }
 
-    private CheckpointStreamFactory.CheckpointStateOutputStream
-            createFailingCheckpointStateOutputStream(IOException failureException) {
-        return new CheckpointStreamFactory.CheckpointStateOutputStream() {
+    private CheckpointStateOutputStream createFailingCheckpointStateOutputStream(
+            IOException failureException) {
+        return new CheckpointStateOutputStream() {
             @Nullable
             @Override
             public StreamStateHandle closeAndGetHandle() {

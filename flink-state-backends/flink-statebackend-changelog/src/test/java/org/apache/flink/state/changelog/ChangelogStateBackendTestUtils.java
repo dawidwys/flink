@@ -34,6 +34,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.mailbox.SyncMailboxExecutor;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
+import org.apache.flink.runtime.state.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.CheckpointStorageAccess;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
@@ -373,7 +374,7 @@ public class ChangelogStateBackendTestUtils {
         }
 
         @Override
-        public CheckpointStreamFactory.CheckpointStateOutputStream createTaskOwnedStateStream() {
+        public CheckpointStateOutputStream createTaskOwnedStateStream() {
             throw new UnsupportedOperationException(
                     "Checkpoints are not supported in a single key state backend");
         }
