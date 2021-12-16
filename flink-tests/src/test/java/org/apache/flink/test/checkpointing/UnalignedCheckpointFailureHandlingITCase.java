@@ -235,7 +235,7 @@ public class UnalignedCheckpointFailureHandlingITCase {
                 }
 
                 @Override
-                public boolean canDuplicate(
+                public boolean canFastDuplicate(
                         StreamStateHandle stateHandle, CheckpointedStateScope scope) {
                     return false;
                 }

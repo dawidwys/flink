@@ -23,7 +23,7 @@ import java.io.UnsupportedEncodingException;
 
 public final class NotDuplicatingCheckpointStateToolset implements CheckpointStateToolset {
     @Override
-    public boolean canDuplicate(StreamStateHandle stateHandle) throws IOException {
+    public boolean canFastDuplicate(StreamStateHandle stateHandle) throws IOException {
         return false;
     }
 

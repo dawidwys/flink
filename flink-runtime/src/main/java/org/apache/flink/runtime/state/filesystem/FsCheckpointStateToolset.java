@@ -19,13 +19,18 @@
 package org.apache.flink.runtime.state.filesystem;
 
 import org.apache.flink.core.fs.DuplicatingFileSystem;
+import org.apache.flink.core.fs.DuplicatingFileSystem.CopyRequest;
 import org.apache.flink.core.fs.EntropyInjector;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.CheckpointStateToolset;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class FsCheckpointStateToolset implements CheckpointStateToolset {
 
@@ -38,29 +43,40 @@ public class FsCheckpointStateToolset implements CheckpointStateToolset {
     }
 
     @Override
-    public boolean canDuplicate(StreamStateHandle stateHandle) throws IOException {
+    public boolean canFastDuplicate(StreamStateHandle stateHandle) throws IOException {
         if (!(stateHandle instanceof FileStateHandle)) {
             return false;
         }
         final Path dst = getNewDstPath();
-        return fs.canDuplicate(((FileStateHandle) stateHandle).getFilePath(), dst);
+        return fs.canFastDuplicate(((FileStateHandle) stateHandle).getFilePath(), dst);
     }
 
     @Override
-    public StreamStateHandle duplicate(StreamStateHandle stateHandle) throws IOException {
+    public List<StreamStateHandle> duplicate(List<StreamStateHandle> stateHandles)
+            throws IOException {
 
-        if (!(stateHandle instanceof FileStateHandle)) {
-            throw new IllegalArgumentException("We can duplicate only FileStateHandles.");
+        final List<CopyRequest> requests = new ArrayList<>();
+        for (StreamStateHandle handle : stateHandles) {
+            if (!(handle instanceof FileStateHandle)) {
+                throw new IllegalArgumentException("We can duplicate only FileStateHandles.");
+            }
+            requests.add(CopyRequest.of(((FileStateHandle) handle).getFilePath(), getNewDstPath()));
         }
+        fs.duplicate(requests);
 
-        final Path dst = getNewDstPath();
-        fs.duplicate(((FileStateHandle) stateHandle).getFilePath(), dst);
-
-        if (stateHandle instanceof RelativeFileStateHandle) {
-            return new RelativeFileStateHandle(dst, dst.getName(), stateHandle.getStateSize());
-        } else {
-            return new FileStateHandle(dst, stateHandle.getStateSize());
-        }
+        return IntStream.range(0, stateHandles.size())
+                .mapToObj(
+                        idx -> {
+                            final StreamStateHandle originalHandle = stateHandles.get(idx);
+                            final Path dst = requests.get(idx).getDst();
+                            if (originalHandle instanceof RelativeFileStateHandle) {
+                                return new RelativeFileStateHandle(
+                                        dst, dst.getName(), originalHandle.getStateSize());
+                            } else {
+                                return new FileStateHandle(dst, originalHandle.getStateSize());
+                            }
+                        })
+                .collect(Collectors.toList());
     }
 
     private Path getNewDstPath() throws IOException {

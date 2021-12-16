@@ -236,7 +236,7 @@ public class ChangelogKeyedStateBackend<K>
                     }
 
                     @Override
-                    public boolean canDuplicate(
+                    public boolean canFastDuplicate(
                             StreamStateHandle stateHandle, CheckpointedStateScope scope)
                             throws IOException {
                         return false;

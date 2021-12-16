@@ -38,6 +38,7 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -167,23 +168,23 @@ public class FsCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
-    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+    public boolean canFastDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
             throws IOException {
         if (privateStateToolset == null || sharedStateToolset == null) {
             return false;
         }
         switch (scope) {
             case EXCLUSIVE:
-                return privateStateToolset.canDuplicate(stateHandle);
+                return privateStateToolset.canFastDuplicate(stateHandle);
             case SHARED:
-                return sharedStateToolset.canDuplicate(stateHandle);
+                return sharedStateToolset.canFastDuplicate(stateHandle);
         }
         return false;
     }
 
     @Override
-    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
-            throws IOException {
+    public List<StreamStateHandle> duplicate(
+            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope) throws IOException {
 
         if (privateStateToolset == null || sharedStateToolset == null) {
             throw new IllegalArgumentException("The underlying FS does not support duplication.");
@@ -191,9 +192,9 @@ public class FsCheckpointStreamFactory implements CheckpointStreamFactory {
 
         switch (scope) {
             case EXCLUSIVE:
-                return privateStateToolset.duplicate(stateHandle);
+                return privateStateToolset.duplicate(stateHandles);
             case SHARED:
-                return sharedStateToolset.duplicate(stateHandle);
+                return sharedStateToolset.duplicate(stateHandles);
             default:
                 throw new IllegalArgumentException("Unknown state scope: " + scope);
         }

@@ -19,6 +19,7 @@
 package org.apache.flink.core.fs;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * An extension interface for {@link FileSystem FileSystems} that can perform cheap DFS side
@@ -36,15 +37,38 @@ public interface DuplicatingFileSystem {
      * @param dst The path where to duplicate the source file
      * @return true, if we can perform the duplication
      */
-    boolean canDuplicate(Path src, Path dst) throws IOException;
+    boolean canFastDuplicate(Path src, Path dst) throws IOException;
 
     /**
      * Duplicates the source path into the destination path.
      *
-     * <p>You should first check if you can duplicate with {@link #canDuplicate(Path, Path)}.
+     * <p>You should first check if you can duplicate with {@link #canFastDuplicate(Path, Path)}.
      *
-     * @param src The path of the source file to duplicate
-     * @param dst The path where to duplicate the source file
+     * @param requests Pairs of src/dst to copy.
      */
-    void duplicate(Path src, Path dst) throws IOException;
+    void duplicate(List<CopyRequest> requests) throws IOException;
+
+    /** A pair of source and destination to duplicate a file. */
+    interface CopyRequest {
+        /** The path of the source file to duplicate */
+        Path getSrc();
+
+        /** The path where to duplicate the source file */
+        Path getDst();
+
+        /** A factory method for creating a simple pair of source/destination. */
+        static CopyRequest of(Path src, Path dst) {
+            return new CopyRequest() {
+                @Override
+                public Path getSrc() {
+                    return src;
+                }
+
+                @Override
+                public Path getDst() {
+                    return dst;
+                }
+            };
+        }
+    }
 }

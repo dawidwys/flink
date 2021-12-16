@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * A factory for checkpoint output streams, which are used to persist data for checkpoints.
@@ -50,20 +51,20 @@ public interface CheckpointStreamFactory {
      * @param scope Scope determining the location to duplicate into
      * @return true, if we can perform the duplication
      */
-    boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
+    boolean canFastDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
             throws IOException;
 
     /**
      * Duplicates {@link StreamStateHandle} into the path corresponding to * the given {@link
      * CheckpointedStateScope}.
      *
-     * <p>You should first check if you can duplicate with {@link #canDuplicate(StreamStateHandle,
-     * CheckpointedStateScope)}.
+     * <p>You should first check if you can duplicate with {@link
+     * #canFastDuplicate(StreamStateHandle, CheckpointedStateScope)}.
      *
-     * @param stateHandle The handle to duplicate
+     * @param stateHandles The handles to duplicate
      * @param scope Scope determining the location to duplicate into
      * @return The duplicated handle
      */
-    StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
-            throws IOException;
+    List<StreamStateHandle> duplicate(
+            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope) throws IOException;
 }

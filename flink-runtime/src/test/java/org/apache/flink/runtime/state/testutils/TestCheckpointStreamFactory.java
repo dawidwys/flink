@@ -47,7 +47,7 @@ public class TestCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
-    public boolean canDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+    public boolean canFastDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
         return false;
     }
 

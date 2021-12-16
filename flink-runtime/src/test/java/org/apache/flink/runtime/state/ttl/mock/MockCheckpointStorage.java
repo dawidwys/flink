@@ -73,7 +73,7 @@ public class MockCheckpointStorage implements CheckpointStorage {
                     }
 
                     @Override
-                    public boolean canDuplicate(
+                    public boolean canFastDuplicate(
                             StreamStateHandle stateHandle, CheckpointedStateScope scope) {
                         return false;
                     }

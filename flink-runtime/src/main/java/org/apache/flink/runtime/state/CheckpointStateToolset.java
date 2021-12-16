@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * A toolset of operations that can be performed on a location embedded within the class. Created in
@@ -34,15 +35,16 @@ public interface CheckpointStateToolset {
      * @param stateHandle The handle to duplicate
      * @return true, if we can perform the duplication
      */
-    boolean canDuplicate(StreamStateHandle stateHandle) throws IOException;
+    boolean canFastDuplicate(StreamStateHandle stateHandle) throws IOException;
 
     /**
-     * Duplicates {@link StreamStateHandle} into the path embedded inside of the class.
+     * Duplicates {@link StreamStateHandle StreamStateHandles} into the path embedded inside of the
+     * class.
      *
-     * <p>You should first check if you can duplicate with {@link #canDuplicate(StreamStateHandle)}.
+     * <p>You should first check if you can duplicate with {@link #canFastDuplicate(StreamStateHandle)}.
      *
-     * @param stateHandle The handle to duplicate
-     * @return The duplicated handle
+     * @param stateHandle The handles to duplicate
+     * @return The duplicated handles
      */
-    StreamStateHandle duplicate(StreamStateHandle stateHandle) throws IOException;
+    List<StreamStateHandle> duplicate(List<StreamStateHandle> stateHandle) throws IOException;
 }
