@@ -28,8 +28,8 @@ import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /** {@link CheckpointStreamFactory} for tests that allows for testing cancellation in async IO. */
@@ -95,8 +95,8 @@ public class BlockerCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
-    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
-            throws IOException {
-        throw new UnsupportedEncodingException();
+    public List<StreamStateHandle> duplicate(
+            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope) throws IOException {
+        throw new UnsupportedOperationException();
     }
 }

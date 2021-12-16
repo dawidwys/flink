@@ -35,7 +35,7 @@ import org.apache.flink.util.function.SupplierWithException;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -140,14 +140,16 @@ public class BackendForTestStream extends MemoryStateBackend {
         }
 
         @Override
-        public boolean canFastDuplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+        public boolean canFastDuplicate(
+                StreamStateHandle stateHandle, CheckpointedStateScope scope) {
             return false;
         }
 
         @Override
-        public StreamStateHandle duplicate(
-                StreamStateHandle stateHandle, CheckpointedStateScope scope) throws IOException {
-            throw new UnsupportedEncodingException();
+        public List<StreamStateHandle> duplicate(
+                List<StreamStateHandle> stateHandles, CheckpointedStateScope scope)
+                throws IOException {
+            throw new UnsupportedOperationException();
         }
     }
 }

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.state.filesystem;
 import org.apache.flink.core.fs.DuplicatingFileSystem;
 import org.apache.flink.core.fs.DuplicatingFileSystem.CopyRequest;
 import org.apache.flink.core.fs.EntropyInjector;
+import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.CheckpointStateToolset;
 import org.apache.flink.runtime.state.StreamStateHandle;
@@ -28,10 +29,13 @@ import org.apache.flink.runtime.state.StreamStateHandle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * An implementation of {@link CheckpointStateToolset} that does file based duplicating with as
+ * {@link DuplicatingFileSystem}.
+ */
 public class FsCheckpointStateToolset implements CheckpointStateToolset {
 
     private final Path basePath;
@@ -47,8 +51,9 @@ public class FsCheckpointStateToolset implements CheckpointStateToolset {
         if (!(stateHandle instanceof FileStateHandle)) {
             return false;
         }
-        final Path dst = getNewDstPath();
-        return fs.canFastDuplicate(((FileStateHandle) stateHandle).getFilePath(), dst);
+        final Path srcPath = ((FileStateHandle) stateHandle).getFilePath();
+        final Path dst = getNewDstPath(srcPath.getName());
+        return fs.canFastDuplicate(srcPath, dst);
     }
 
     @Override
@@ -60,7 +65,8 @@ public class FsCheckpointStateToolset implements CheckpointStateToolset {
             if (!(handle instanceof FileStateHandle)) {
                 throw new IllegalArgumentException("We can duplicate only FileStateHandles.");
             }
-            requests.add(CopyRequest.of(((FileStateHandle) handle).getFilePath(), getNewDstPath()));
+            final Path srcPath = ((FileStateHandle) handle).getFilePath();
+            requests.add(CopyRequest.of(srcPath, getNewDstPath(srcPath.getName())));
         }
         fs.duplicate(requests);
 
@@ -79,8 +85,7 @@ public class FsCheckpointStateToolset implements CheckpointStateToolset {
                 .collect(Collectors.toList());
     }
 
-    private Path getNewDstPath() throws IOException {
-        final String fileName = UUID.randomUUID().toString();
+    private Path getNewDstPath(String fileName) throws IOException {
         final Path dst = new Path(basePath, fileName);
         return EntropyInjector.addEntropy(dst.getFileSystem(), dst);
     }

@@ -24,7 +24,7 @@ import org.apache.flink.runtime.state.CheckpointedStateScope;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.util.List;
 import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -52,8 +52,8 @@ public class TestCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
-    public StreamStateHandle duplicate(StreamStateHandle stateHandle, CheckpointedStateScope scope)
-            throws IOException {
-        throw new UnsupportedEncodingException();
+    public List<StreamStateHandle> duplicate(
+            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope) throws IOException {
+        throw new UnsupportedOperationException();
     }
 }

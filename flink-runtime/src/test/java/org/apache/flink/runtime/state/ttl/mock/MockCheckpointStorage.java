@@ -34,6 +34,7 @@ import org.apache.flink.runtime.state.StreamStateHandle;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.util.List;
 
 public class MockCheckpointStorage implements CheckpointStorage {
     @Override
@@ -79,8 +80,8 @@ public class MockCheckpointStorage implements CheckpointStorage {
                     }
 
                     @Override
-                    public StreamStateHandle duplicate(
-                            StreamStateHandle stateHandle, CheckpointedStateScope scope)
+                    public List<StreamStateHandle> duplicate(
+                            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope)
                             throws IOException {
                         return null;
                     }

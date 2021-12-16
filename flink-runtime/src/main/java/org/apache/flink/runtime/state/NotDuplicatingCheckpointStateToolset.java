@@ -20,6 +20,7 @@ package org.apache.flink.runtime.state;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 public final class NotDuplicatingCheckpointStateToolset implements CheckpointStateToolset {
     @Override
@@ -28,7 +29,8 @@ public final class NotDuplicatingCheckpointStateToolset implements CheckpointSta
     }
 
     @Override
-    public StreamStateHandle duplicate(StreamStateHandle stateHandle) throws IOException {
+    public List<StreamStateHandle> duplicate(List<StreamStateHandle> stateHandle)
+            throws IOException {
         throw new UnsupportedEncodingException("The toolset does not support duplication");
     }
 }

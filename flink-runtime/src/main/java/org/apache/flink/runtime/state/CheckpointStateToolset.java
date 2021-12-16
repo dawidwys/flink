@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.annotation.Internal;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -25,6 +27,7 @@ import java.util.List;
  * A toolset of operations that can be performed on a location embedded within the class. Created in
  * {@link CheckpointStorageWorkerView}.
  */
+@Internal
 public interface CheckpointStateToolset {
 
     /**

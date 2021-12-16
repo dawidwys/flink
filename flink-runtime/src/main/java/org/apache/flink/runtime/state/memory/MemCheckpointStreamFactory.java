@@ -28,6 +28,7 @@ import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -59,8 +60,8 @@ public class MemCheckpointStreamFactory implements CheckpointStreamFactory {
     }
 
     @Override
-    public StreamStateHandle duplicate(
-            StreamStateHandle stateHandle, CheckpointedStateScope scope) {
+    public List<StreamStateHandle> duplicate(
+            List<StreamStateHandle> stateHandles, CheckpointedStateScope scope) throws IOException {
         throw new UnsupportedOperationException("We can not duplicate handles in memory.");
     }
 
