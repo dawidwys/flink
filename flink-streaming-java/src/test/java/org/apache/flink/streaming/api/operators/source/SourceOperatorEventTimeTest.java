@@ -36,6 +36,7 @@ import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.DataInputStatus;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.SourceOperatorStreamTask;
 import org.apache.flink.streaming.runtime.tasks.StreamMockEnvironment;
@@ -189,7 +190,7 @@ public class SourceOperatorEventTimeTest {
             final Consumer<ReaderOutput<Integer>>... actions)
             throws Exception {
 
-        final List<Object> allEvents =
+        final List<StreamElement> allEvents =
                 testSequenceOfEvents(emitProgressiveWatermarks, watermarkStrategy, actions);
 
         return allEvents.stream()
@@ -200,7 +201,7 @@ public class SourceOperatorEventTimeTest {
 
     @SuppressWarnings("FinalPrivateMethod")
     @SafeVarargs
-    private final List<Object> testSequenceOfEvents(
+    private final List<StreamElement> testSequenceOfEvents(
             final boolean emitProgressiveWatermarks,
             final WatermarkStrategy<Integer> watermarkStrategy,
             final Consumer<ReaderOutput<Integer>>... actions)

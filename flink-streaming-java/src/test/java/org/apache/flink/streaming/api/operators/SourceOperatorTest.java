@@ -19,6 +19,11 @@ limitations under the License.
 package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.eventtime.TimestampAssigner;
+import org.apache.flink.api.common.eventtime.Watermark;
+import org.apache.flink.api.common.eventtime.WatermarkGenerator;
+import org.apache.flink.api.common.eventtime.WatermarkOutput;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.OperatorStateStore;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.mocks.MockSourceReader;
@@ -38,6 +43,7 @@ import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
 import org.apache.flink.runtime.source.event.AddSplitEvent;
 import org.apache.flink.runtime.source.event.ReaderRegistrationEvent;
 import org.apache.flink.runtime.source.event.SourceEventWrapper;
+import org.apache.flink.runtime.source.event.WatermarkAlignmentEvent;
 import org.apache.flink.runtime.state.AbstractStateBackend;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateInitializationContextImpl;
@@ -47,12 +53,16 @@ import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.streaming.api.operators.source.CollectingDataOutput;
 import org.apache.flink.streaming.api.operators.source.TestingSourceOperator;
 import org.apache.flink.streaming.runtime.io.DataInputStatus;
+import org.apache.flink.streaming.runtime.streamrecord.StreamElement;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.SourceOperatorStreamTask;
 import org.apache.flink.streaming.runtime.tasks.StreamMockEnvironment;
+import org.apache.flink.streaming.runtime.tasks.TestProcessingTimeService;
 import org.apache.flink.streaming.util.MockOutput;
 import org.apache.flink.streaming.util.MockStreamConfig;
 import org.apache.flink.util.CollectionUtil;
 
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,6 +73,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -84,13 +95,17 @@ public class SourceOperatorTest {
 
     @Before
     public void setup() throws Exception {
-        this.mockSourceReader = new MockSourceReader();
+        this.mockSourceReader = new MockSourceReader(true, false);
         this.mockGateway = new MockOperatorEventGateway();
         this.operator =
-                new TestingSourceOperator<>(
+                new TestingSourceOperator<Integer>(
                         mockSourceReader,
+                        WatermarkStrategy.forGenerator(
+                                context -> new EventAsTimestampWatermarkGenerator()),
+                        new TestProcessingTimeService(),
                         mockGateway,
                         SUBTASK_INDEX,
+                        5,
                         true /* emit progressive watermarks */);
         Environment env = getTestingEnvironment();
         this.operator.setup(
@@ -224,6 +239,63 @@ public class SourceOperatorTest {
         assertThat(secondFuture, sameInstance(initialFuture));
     }
 
+    @Test
+    public void testAlignment() throws Exception {
+        operator.open();
+
+        List<Integer> input = new ArrayList<>();
+        input.add(42);
+        input.add(54);
+        input.add(63);
+
+        MockSourceSplit split = new MockSourceSplit(0, 0, input.size());
+        input.forEach(split::addRecord);
+        mockSourceReader.addSplits(Collections.singletonList(split));
+        assertTrue(operator.isAvailable());
+
+        // fetch first element (this forces reader output to be created - before that alignment
+        // events are no-op
+        CollectingDataOutput<Integer> output = new CollectingDataOutput<>();
+        List<StreamElement> expectedOutput = new ArrayList<>();
+        assertThat(operator.emitNext(output), is(DataInputStatus.MORE_AVAILABLE));
+        expectedOutput.add(new StreamRecord<>(42, TimestampAssigner.NO_TIMESTAMP));
+        expectedOutput.add(new org.apache.flink.streaming.api.watermark.Watermark(42));
+        assertThat(output.getEvents(), Matchers.contains(expectedOutput.toArray()));
+
+        // Alignment event after record has been emitted
+        operator.handleOperatorEvent(new WatermarkAlignmentEvent(1));
+        CompletableFuture<?> availableFuture = operator.getAvailableFuture();
+        assertFalse(availableFuture.isDone());
+
+        // Alignment after, original future should complete
+        operator.handleOperatorEvent(new WatermarkAlignmentEvent(43));
+        assertTrue(availableFuture.isDone());
+        assertTrue(operator.isAvailable());
+
+        // fetch next element, this goes beyond max watermark and triggers unavailable
+        assertThat(operator.emitNext(output), is(DataInputStatus.NOTHING_AVAILABLE));
+        expectedOutput.add(new StreamRecord<>(54, TimestampAssigner.NO_TIMESTAMP));
+        expectedOutput.add(new org.apache.flink.streaming.api.watermark.Watermark(54));
+        assertThat(output.getEvents(), Matchers.contains(expectedOutput.toArray()));
+        CompletableFuture<?> availableFuture2 = operator.getAvailableFuture();
+        assertFalse(availableFuture2.isDone());
+
+        // watermark did not progress enough
+        operator.handleOperatorEvent(new WatermarkAlignmentEvent(45));
+        assertFalse(availableFuture2.isDone());
+
+        // ready to read more
+        operator.handleOperatorEvent(new WatermarkAlignmentEvent(55));
+        assertTrue(availableFuture2.isDone());
+
+        // read last record and check if alignment does not interfere
+        assertThat(operator.emitNext(output), is(DataInputStatus.NOTHING_AVAILABLE));
+        expectedOutput.add(new StreamRecord<>(63, TimestampAssigner.NO_TIMESTAMP));
+        expectedOutput.add(new org.apache.flink.streaming.api.watermark.Watermark(63));
+        assertThat(output.getEvents(), Matchers.contains(expectedOutput.toArray()));
+        assertFalse(operator.isAvailable());
+    }
+
     // ---------------- helper methods -------------------------
 
     private StateInitializationContext getStateContext() throws Exception {
@@ -263,5 +335,16 @@ public class SourceOperatorTest {
                 new MockInputSplitProvider(),
                 1,
                 new TestTaskStateManager());
+    }
+
+    private static class EventAsTimestampWatermarkGenerator implements WatermarkGenerator<Integer> {
+
+        @Override
+        public void onEvent(Integer event, long eventTimestamp, WatermarkOutput output) {
+            output.emitWatermark(new Watermark(event.longValue()));
+        }
+
+        @Override
+        public void onPeriodicEmit(WatermarkOutput output) {}
     }
 }
