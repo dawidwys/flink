@@ -41,7 +41,8 @@ resources:
   - container: flink-build-container
     image: chesnay/flink-ci:java_8_11_17
     # 7GB is the memory limit we have on Azure hosted VMs. Enforce the same limit on the custom CI servers.
-    options: --memory=8G
+    # Set the swap to -1 to let the container use the entire swap available to the host machine
+    options: --memory=7G --memory-swap=-1
 
 variables:
   MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
