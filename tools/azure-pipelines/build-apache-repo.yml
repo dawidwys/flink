@@ -42,7 +42,7 @@ resources:
     image: chesnay/flink-ci:java_8_11_17
     # 6GB is the memory limit we have on Azure hosted VMs. Enforce the same limit on the custom CI servers.
     # Set the swap to 0 to disable it
-    options: --memory=6G --memory-swap=0
+    options: --memory=500m --memory-swap=500m
 
 variables:
   MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
