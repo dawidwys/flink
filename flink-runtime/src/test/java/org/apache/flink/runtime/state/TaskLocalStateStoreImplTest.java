@@ -214,8 +214,8 @@ public class TaskLocalStateStoreImplTest extends TestLogger {
         private boolean isDiscarded = false;
 
         @Override
-        public void discardState() throws Exception {
-            super.discardState();
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+            super.discardState(bulkDeleter);
             isDiscarded = true;
         }
 

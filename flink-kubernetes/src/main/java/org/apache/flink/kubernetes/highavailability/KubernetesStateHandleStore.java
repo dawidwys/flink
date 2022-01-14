@@ -27,6 +27,7 @@ import org.apache.flink.runtime.persistence.PossibleInconsistentStateException;
 import org.apache.flink.runtime.persistence.RetrievableStateStorageHelper;
 import org.apache.flink.runtime.persistence.StateHandleStore;
 import org.apache.flink.runtime.persistence.StringResourceVersion;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.util.ExceptionUtils;
 
@@ -173,7 +174,9 @@ public class KubernetesStateHandleStore<T extends Serializable>
                     .orElseThrow(() -> ex);
         } finally {
             if (discardState) {
-                storeHandle.discardState();
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                    storeHandle.discardState(bulkDeleter);
+                }
             }
         }
     }
@@ -248,12 +251,14 @@ public class KubernetesStateHandleStore<T extends Serializable>
 
             throw ExceptionUtils.findThrowable(ex, NotExistException.class).orElseThrow(() -> ex);
         } finally {
-            if (discardNewState) {
-                newStateHandle.discardState();
-            }
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                if (discardNewState) {
+                    newStateHandle.discardState(bulkDeleter);
+                }
 
-            if (discardOldState) {
-                oldStateHandle.discardState();
+                if (discardOldState) {
+                    oldStateHandle.discardState(bulkDeleter);
+                }
             }
         }
     }
@@ -401,8 +406,9 @@ public class KubernetesStateHandleStore<T extends Serializable>
                         (succeed, ignore) -> {
                             if (succeed) {
                                 if (stateHandleRefer.get() != null) {
-                                    try {
-                                        stateHandleRefer.get().discardState();
+                                    try (BulkFileDeleterImpl bulkFileDeleter =
+                                            new BulkFileDeleterImpl()) {
+                                        stateHandleRefer.get().discardState(bulkFileDeleter);
                                     } catch (Exception e) {
                                         throw new CompletionException(e);
                                     }
@@ -453,8 +459,9 @@ public class KubernetesStateHandleStore<T extends Serializable>
                             if (succeed) {
                                 Exception exception = null;
                                 for (RetrievableStateHandle<T> stateHandle : validStateHandles) {
-                                    try {
-                                        stateHandle.discardState();
+                                    try (BulkFileDeleterImpl bulkDeleter =
+                                            new BulkFileDeleterImpl()) {
+                                        stateHandle.discardState(bulkDeleter);
                                     } catch (Exception e) {
                                         exception = ExceptionUtils.firstOrSuppressed(e, exception);
                                     }

@@ -25,7 +25,7 @@ import java.io.Serializable;
  * (small) state directly, or contain a file path (state is in the file), or contain the metadata to
  * access the state stored in some external database.
  *
- * <p>State objects define how to {@link #discardState() discard state} and how to access the {@link
+ * <p>State objects define how to {@link #discardState(BulkFileDeleter) discard state} and how to access the {@link
  * #getStateSize() size of the state}.
  *
  * <p>State Objects are transported via RPC between <i>JobManager</i> and <i>TaskManager</i> and
@@ -41,8 +41,9 @@ public interface StateObject extends Serializable {
      * Discards the state referred to and solemnly owned by this handle, to free up resources in the
      * persistent storage. This method is called when the state represented by this object will not
      * be used any more.
+     * @param bulkDeleter
      */
-    void discardState() throws Exception;
+    void discardState(BulkFileDeleter bulkDeleter) throws Exception;
 
     /**
      * Returns the size of the state in bytes. If the size is not known, this method should return

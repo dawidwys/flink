@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CompositeStateHandle;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.KeyedStateHandle;
@@ -183,7 +184,7 @@ public class OperatorSubtaskState implements CompositeStateHandle {
     }
 
     @Override
-    public void discardState() {
+    public void discardState(BulkFileDeleter bulkDeleter) {
         try {
             List<StateObject> toDispose =
                     new ArrayList<>(

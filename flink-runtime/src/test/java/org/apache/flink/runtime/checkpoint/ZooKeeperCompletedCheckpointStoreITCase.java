@@ -21,6 +21,7 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.time.Deadline;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.SharedStateRegistryImpl;
@@ -427,7 +428,7 @@ public class ZooKeeperCompletedCheckpointStoreITCase extends CompletedCheckpoint
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             stateMap.remove(key);
         }
 

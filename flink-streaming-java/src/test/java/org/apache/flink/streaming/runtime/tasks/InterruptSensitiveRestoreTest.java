@@ -51,6 +51,7 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironment;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.DefaultOperatorStateBackend;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
@@ -364,7 +365,7 @@ public class InterruptSensitiveRestoreTest {
         }
 
         @Override
-        public void discardState() throws Exception {}
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {}
 
         @Override
         public long getStateSize() {

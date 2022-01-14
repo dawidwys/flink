@@ -19,6 +19,7 @@ package org.apache.flink.runtime.state.changelog;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
@@ -82,7 +83,7 @@ public final class ChangelogStateHandleStreamImpl implements ChangelogStateHandl
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         // discard only on TM; on JM, shared state is removed on subsumption
         if (stateRegistry == null) {
             bestEffortDiscardAllStateObjects(

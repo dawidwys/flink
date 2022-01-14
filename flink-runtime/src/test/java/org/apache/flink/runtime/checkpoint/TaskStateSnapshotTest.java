@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.OperatorStateHandle;
 import org.apache.flink.runtime.state.ResultSubpartitionStateHandle;
@@ -102,9 +103,9 @@ public class TaskStateSnapshotTest extends TestLogger {
         taskStateSnapshot.putSubtaskStateByOperatorID(operatorID_1, operatorSubtaskState_1);
         taskStateSnapshot.putSubtaskStateByOperatorID(operatorID_2, operatorSubtaskState_2);
 
-        taskStateSnapshot.discardState();
-        verify(operatorSubtaskState_1).discardState();
-        verify(operatorSubtaskState_2).discardState();
+        taskStateSnapshot.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(operatorSubtaskState_1).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(operatorSubtaskState_2).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     @Test

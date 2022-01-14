@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.persistence;
 
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.util.function.FunctionWithException;
 import org.apache.flink.util.function.ThrowingConsumer;
@@ -79,7 +80,7 @@ public final class TestingRetrievableStateStorageHelper<T extends Serializable>
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             discardStateHandler.accept(state);
         }
 

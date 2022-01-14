@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CompositeStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.util.Preconditions;
@@ -129,9 +130,9 @@ public class TaskState implements CompositeStateHandle {
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         for (SubtaskState subtaskState : subtaskStates.values()) {
-            subtaskState.discardState();
+            subtaskState.discardState(bulkDeleter);
         }
     }
 

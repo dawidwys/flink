@@ -44,6 +44,7 @@ import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.rpc.exceptions.RpcException;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointMetadataOutputStream;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageAccess;
@@ -1602,13 +1603,13 @@ public class CheckpointCoordinatorTest extends TestLogger {
         assertEquals(1, checkpointCoordinator.getNumberOfRetainedSuccessfulCheckpoints());
 
         // validate that all received subtask states in the first checkpoint have been discarded
-        verify(subtaskState11, times(1)).discardState();
-        verify(subtaskState12, times(1)).discardState();
+        verify(subtaskState11, times(1)).discardState(any(BulkFileDeleter.class));
+        verify(subtaskState12, times(1)).discardState(any(BulkFileDeleter.class));
 
         // validate that all subtask states in the second checkpoint are not discarded
-        verify(subtaskState21, never()).discardState();
-        verify(subtaskState22, never()).discardState();
-        verify(subtaskState23, never()).discardState();
+        verify(subtaskState21, never()).discardState(any(BulkFileDeleter.class));
+        verify(subtaskState22, never()).discardState(any(BulkFileDeleter.class));
+        verify(subtaskState23, never()).discardState(any(BulkFileDeleter.class));
 
         // validate the committed checkpoints
         List<CompletedCheckpoint> scs = checkpointCoordinator.getSuccessfulCheckpoints();
@@ -1634,15 +1635,15 @@ public class CheckpointCoordinatorTest extends TestLogger {
                         new CheckpointMetrics(),
                         taskOperatorSubtaskStates13),
                 TASK_MANAGER_LOCATION_INFO);
-        verify(subtaskState13, times(1)).discardState();
+        verify(subtaskState13, times(1)).discardState(any(BulkFileDeleter.class));
 
         checkpointCoordinator.shutdown();
         completedCheckpointStore.shutdown(JobStatus.FINISHED, new CheckpointsCleaner());
 
         // validate that the states in the second checkpoint have been discarded
-        verify(subtaskState21, times(1)).discardState();
-        verify(subtaskState22, times(1)).discardState();
-        verify(subtaskState23, times(1)).discardState();
+        verify(subtaskState21, times(1)).discardState(any(BulkFileDeleter.class));
+        verify(subtaskState22, times(1)).discardState(any(BulkFileDeleter.class));
+        verify(subtaskState23, times(1)).discardState(any(BulkFileDeleter.class));
     }
 
     @Test
@@ -1706,7 +1707,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
         assertEquals(0, checkpointCoordinator.getNumberOfRetainedSuccessfulCheckpoints());
 
         // validate that the received states have been discarded
-        verify(subtaskState1, times(1)).discardState();
+        verify(subtaskState1, times(1)).discardState(any(BulkFileDeleter.class));
 
         // no confirm message must have been sent
         for (ExecutionVertex vertex : Arrays.asList(vertex1, vertex2)) {
@@ -1845,7 +1846,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // verify that the subtask state has not been discarded
-        verify(subtaskStateTrigger, never()).discardState();
+        verify(subtaskStateTrigger, never()).discardState(any(BulkFileDeleter.class));
 
         TaskStateSnapshot unknownSubtaskState = mock(TaskStateSnapshot.class);
 
@@ -1860,7 +1861,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // we should discard acknowledge messages from an unknown vertex belonging to our job
-        verify(unknownSubtaskState, times(1)).discardState();
+        verify(unknownSubtaskState, times(1)).discardState(any(BulkFileDeleter.class));
 
         TaskStateSnapshot differentJobSubtaskState = mock(TaskStateSnapshot.class);
 
@@ -1875,7 +1876,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // we should not interfere with different jobs
-        verify(differentJobSubtaskState, never()).discardState();
+        verify(differentJobSubtaskState, never()).discardState(any(BulkFileDeleter.class));
 
         // duplicate acknowledge message for the trigger vertex
         TaskStateSnapshot triggerSubtaskState = mock(TaskStateSnapshot.class);
@@ -1889,7 +1890,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // duplicate acknowledge messages for a known vertex should not trigger discarding the state
-        verify(triggerSubtaskState, never()).discardState();
+        verify(triggerSubtaskState, never()).discardState(any(BulkFileDeleter.class));
 
         // let the checkpoint fail at the first ack vertex
         reset(subtaskStateTrigger);
@@ -1904,7 +1905,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
         assertTrue(pendingCheckpoint.isDisposed());
 
         // check that we've cleaned up the already acknowledged state
-        verify(subtaskStateTrigger, times(1)).discardState();
+        verify(subtaskStateTrigger, times(1)).discardState(any(BulkFileDeleter.class));
 
         TaskStateSnapshot ackSubtaskState = mock(TaskStateSnapshot.class);
 
@@ -1919,7 +1920,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // check that we also cleaned up this state
-        verify(ackSubtaskState, times(1)).discardState();
+        verify(ackSubtaskState, times(1)).discardState(any(BulkFileDeleter.class));
 
         // receive an acknowledge message from an unknown job
         reset(differentJobSubtaskState);
@@ -1933,7 +1934,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // we should not interfere with different jobs
-        verify(differentJobSubtaskState, never()).discardState();
+        verify(differentJobSubtaskState, never()).discardState(any(BulkFileDeleter.class));
 
         TaskStateSnapshot unknownSubtaskState2 = mock(TaskStateSnapshot.class);
 
@@ -1948,7 +1949,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 TASK_MANAGER_LOCATION_INFO);
 
         // we should discard acknowledge messages from an unknown vertex belonging to our job
-        verify(unknownSubtaskState2, times(1)).discardState();
+        verify(unknownSubtaskState2, times(1)).discardState(any(BulkFileDeleter.class));
     }
 
     @Test
@@ -2899,20 +2900,22 @@ public class CheckpointCoordinatorTest extends TestLogger {
                                 incrementalKeyedStateHandle.getSharedState().values()) {
                             assertTrue(
                                     !(streamStateHandle instanceof PlaceholderStreamStateHandle));
-                            verify(streamStateHandle, never()).discardState();
+                            verify(streamStateHandle, never())
+                                    .discardState(any(BulkFileDeleter.class));
                             ++sharedHandleCount;
                         }
 
                         for (StreamStateHandle streamStateHandle :
                                 incrementalKeyedStateHandle.getPrivateState().values()) {
-                            verify(streamStateHandle, never()).discardState();
+                            verify(streamStateHandle, never())
+                                    .discardState(any(BulkFileDeleter.class));
                         }
 
                         verify(incrementalKeyedStateHandle.getMetaStateHandle(), never())
-                                .discardState();
+                                .discardState(any(BulkFileDeleter.class));
                     }
 
-                    verify(subtaskState, never()).discardState();
+                    verify(subtaskState, never()).discardState(any(BulkFileDeleter.class));
                 }
             }
             ++cp;
@@ -2928,7 +2931,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
         // CP1
         for (Map<StateHandleID, StreamStateHandle> cpList : sharedHandlesByCheckpoint) {
             for (StreamStateHandle streamStateHandle : cpList.values()) {
-                verify(streamStateHandle, never()).discardState();
+                verify(streamStateHandle, never()).discardState(any(BulkFileDeleter.class));
             }
         }
 
@@ -3907,7 +3910,7 @@ public class CheckpointCoordinatorTest extends TestLogger {
                 String key = entry.getKey().getKeyString();
                 int checkpointID = Integer.parseInt(String.valueOf(key.charAt(key.length() - 1)));
                 VerificationMode verificationMode = checkpointVerify.apply(checkpointID);
-                verify(entry.getValue(), verificationMode).discardState();
+                verify(entry.getValue(), verificationMode).discardState(any(BulkFileDeleter.class));
             }
         }
     }

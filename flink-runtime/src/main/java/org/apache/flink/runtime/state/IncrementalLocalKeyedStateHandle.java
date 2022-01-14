@@ -104,18 +104,18 @@ public class IncrementalLocalKeyedStateHandle extends DirectoryKeyedStateHandle
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
 
         Exception collectedEx = null;
 
         try {
-            super.discardState();
+            super.discardState(bulkDeleter);
         } catch (Exception e) {
             collectedEx = e;
         }
 
         try {
-            metaDataState.discardState();
+            metaDataState.discardState(bulkDeleter);
         } catch (Exception e) {
             collectedEx = ExceptionUtils.firstOrSuppressed(e, collectedEx);
         }

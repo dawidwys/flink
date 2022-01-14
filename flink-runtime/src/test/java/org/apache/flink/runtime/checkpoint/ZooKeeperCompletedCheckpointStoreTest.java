@@ -27,6 +27,7 @@ import org.apache.flink.core.testutils.FlinkMatchers;
 import org.apache.flink.runtime.highavailability.zookeeper.CuratorFrameworkWithUnhandledErrorListener;
 import org.apache.flink.runtime.operators.testutils.ExpectedTestException;
 import org.apache.flink.runtime.rest.util.NoOpFatalErrorHandler;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.SharedStateRegistryImpl;
@@ -217,7 +218,7 @@ public class ZooKeeperCompletedCheckpointStoreTest extends TestLogger {
         }
 
         @Override
-        public void discardState() {}
+        public void discardState(BulkFileDeleter bulkDeleter) {}
 
         @Override
         public long getStateSize() {

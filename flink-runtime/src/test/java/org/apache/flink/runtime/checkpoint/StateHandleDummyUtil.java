@@ -20,6 +20,7 @@ package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.checkpoint.channel.ResultSubpartitionInfo;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
@@ -188,7 +189,7 @@ public class StateHandleDummyUtil {
         public void registerSharedStates(SharedStateRegistry stateRegistry, long checkpointID) {}
 
         @Override
-        public void discardState() throws Exception {}
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {}
 
         @Override
         public long getStateSize() {

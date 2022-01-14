@@ -35,6 +35,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.mailbox.SyncMailboxExecutor;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStorageAccess;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
@@ -216,7 +217,9 @@ public class ChangelogStateBackendTestUtils {
             keyedBackend =
                     (ChangelogKeyedStateBackend<Integer>)
                             restoreKeyedBackend(stateBackend, snapshot, env);
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
 
             state =
                     keyedBackend.getPartitionedState(
@@ -319,7 +322,9 @@ public class ChangelogStateBackendTestUtils {
             keyedBackend =
                     (ChangelogKeyedStateBackend<Integer>)
                             restoreKeyedBackend(stateBackend, snapshot, env);
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
 
             KeyGroupedInternalPriorityQueue<TestType> priorityQueueRestored =
                     keyedBackend.create(fieldName, new TestType.V1TestTypeSerializer());

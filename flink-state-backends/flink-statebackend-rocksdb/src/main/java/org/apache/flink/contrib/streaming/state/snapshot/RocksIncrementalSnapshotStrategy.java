@@ -26,6 +26,7 @@ import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointStreamWithResultProvider;
 import org.apache.flink.runtime.state.CheckpointedStateScope;
@@ -454,11 +455,11 @@ public class RocksIncrementalSnapshotStrategy<K>
             }
 
             if (localBackupDirectory.isSnapshotCompleted()) {
-                try {
+                try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
                     DirectoryStateHandle directoryStateHandle =
                             localBackupDirectory.completeSnapshotAndGetHandle();
                     if (directoryStateHandle != null) {
-                        directoryStateHandle.discardState();
+                        directoryStateHandle.discardState(bulkFileDeleter);
                     }
                 } catch (Exception e) {
                     LOG.warn("Could not properly discard local state.", e);

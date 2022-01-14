@@ -65,6 +65,7 @@ import org.apache.flink.runtime.shuffle.PartitionDescriptorBuilder;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironment;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.AbstractStateBackend;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
 import org.apache.flink.runtime.state.DoneFuture;
@@ -845,10 +846,10 @@ public class StreamTaskTest extends TestLogger {
             assertEquals(singleton(rawOperatorStateHandle), subtaskState.getRawOperatorState());
 
             // check that the state handles have not been discarded
-            verify(managedKeyedStateHandle, never()).discardState();
-            verify(rawKeyedStateHandle, never()).discardState();
-            verify(managedOperatorStateHandle, never()).discardState();
-            verify(rawOperatorStateHandle, never()).discardState();
+            verify(managedKeyedStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(rawKeyedStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(managedOperatorStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(rawOperatorStateHandle, never()).discardState(any(BulkFileDeleter.class));
 
             streamTask.cancel();
 
@@ -856,10 +857,10 @@ public class StreamTaskTest extends TestLogger {
 
             // canceling the stream task after it has acknowledged the checkpoint should not discard
             // the state handles
-            verify(managedKeyedStateHandle, never()).discardState();
-            verify(rawKeyedStateHandle, never()).discardState();
-            verify(managedOperatorStateHandle, never()).discardState();
-            verify(rawOperatorStateHandle, never()).discardState();
+            verify(managedKeyedStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(rawKeyedStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(managedOperatorStateHandle, never()).discardState(any(BulkFileDeleter.class));
+            verify(rawOperatorStateHandle, never()).discardState(any(BulkFileDeleter.class));
 
             task.waitForTaskCompletion(true);
         }
@@ -2394,7 +2395,7 @@ public class StreamTaskTest extends TestLogger {
         public void registerSharedStates(SharedStateRegistry stateRegistry, long checkpointID) {}
 
         @Override
-        public void discardState() {
+        public void discardState(BulkFileDeleter bulkDeleter) {
             discardFuture.complete(null);
         }
 
@@ -2435,7 +2436,7 @@ public class StreamTaskTest extends TestLogger {
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             discardFuture.complete(null);
         }
 

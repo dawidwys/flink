@@ -34,6 +34,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorInfo;
 import org.apache.flink.runtime.operators.coordination.TestingOperatorInfo;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.TestingStreamStateHandle;
@@ -233,7 +234,7 @@ public class PendingCheckpointTest {
         abort(pending, CheckpointFailureReason.CHECKPOINT_DECLINED);
         // execute asynchronous discard operation
         executor.runQueuedCommands();
-        verify(state, times(1)).discardState();
+        verify(state, times(1)).discardState(any(BulkFileDeleter.class));
 
         // Abort error
         Mockito.reset(state);
@@ -244,7 +245,7 @@ public class PendingCheckpointTest {
         abort(pending, CheckpointFailureReason.CHECKPOINT_DECLINED);
         // execute asynchronous discard operation
         executor.runQueuedCommands();
-        verify(state, times(1)).discardState();
+        verify(state, times(1)).discardState(any(BulkFileDeleter.class));
 
         // Abort expired
         Mockito.reset(state);
@@ -255,7 +256,7 @@ public class PendingCheckpointTest {
         abort(pending, CheckpointFailureReason.CHECKPOINT_EXPIRED);
         // execute asynchronous discard operation
         executor.runQueuedCommands();
-        verify(state, times(1)).discardState();
+        verify(state, times(1)).discardState(any(BulkFileDeleter.class));
 
         // Abort subsumed
         Mockito.reset(state);
@@ -266,7 +267,7 @@ public class PendingCheckpointTest {
         abort(pending, CheckpointFailureReason.CHECKPOINT_SUBSUMED);
         // execute asynchronous discard operation
         executor.runQueuedCommands();
-        verify(state, times(1)).discardState();
+        verify(state, times(1)).discardState(any(BulkFileDeleter.class));
     }
 
     /** Tests that the stats callbacks happen if the callback is registered. */

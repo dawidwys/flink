@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state.filesystem;
 
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,7 +46,7 @@ public class FileStateHandleTest {
         assertTrue(file.exists());
 
         FileStateHandle handle = new FileStateHandle(Path.fromLocalFile(file), file.length());
-        handle.discardState();
+        handle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         assertFalse(file.exists());
     }
 
@@ -65,7 +66,7 @@ public class FileStateHandleTest {
         assertTrue(file.exists());
 
         FileStateHandle handle = new FileStateHandle(Path.fromLocalFile(file), file.length());
-        handle.discardState();
+        handle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         assertFalse(file.exists());
         assertTrue(parentDir.exists());
     }

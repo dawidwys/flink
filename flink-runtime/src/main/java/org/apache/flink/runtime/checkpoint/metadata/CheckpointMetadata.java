@@ -20,6 +20,8 @@ package org.apache.flink.runtime.checkpoint.metadata;
 
 import org.apache.flink.runtime.checkpoint.MasterState;
 import org.apache.flink.runtime.checkpoint.OperatorState;
+import org.apache.flink.runtime.state.BulkFileDeleter;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.util.Disposable;
 
 import java.util.Collection;
@@ -61,8 +63,10 @@ public class CheckpointMetadata implements Disposable {
 
     @Override
     public void dispose() throws Exception {
-        for (OperatorState operatorState : operatorStates) {
-            operatorState.discardState();
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            for (OperatorState operatorState : operatorStates) {
+                operatorState.discardState(bulkDeleter);
+            }
         }
         operatorStates.clear();
         masterStates.clear();

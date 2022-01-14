@@ -85,13 +85,13 @@ public class SnapshotResult<T extends StateObject> implements StateObject {
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
 
         Exception aggregatedExceptions = null;
 
         if (jobManagerOwnedSnapshot != null) {
             try {
-                jobManagerOwnedSnapshot.discardState();
+                jobManagerOwnedSnapshot.discardState(bulkDeleter);
             } catch (Exception remoteDiscardEx) {
                 aggregatedExceptions = remoteDiscardEx;
             }
@@ -99,7 +99,7 @@ public class SnapshotResult<T extends StateObject> implements StateObject {
 
         if (taskLocalSnapshot != null) {
             try {
-                taskLocalSnapshot.discardState();
+                taskLocalSnapshot.discardState(bulkDeleter);
             } catch (Exception localDiscardEx) {
                 aggregatedExceptions =
                         ExceptionUtils.firstOrSuppressed(localDiscardEx, aggregatedExceptions);

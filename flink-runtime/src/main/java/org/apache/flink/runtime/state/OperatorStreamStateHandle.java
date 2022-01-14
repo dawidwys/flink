@@ -52,8 +52,8 @@ public class OperatorStreamStateHandle implements OperatorStateHandle {
     }
 
     @Override
-    public void discardState() throws Exception {
-        delegateStateHandle.discardState();
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+        delegateStateHandle.discardState(bulkDeleter);
     }
 
     @Override

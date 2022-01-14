@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.runtime.persistence.RetrievableStateStorageHelper;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 
 import java.io.Serializable;
@@ -53,7 +54,7 @@ public final class TestingRetrievableStateStorageHelper<T extends Serializable>
         }
 
         @Override
-        public void discardState() {
+        public void discardState(BulkFileDeleter bulkDeleter) {
             // no op
         }
 

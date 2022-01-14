@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state.testutils;
 
 import org.apache.flink.core.fs.FSDataInputStream;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
 import java.io.IOException;
@@ -68,7 +69,7 @@ public class EmptyStreamStateHandle implements StreamStateHandle {
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         disposed = true;
     }
 

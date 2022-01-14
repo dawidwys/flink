@@ -115,6 +115,6 @@ public class StateUtilTest {
         }
 
         @Override
-        public void discardState() {}
+        public void discardState(BulkFileDeleter bulkDeleter) {}
     }
 }

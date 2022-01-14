@@ -32,7 +32,7 @@ package org.apache.flink.runtime.state;
  * newly created shared state is still owned by this handle and considered as private state until it
  * is registered for the first time. Registration transfers ownership to the {@link
  * SharedStateRegistry}. The composite state handle should only delete all private states in the
- * {@link StateObject#discardState()} method, the {@link SharedStateRegistry} is responsible for
+ * {@link StateObject#discardState(BulkFileDeleter)} method, the {@link SharedStateRegistry} is responsible for
  * deleting shared states after they were registered.
  */
 public interface CompositeStateHandle extends StateObject {
@@ -44,7 +44,7 @@ public interface CompositeStateHandle extends StateObject {
      *
      * <p>After this is completed, newly created shared state is considered as published is no
      * longer owned by this handle. This means that it should no longer be deleted as part of calls
-     * to {@link #discardState()}. Instead, {@link #discardState()} will trigger an unregistration
+     * to {@link StateObject#discardState(BulkFileDeleter)}. Instead, {@link StateObject#discardState(BulkFileDeleter)} will trigger an unregistration
      * from the registry.
      *
      * @param stateRegistry The registry where shared states are registered.

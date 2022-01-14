@@ -22,6 +22,7 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.core.fs.FSDataOutputStream;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
 import org.apache.flink.runtime.state.StreamStateHandle;
@@ -267,7 +268,7 @@ public class FsCheckpointStateOutputStreamTest {
             assertArrayEquals(bytes, validation);
         }
 
-        handle.discardState();
+        handle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     @Test
@@ -352,12 +353,12 @@ public class FsCheckpointStateOutputStreamTest {
         }
 
         validateBytesInStream(handle1.openInputStream(), state1);
-        handle1.discardState();
+        handle1.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         assertFalse(isDirectoryEmpty(directory));
         ensureLocalFileDeleted(handle1.getFilePath());
 
         validateBytesInStream(handle2.openInputStream(), state2);
-        handle2.discardState();
+        handle2.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         assertFalse(isDirectoryEmpty(directory));
 
         // nothing was written to the stream, so it will return nothing
@@ -365,7 +366,7 @@ public class FsCheckpointStateOutputStreamTest {
         assertFalse(isDirectoryEmpty(directory));
 
         validateBytesInStream(handle4.openInputStream(), state4);
-        handle4.discardState();
+        handle4.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         assertTrue(isDirectoryEmpty(directory));
     }
 

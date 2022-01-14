@@ -54,8 +54,8 @@ public class DirectoryKeyedStateHandle implements KeyedStateHandle {
     }
 
     @Override
-    public void discardState() throws Exception {
-        directoryStateHandle.discardState();
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+        directoryStateHandle.discardState(bulkDeleter);
     }
 
     @Override

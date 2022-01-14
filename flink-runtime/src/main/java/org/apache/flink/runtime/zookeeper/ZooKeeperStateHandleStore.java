@@ -24,6 +24,7 @@ import org.apache.flink.runtime.persistence.IntegerResourceVersion;
 import org.apache.flink.runtime.persistence.PossibleInconsistentStateException;
 import org.apache.flink.runtime.persistence.RetrievableStateStorageHelper;
 import org.apache.flink.runtime.persistence.StateHandleStore;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.util.ExceptionUtils;
 
@@ -177,7 +178,9 @@ public class ZooKeeperStateHandleStore<T extends Serializable>
                 throw new PossibleInconsistentStateException(e);
             }
             // In case of any other failure, discard the state and rethrow the exception.
-            storeHandle.discardState();
+            try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
+                storeHandle.discardState(bulkFileDeleter);
+            }
             throw e;
         }
     }
@@ -250,12 +253,14 @@ public class ZooKeeperStateHandleStore<T extends Serializable>
                                             "ZooKeeper node " + path + " does not exist.", nnee))
                     .orElseThrow(() -> e);
         } finally {
-            if (discardOldState) {
-                oldStateHandle.discardState();
-            }
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                if (discardOldState) {
+                    oldStateHandle.discardState(bulkDeleter);
+                }
 
-            if (discardNewState) {
-                newStateHandle.discardState();
+                if (discardNewState) {
+                    newStateHandle.discardState(bulkDeleter);
+                }
             }
         }
     }
@@ -422,7 +427,9 @@ public class ZooKeeperStateHandleStore<T extends Serializable>
         }
 
         if (stateHandle != null) {
-            stateHandle.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                stateHandle.discardState(bulkDeleter);
+            }
         }
 
         return true;

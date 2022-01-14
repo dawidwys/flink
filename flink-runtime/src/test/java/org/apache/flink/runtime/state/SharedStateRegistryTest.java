@@ -115,7 +115,7 @@ public class SharedStateRegistryTest {
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             this.discarded = true;
         }
 

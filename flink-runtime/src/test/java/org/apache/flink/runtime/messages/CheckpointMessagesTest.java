@@ -28,6 +28,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
@@ -120,7 +121,7 @@ public class CheckpointMessagesTest {
         }
 
         @Override
-        public void discardState() throws Exception {}
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {}
 
         @Override
         public long getStateSize() {

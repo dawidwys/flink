@@ -21,6 +21,7 @@ package org.apache.flink.runtime.state.filesystem;
 import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.StreamStateHandle;
 
 import java.io.IOException;
@@ -78,9 +79,10 @@ public class FileStateHandle implements StreamStateHandle {
      * state is empty after deleting the state file, it is also deleted.
      *
      * @throws Exception Thrown, if the file deletion (not the directory deletion) fails.
+     * @param bulkDeleter
      */
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         FileSystem fs = getFileSystem();
         fs.delete(filePath, false);
     }

@@ -23,6 +23,7 @@ import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.core.testutils.CommonTestUtils;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.SharedStateRegistryImpl;
 import org.apache.flink.runtime.state.testutils.EmptyStreamStateHandle;
@@ -41,6 +42,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -263,7 +265,7 @@ public class CompletedCheckpointTest {
         // Subsume
         checkpoint.discardOnSubsume();
 
-        verify(state, times(1)).discardState();
+        verify(state, times(1)).discardState(any(BulkFileDeleter.class));
         assertTrue(location.isDisposed());
         assertTrue(metadata.isDisposed());
     }
@@ -310,7 +312,7 @@ public class CompletedCheckpointTest {
 
             checkpoint.discardOnShutdown(status);
 
-            verify(state, times(0)).discardState();
+            verify(state, times(0)).discardState(any(BulkFileDeleter.class));
             assertFalse(retainedLocation.isDisposed());
             assertFalse(retainedHandle.isDisposed());
 
@@ -337,7 +339,7 @@ public class CompletedCheckpointTest {
 
             checkpoint.discardOnShutdown(status);
 
-            verify(state, times(1)).discardState();
+            verify(state, times(1)).discardState(any(BulkFileDeleter.class));
             assertTrue(discardLocation.isDisposed());
             assertTrue(discardHandle.isDisposed());
         }

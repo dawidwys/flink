@@ -64,6 +64,7 @@ import org.apache.flink.runtime.operators.testutils.DummyEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.query.KvStateRegistryListener;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.heap.AbstractHeapState;
 import org.apache.flink.runtime.state.heap.StateTable;
 import org.apache.flink.runtime.state.internal.InternalAggregatingState;
@@ -845,7 +846,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
 
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot, env);
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
 
             state =
                     backend.getPartitionedState(
@@ -945,7 +948,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
 
             backend.dispose();
 
@@ -977,7 +982,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             // state backends that lazily deserializes (such as RocksDB) will fail here
             state.value();
 
-            snapshot2.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot2.discardState(bulkDeleter);
+            }
         } finally {
             // ensure to release native resources even when we exit through exception
             IOUtils.closeQuietly(backend);
@@ -1068,7 +1075,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
 
             backend.dispose();
 
@@ -1229,7 +1238,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
                             CheckpointOptions.forCheckpointWithDefaultLocation()),
                     sharedStateRegistry);
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
         } finally {
             backend.dispose();
         }
@@ -1328,7 +1339,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
                             CheckpointOptions.forCheckpointWithDefaultLocation()),
                     sharedStateRegistry);
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
         } finally {
             backend.dispose();
         }
@@ -1459,7 +1472,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
 
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             ValueState<String> restored1 =
                     backend.getPartitionedState(
@@ -1494,7 +1509,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot2);
 
-            snapshot2.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot2.discardState(bulkDeleter);
+            }
 
             ValueState<String> restored2 =
                     backend.getPartitionedState(
@@ -1752,7 +1769,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
                             Collections.singletonList(snapshot1),
                             env);
 
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             backend.setCurrentKey(1);
 
@@ -1838,7 +1857,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
 
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             backend.getPartitionedState(
                     VoidNamespace.INSTANCE, VoidNamespaceSerializer.INSTANCE, kvId);
@@ -1985,7 +2006,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             ListState<String> restored1 =
                     backend.getPartitionedState(
@@ -2023,7 +2046,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the second snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot2);
-            snapshot2.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot2.discardState(bulkDeleter);
+            }
 
             ListState<String> restored2 =
                     backend.getPartitionedState(
@@ -2540,7 +2565,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             ReducingState<String> restored1 =
                     backend.getPartitionedState(
@@ -2575,7 +2602,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the second snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot2);
-            snapshot2.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot2.discardState(bulkDeleter);
+            }
 
             ReducingState<String> restored2 =
                     backend.getPartitionedState(
@@ -3394,7 +3423,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(StringSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             MapState<Integer, String> restored1 =
                     backend.getPartitionedState(
@@ -3439,7 +3470,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the second snapshot and validate it
             backend = restoreKeyedBackend(StringSerializer.INSTANCE, snapshot2);
-            snapshot2.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot2.discardState(bulkDeleter);
+            }
 
             @SuppressWarnings("unchecked")
             MapState<Integer, String> restored2 =
@@ -3815,7 +3848,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.setCurrentKey("3");
             assertEquals("hello world", mapState.get(91));
 
-            snapshot.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot.discardState(bulkDeleter);
+            }
         } finally {
             IOUtils.closeQuietly(backend);
             backend.dispose();
@@ -4081,7 +4116,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             @SuppressWarnings("unchecked")
             TypeSerializer<String> fakeStringSerializer =
@@ -4139,7 +4176,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             @SuppressWarnings("unchecked")
             TypeSerializer<String> fakeStringSerializer =
@@ -4199,7 +4238,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             @SuppressWarnings("unchecked")
             TypeSerializer<String> fakeStringSerializer =
@@ -4261,7 +4302,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             backend.dispose();
             // restore the first snapshot and validate it
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot1);
-            snapshot1.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                snapshot1.discardState(bulkDeleter);
+            }
 
             @SuppressWarnings("unchecked")
             TypeSerializer<String> fakeStringSerializer =
@@ -4521,7 +4564,9 @@ public abstract class StateBackendTestBase<B extends AbstractStateBackend> exten
             // Initialize again
             backend = restoreKeyedBackend(IntSerializer.INSTANCE, snapshot, env);
             if (snapshot != null) {
-                snapshot.discardState();
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                    snapshot.discardState(bulkDeleter);
+                }
             }
 
             backend.getPartitionedState(

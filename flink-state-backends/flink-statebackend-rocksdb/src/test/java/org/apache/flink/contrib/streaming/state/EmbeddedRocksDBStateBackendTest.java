@@ -28,6 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
 import org.apache.flink.runtime.state.ConfigurableStateBackend;
@@ -602,7 +603,7 @@ public class EmbeddedRocksDBStateBackendTest
                     // -----------------------------------------------------------------
 
                     if (previousStateHandles.size() > 1) {
-                        previousStateHandles.remove().discardState();
+                        previousStateHandles.remove().discardState(BulkFileDeleter.IMMEDIATE_DELETER);
                     }
                 }
 
@@ -610,7 +611,7 @@ public class EmbeddedRocksDBStateBackendTest
 
                     reset(sharedStateRegistry);
 
-                    previousStateHandles.remove().discardState();
+                    previousStateHandles.remove().discardState(BulkFileDeleter.IMMEDIATE_DELETER);
                 }
             } finally {
                 IOUtils.closeQuietly(backend);

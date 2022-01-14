@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.util.FileUtils;
 import org.apache.flink.util.TestLogger;
 
@@ -124,7 +125,9 @@ public class SnapshotDirectoryTest extends TestLogger {
         Assert.assertTrue(snapshotDirectory.cleanup());
         Assert.assertTrue(folderA.isDirectory());
         Assert.assertEquals(folderAPath, handle.getDirectory());
-        handle.discardState();
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            handle.discardState(bulkDeleter);
+        }
 
         Assert.assertFalse(folderA.isDirectory());
         Assert.assertTrue(folderA.mkdirs());

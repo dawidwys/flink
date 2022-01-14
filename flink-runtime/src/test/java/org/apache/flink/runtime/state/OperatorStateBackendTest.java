@@ -35,6 +35,7 @@ import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.StateObjectCollection;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.memory.MemCheckpointStreamFactory;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.runtime.util.BlockerCheckpointStreamFactory;
@@ -490,7 +491,9 @@ public class OperatorStateBackendTest {
                             CheckpointOptions.forCheckpointWithDefaultLocation());
             snapshotResult = FutureUtils.runIfNotDoneAndGet(snapshot);
 
-            stateHandle.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                stateHandle.discardState(bulkDeleter);
+            }
             stateHandle = snapshotResult.getJobManagerOwnedSnapshot();
 
             retrieved.clear();
@@ -517,7 +520,9 @@ public class OperatorStateBackendTest {
                             CheckpointOptions.forCheckpointWithDefaultLocation());
             snapshotResult = FutureUtils.runIfNotDoneAndGet(snapshot);
             if (stateHandle != null) {
-                stateHandle.discardState();
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                    stateHandle.discardState(bulkDeleter);
+                }
             }
             stateHandle = snapshotResult.getJobManagerOwnedSnapshot();
 
@@ -534,14 +539,18 @@ public class OperatorStateBackendTest {
             assertTrue(expected.isEmpty());
             assertEquals(expected, retrieved);
             if (stateHandle != null) {
-                stateHandle.discardState();
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                    stateHandle.discardState(bulkDeleter);
+                }
                 stateHandle = null;
             }
         } finally {
             operatorStateBackend.close();
             operatorStateBackend.dispose();
             if (stateHandle != null) {
-                stateHandle.discardState();
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                    stateHandle.discardState(bulkDeleter);
+                }
             }
         }
     }
@@ -679,7 +688,9 @@ public class OperatorStateBackendTest {
             operatorStateBackend.close();
             operatorStateBackend.dispose();
         } finally {
-            stateHandle.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                stateHandle.discardState(bulkDeleter);
+            }
         }
     }
 
@@ -864,7 +875,9 @@ public class OperatorStateBackendTest {
             operatorStateBackend.close();
             operatorStateBackend.dispose();
         } finally {
-            stateHandle.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                stateHandle.discardState(bulkDeleter);
+            }
         }
 
         executorService.shutdown();

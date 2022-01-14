@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.runtime.state.StateUtil;
 
@@ -34,7 +35,7 @@ import java.util.function.Predicate;
 
 /**
  * This class represents a generic collection for {@link StateObject}s. Being a state object itself,
- * it delegates {@link #discardState()} to all contained state objects and computes {@link
+ * it delegates {@link StateObject#discardState(BulkFileDeleter)} to all contained state objects and computes {@link
  * #getStateSize()} as sum of the state sizes of all contained objects.
  *
  * @param <T> type of the contained state objects.
@@ -135,7 +136,7 @@ public class StateObjectCollection<T extends StateObject> implements Collection<
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         StateUtil.bestEffortDiscardAllStateObjects(stateObjects);
     }
 

@@ -27,6 +27,7 @@ import java.util.Random;
 import java.util.UUID;
 
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -42,17 +43,17 @@ public class IncrementalRemoteKeyedStateHandleTest {
     public void testUnregisteredDiscarding() throws Exception {
         IncrementalRemoteKeyedStateHandle stateHandle = create(new Random(42));
 
-        stateHandle.discardState();
+        stateHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         for (StreamStateHandle handle : stateHandle.getPrivateState().values()) {
-            verify(handle).discardState();
+            verify(handle).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         for (StreamStateHandle handle : stateHandle.getSharedState().values()) {
-            verify(handle).discardState();
+            verify(handle).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
-        verify(stateHandle.getMetaStateHandle()).discardState();
+        verify(stateHandle.getMetaStateHandle()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     /**
@@ -71,11 +72,11 @@ public class IncrementalRemoteKeyedStateHandleTest {
         // Both handles should not be registered and not discarded by now.
         for (Map.Entry<StateHandleID, StreamStateHandle> entry :
                 stateHandle1.getSharedState().entrySet()) {
-            verify(entry.getValue(), times(0)).discardState();
+            verify(entry.getValue(), times(0)).discardState(any(BulkFileDeleter.class));
         }
         for (Map.Entry<StateHandleID, StreamStateHandle> entry :
                 stateHandle2.getSharedState().entrySet()) {
-            verify(entry.getValue(), times(0)).discardState();
+            verify(entry.getValue(), times(0)).discardState(any(BulkFileDeleter.class));
         }
 
         // Now we register both ...
@@ -104,49 +105,55 @@ public class IncrementalRemoteKeyedStateHandleTest {
         }
 
         // We discard the first
-        stateHandle1.discardState();
+        stateHandle1.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // Should be unregistered, non-shared discarded, shared not discarded
         for (Map.Entry<StateHandleID, StreamStateHandle> entry :
                 stateHandle1.getSharedState().entrySet()) {
-            verify(entry.getValue(), times(0)).discardState();
+            verify(entry.getValue(), times(0)).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         for (StreamStateHandle handle : stateHandle2.getSharedState().values()) {
 
-            verify(handle, times(0)).discardState();
+            verify(handle, times(0)).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         for (Map.Entry<StateHandleID, StreamStateHandle> handleEntry :
                 stateHandle1.getPrivateState().entrySet()) {
-            verify(handleEntry.getValue(), times(1)).discardState();
+            verify(handleEntry.getValue(), times(1))
+                    .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         for (Map.Entry<StateHandleID, StreamStateHandle> handleEntry :
                 stateHandle2.getPrivateState().entrySet()) {
-            verify(handleEntry.getValue(), times(0)).discardState();
+            verify(handleEntry.getValue(), times(0))
+                    .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
-        verify(stateHandle1.getMetaStateHandle(), times(1)).discardState();
-        verify(stateHandle2.getMetaStateHandle(), times(0)).discardState();
+        verify(stateHandle1.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(stateHandle2.getMetaStateHandle(), times(0))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // We discard the second
-        stateHandle2.discardState();
+        stateHandle2.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // Now everything should be unregistered and discarded
         registry.unregisterUnusedState(Long.MAX_VALUE);
         for (Map.Entry<StateHandleID, StreamStateHandle> entry :
                 stateHandle1.getSharedState().entrySet()) {
-            verify(entry.getValue()).discardState();
+            verify(entry.getValue()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         for (Map.Entry<StateHandleID, StreamStateHandle> entry :
                 stateHandle2.getSharedState().entrySet()) {
-            verify(entry.getValue()).discardState();
+            verify(entry.getValue()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
-        verify(stateHandle1.getMetaStateHandle(), times(1)).discardState();
-        verify(stateHandle2.getMetaStateHandle(), times(1)).discardState();
+        verify(stateHandle1.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(stateHandle2.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     /**
@@ -176,8 +183,9 @@ public class IncrementalRemoteKeyedStateHandleTest {
         }
 
         // Everything should be discarded for this handle
-        stateHandleZ.discardState();
-        verify(stateHandleZ.getMetaStateHandle(), times(1)).discardState();
+        stateHandleZ.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(stateHandleZ.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // Close the first registry
         stateRegistryA.close();
@@ -190,29 +198,32 @@ public class IncrementalRemoteKeyedStateHandleTest {
         }
 
         // Private state should still get discarded
-        stateHandleY.discardState();
-        verify(stateHandleY.getMetaStateHandle(), times(1)).discardState();
+        stateHandleY.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(stateHandleY.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // This should still be unaffected
-        verify(stateHandleX.getMetaStateHandle(), never()).discardState();
+        verify(stateHandleX.getMetaStateHandle(), never())
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // We re-register the handle with a new registry
         SharedStateRegistry sharedStateRegistryB = spy(new SharedStateRegistryImpl());
         stateHandleX.registerSharedStates(sharedStateRegistryB, 0L);
-        stateHandleX.discardState();
-        verify(stateHandleX.getMetaStateHandle(), times(1)).discardState();
+        stateHandleX.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(stateHandleX.getMetaStateHandle(), times(1))
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
 
         // Should be completely discarded because it is tracked through the new registry
         sharedStateRegistryB.unregisterUnusedState(1L);
 
         for (StreamStateHandle stateHandle : stateHandleX.getSharedState().values()) {
-            verify(stateHandle, times(1)).discardState();
+            verify(stateHandle, times(1)).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
         for (StreamStateHandle stateHandle : stateHandleY.getSharedState().values()) {
-            verify(stateHandle, never()).discardState();
+            verify(stateHandle, never()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
         for (StreamStateHandle stateHandle : stateHandleZ.getSharedState().values()) {
-            verify(stateHandle, never()).discardState();
+            verify(stateHandle, never()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
         sharedStateRegistryB.close();
     }

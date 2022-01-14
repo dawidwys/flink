@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state;
 
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.util.LambdaUtil;
 
 import org.apache.flink.shaded.guava30.com.google.common.base.Joiner;
@@ -53,13 +54,33 @@ public class StateUtil {
      *
      * @param handlesToDiscard State handles to discard. Passed iterable is allowed to deliver null
      *     values.
+     * @param bulkDeleter a deleter that potentially performs a bulk deletion of all files contained
+     *     in the handles
+     * @throws Exception exception that is a collection of all suppressed exceptions that were
+     *     caught during iteration
+     */
+    public static void bestEffortDiscardAllStateObjects(
+            Iterable<? extends StateObject> handlesToDiscard, BulkFileDeleter bulkDeleter)
+            throws Exception {
+        LambdaUtil.applyToAllWhileSuppressingExceptions(
+                handlesToDiscard, stateObject -> stateObject.discardState(bulkDeleter));
+    }
+
+    /**
+     * Iterates through the passed state handles and calls discardState() on each handle that is not
+     * null. All occurring exceptions are suppressed and collected until the iteration is over and
+     * emitted as a single exception.
+     *
+     * @param handlesToDiscard State handles to discard. Passed iterable is allowed to deliver null
+     *     values.
      * @throws Exception exception that is a collection of all suppressed exceptions that were
      *     caught during iteration
      */
     public static void bestEffortDiscardAllStateObjects(
             Iterable<? extends StateObject> handlesToDiscard) throws Exception {
-        LambdaUtil.applyToAllWhileSuppressingExceptions(
-                handlesToDiscard, StateObject::discardState);
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            bestEffortDiscardAllStateObjects(handlesToDiscard, bulkDeleter);
+        }
     }
 
     /**
@@ -76,7 +97,7 @@ public class StateUtil {
         if (null != stateFuture) {
             if (!stateFuture.cancel(true)) {
 
-                try {
+                try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
                     // We attempt to get a result, in case the future completed before cancellation.
                     if (stateFuture instanceof RunnableFuture<?> && !stateFuture.isDone()) {
                         ((RunnableFuture<?>) stateFuture).run();
@@ -84,7 +105,7 @@ public class StateUtil {
                     StateObject stateObject = stateFuture.get();
                     if (stateObject != null) {
                         stateSize = stateObject.getStateSize();
-                        stateObject.discardState();
+                        stateObject.discardState(bulkDeleter);
                     }
 
                 } catch (Exception ex) {

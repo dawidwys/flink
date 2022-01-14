@@ -36,6 +36,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
 import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
 import org.apache.flink.runtime.state.KeyGroupStatePartitionStreamProvider;
 import org.apache.flink.runtime.state.KeyedStateCheckpointOutputStream;
@@ -252,9 +253,9 @@ public class StreamOperatorSnapshotRestoreTest extends TestLogger {
                 mode > ONLY_JM_RECOVERY == (taskLocalState != null && taskLocalState.hasState()));
 
         if (mode == TM_REMOVE_JM_RECOVERY) {
-            jobManagerOwnedState.getManagedKeyedState().discardState();
+            jobManagerOwnedState.getManagedKeyedState().discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         } else if (mode == JM_REMOVE_TM_RECOVERY) {
-            taskLocalState.getManagedKeyedState().discardState();
+            taskLocalState.getManagedKeyedState().discardState(BulkFileDeleter.IMMEDIATE_DELETER);
         }
 
         testHarness.initializeState(jobManagerOwnedState, taskLocalState);

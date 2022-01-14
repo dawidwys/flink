@@ -302,15 +302,26 @@ public class TaskLocalStateStoreImpl implements OwnedTaskLocalStateStore {
 
     private void syncDiscardLocalStateForCollection(
             Collection<Map.Entry<Long, TaskStateSnapshot>> toDiscard) {
-        for (Map.Entry<Long, TaskStateSnapshot> entry : toDiscard) {
-            discardLocalStateForCheckpoint(entry.getKey(), entry.getValue());
+        try (BulkFileDeleter.BulkFileDeleterImpl bulkDeleter =
+                new BulkFileDeleter.BulkFileDeleterImpl()) {
+            for (Map.Entry<Long, TaskStateSnapshot> entry : toDiscard) {
+                discardLocalStateForCheckpoint(entry.getKey(), entry.getValue(), bulkDeleter);
+            }
+        } catch (Exception discardEx) {
+            LOG.warn(
+                    "Exception while bulk deleting local task state snapshot in subtask ({} - {} - {}).",
+                    jobID,
+                    jobVertexID,
+                    subtaskIndex,
+                    discardEx);
         }
     }
 
     /**
      * Helper method that discards state objects with an executor and reports exceptions to the log.
      */
-    private void discardLocalStateForCheckpoint(long checkpointID, TaskStateSnapshot o) {
+    private void discardLocalStateForCheckpoint(
+            long checkpointID, TaskStateSnapshot o, BulkFileDeleter bulkDeleter) {
 
         if (LOG.isTraceEnabled()) {
             LOG.trace(
@@ -330,7 +341,7 @@ public class TaskLocalStateStoreImpl implements OwnedTaskLocalStateStore {
         }
 
         try {
-            o.discardState();
+            o.discardState(bulkDeleter);
         } catch (Exception discardEx) {
             LOG.warn(
                     "Exception while discarding local task state snapshot of checkpoint {} in subtask ({} - {} - {}).",

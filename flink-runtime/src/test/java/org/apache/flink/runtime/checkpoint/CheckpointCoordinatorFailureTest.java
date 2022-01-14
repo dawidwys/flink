@@ -29,6 +29,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.persistence.PossibleInconsistentStateException;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateHandle;
@@ -55,6 +56,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -162,15 +164,19 @@ public class CheckpointCoordinatorFailureTest extends TestLogger {
         assertTrue(pendingCheckpoint.isDisposed());
 
         // make sure that the subtask state has been discarded after we could not complete it.
-        verify(operatorSubtaskState).discardState();
-        verify(operatorSubtaskState.getManagedOperatorState().iterator().next()).discardState();
-        verify(operatorSubtaskState.getRawOperatorState().iterator().next()).discardState();
-        verify(operatorSubtaskState.getManagedKeyedState().iterator().next()).discardState();
-        verify(operatorSubtaskState.getRawKeyedState().iterator().next()).discardState();
+        verify(operatorSubtaskState).discardState(any(BulkFileDeleter.class));
+        verify(operatorSubtaskState.getManagedOperatorState().iterator().next())
+                .discardState(any(BulkFileDeleter.class));
+        verify(operatorSubtaskState.getRawOperatorState().iterator().next())
+                .discardState(any(BulkFileDeleter.class));
+        verify(operatorSubtaskState.getManagedKeyedState().iterator().next())
+                .discardState(any(BulkFileDeleter.class));
+        verify(operatorSubtaskState.getRawKeyedState().iterator().next())
+                .discardState(any(BulkFileDeleter.class));
         verify(operatorSubtaskState.getInputChannelState().iterator().next().getDelegate())
-                .discardState();
+                .discardState(any(BulkFileDeleter.class));
         verify(operatorSubtaskState.getResultSubpartitionState().iterator().next().getDelegate())
-                .discardState();
+                .discardState(any(BulkFileDeleter.class));
     }
 
     @Test

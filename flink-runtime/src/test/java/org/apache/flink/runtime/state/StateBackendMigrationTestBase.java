@@ -37,6 +37,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.StateObjectCollection;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.runtime.testutils.statemigration.TestType;
 import org.apache.flink.util.ExceptionUtils;
@@ -161,7 +162,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
 
         AbstractKeyedStateBackend<Integer> backend = createKeyedBackend(IntSerializer.INSTANCE);
 
-        try {
+        try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
             ValueState<TestType> valueState =
                     backend.getPartitionedState(
                             VoidNamespace.INSTANCE,
@@ -215,7 +216,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
                                     streamFactory,
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
-            snapshot.discardState();
+            snapshot.discardState(bulkFileDeleter);
         } finally {
             backend.dispose();
         }
@@ -278,7 +279,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
 
         AbstractKeyedStateBackend<Integer> backend = createKeyedBackend(IntSerializer.INSTANCE);
 
-        try {
+        try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
             ListState<TestType> listState =
                     backend.getPartitionedState(
                             VoidNamespace.INSTANCE,
@@ -346,7 +347,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
                                     streamFactory,
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
-            snapshot.discardState();
+            snapshot.discardState(bulkFileDeleter);
 
         } finally {
             backend.dispose();
@@ -426,7 +427,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
 
         AbstractKeyedStateBackend<Integer> backend = createKeyedBackend(IntSerializer.INSTANCE);
 
-        try {
+        try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
             MapState<Integer, TestType> mapState =
                     backend.getPartitionedState(
                             VoidNamespace.INSTANCE,
@@ -515,7 +516,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
                                     streamFactory,
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
-            snapshot.discardState();
+            snapshot.discardState(bulkFileDeleter);
 
         } finally {
             backend.dispose();
@@ -618,7 +619,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
         AbstractKeyedStateBackend<TestType> backend = createKeyedBackend(initialKeySerializer);
 
         final String stateName = "test-name";
-        try {
+        try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
             ValueStateDescriptor<Integer> kvId =
                     new ValueStateDescriptor<>(stateName, Integer.class);
             ValueState<Integer> valueState =
@@ -661,7 +662,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
                                     streamFactory,
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
-            snapshot.discardState();
+            snapshot.discardState(bulkFileDeleter);
         } finally {
             backend.dispose();
         }
@@ -723,7 +724,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
         AbstractKeyedStateBackend<Integer> backend = createKeyedBackend(IntSerializer.INSTANCE);
 
         final String stateName = "test-name";
-        try {
+        try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
             ValueStateDescriptor<Integer> kvId =
                     new ValueStateDescriptor<>(stateName, Integer.class);
             ValueState<Integer> valueState =
@@ -770,7 +771,7 @@ public abstract class StateBackendMigrationTestBase<B extends AbstractStateBacke
                                     streamFactory,
                                     CheckpointOptions.forCheckpointWithDefaultLocation()),
                             sharedStateRegistry);
-            snapshot.discardState();
+            snapshot.discardState(bulkFileDeleter);
         } finally {
             backend.dispose();
         }

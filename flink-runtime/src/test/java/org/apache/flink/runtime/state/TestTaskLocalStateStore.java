@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state;
 
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -66,8 +67,8 @@ public class TestTaskLocalStateStore implements TaskLocalStateStore {
         if (!disposed) {
             disposed = true;
             for (TaskStateSnapshot stateSnapshot : taskStateSnapshotsByCheckpointID.values()) {
-                try {
-                    stateSnapshot.discardState();
+                try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
+                    stateSnapshot.discardState(bulkFileDeleter);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -92,8 +93,8 @@ public class TestTaskLocalStateStore implements TaskLocalStateStore {
             Map.Entry<Long, TaskStateSnapshot> entry = iterator.next();
             if (entry.getKey() < confirmedCheckpointId) {
                 iterator.remove();
-                try {
-                    entry.getValue().discardState();
+                try (BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
+                    entry.getValue().discardState(bulkFileDeleter);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -108,18 +109,22 @@ public class TestTaskLocalStateStore implements TaskLocalStateStore {
         Preconditions.checkState(!disposed);
         Iterator<Map.Entry<Long, TaskStateSnapshot>> iterator =
                 taskStateSnapshotsByCheckpointID.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<Long, TaskStateSnapshot> entry = iterator.next();
-            if (entry.getKey() == abortedCheckpointId) {
-                iterator.remove();
-                try {
-                    entry.getValue().discardState();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            while (iterator.hasNext()) {
+                Map.Entry<Long, TaskStateSnapshot> entry = iterator.next();
+                if (entry.getKey() == abortedCheckpointId) {
+                    iterator.remove();
+                    try {
+                        entry.getValue().discardState(bulkDeleter);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                } else if (entry.getKey() > abortedCheckpointId) {
+                    break;
                 }
-            } else if (entry.getKey() > abortedCheckpointId) {
-                break;
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -25,6 +25,8 @@ import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.apache.flink.runtime.io.disk.InputViewIterator;
+import org.apache.flink.runtime.state.BulkFileDeleter;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStorageWorkerView;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.JavaSerializer;
@@ -161,7 +163,7 @@ public abstract class GenericWriteAheadSink<IN> extends AbstractStreamOperator<I
                 // we already have a checkpoint stored for that ID that may have been partially
                 // written,
                 // so we discard this "alternate version" and use the stored checkpoint
-                handle.discardState();
+                handle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
             } else {
                 pendingCheckpoints.add(pendingCheckpoint);
             }
@@ -220,7 +222,7 @@ public abstract class GenericWriteAheadSink<IN> extends AbstractStreamOperator<I
 
                 if (committer.isCheckpointCommitted(
                         pendingCheckpoint.subtaskId, pendingCheckpoint.checkpointId)) {
-                    pendingCheckpoint.stateHandle.discardState();
+                    pendingCheckpoint.stateHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
                     pendingCheckpointIt.remove();
                 }
             }
@@ -243,29 +245,29 @@ public abstract class GenericWriteAheadSink<IN> extends AbstractStreamOperator<I
                 StreamStateHandle streamHandle = pendingCheckpoint.stateHandle;
 
                 if (pastCheckpointId <= checkpointId) {
-                    try {
+                    try (FSDataInputStream in = streamHandle.openInputStream();
+                            BulkFileDeleterImpl bulkFileDeleter = new BulkFileDeleterImpl()) {
                         if (!committer.isCheckpointCommitted(subtaskId, pastCheckpointId)) {
-                            try (FSDataInputStream in = streamHandle.openInputStream()) {
-                                boolean success =
-                                        sendValues(
-                                                new ReusingMutableToRegularIteratorWrapper<>(
-                                                        new InputViewIterator<>(
-                                                                new DataInputViewStreamWrapper(in),
-                                                                serializer),
-                                                        serializer),
-                                                pastCheckpointId,
-                                                timestamp);
-                                if (success) {
-                                    // in case the checkpoint was successfully committed,
-                                    // discard its state from the backend and mark it for removal
-                                    // in case it failed, we retry on the next checkpoint
-                                    committer.commitCheckpoint(subtaskId, pastCheckpointId);
-                                    streamHandle.discardState();
-                                    pendingCheckpointIt.remove();
-                                }
+
+                            boolean success =
+                                    sendValues(
+                                            new ReusingMutableToRegularIteratorWrapper<>(
+                                                    new InputViewIterator<>(
+                                                            new DataInputViewStreamWrapper(in),
+                                                            serializer),
+                                                    serializer),
+                                            pastCheckpointId,
+                                            timestamp);
+                            if (success) {
+                                // in case the checkpoint was successfully committed,
+                                // discard its state from the backend and mark it for removal
+                                // in case it failed, we retry on the next checkpoint
+                                committer.commitCheckpoint(subtaskId, pastCheckpointId);
+                                streamHandle.discardState(bulkFileDeleter);
+                                pendingCheckpointIt.remove();
                             }
                         } else {
-                            streamHandle.discardState();
+                            streamHandle.discardState(bulkFileDeleter);
                             pendingCheckpointIt.remove();
                         }
                     } catch (Exception e) {

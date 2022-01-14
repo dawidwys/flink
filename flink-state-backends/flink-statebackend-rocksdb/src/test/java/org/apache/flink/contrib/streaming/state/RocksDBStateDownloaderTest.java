@@ -20,6 +20,7 @@ package org.apache.flink.contrib.streaming.state;
 
 import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.core.fs.FSDataInputStream;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.IncrementalRemoteKeyedStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.StateHandleID;
@@ -157,7 +158,7 @@ public class RocksDBStateDownloaderTest extends TestLogger {
         }
 
         @Override
-        public void discardState() {}
+        public void discardState(BulkFileDeleter bulkDeleter) {}
 
         @Override
         public long getStateSize() {

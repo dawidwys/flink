@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.state.changelog.inmemory;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
@@ -58,7 +59,7 @@ public class InMemoryChangelogStateHandle implements ChangelogStateHandle {
     }
 
     @Override
-    public void discardState() {}
+    public void discardState(BulkFileDeleter bulkDeleter) {}
 
     @Override
     public long getStateSize() {

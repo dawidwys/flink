@@ -83,9 +83,9 @@ public class DuplicatingCheckpointOutputStreamTest extends TestLogger {
                 CommonTestUtils.isStreamContentEqual(
                         refStateHandle.openInputStream(), secondaryStateHandle.openInputStream()));
 
-        refStateHandle.discardState();
-        primaryStateHandle.discardState();
-        secondaryStateHandle.discardState();
+        refStateHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        primaryStateHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        secondaryStateHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     /**

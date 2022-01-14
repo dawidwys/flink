@@ -20,6 +20,7 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.checkpoint.channel.ResultSubpartitionInfo;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.ResultSubpartitionStateHandle;
@@ -59,7 +60,7 @@ public class OperatorSubtaskStateTest {
                                         buildSubpartitionHandle(delegate, 4),
                                         buildSubpartitionHandle(delegate, 3))))
                 .build()
-                .discardState();
+                .discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     @Test
@@ -126,8 +127,8 @@ public class OperatorSubtaskStateTest {
         }
 
         @Override
-        public void discardState() {
-            super.discardState();
+        public void discardState(BulkFileDeleter bulkDeleter) {
+            super.discardState(bulkDeleter);
             assertFalse("state was discarded twice", discarded);
             discarded = true;
         }

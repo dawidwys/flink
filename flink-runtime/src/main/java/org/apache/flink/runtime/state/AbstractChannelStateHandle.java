@@ -78,8 +78,8 @@ public abstract class AbstractChannelStateHandle<Info> implements StateObject {
     }
 
     @Override
-    public void discardState() throws Exception {
-        delegate.discardState();
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+        delegate.discardState(bulkDeleter);
     }
 
     @Override

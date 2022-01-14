@@ -32,9 +32,9 @@ public class SnapshotResultTest extends TestLogger {
     public void discardState() throws Exception {
         SnapshotResult<StateObject> result =
                 SnapshotResult.withLocalState(mock(StateObject.class), mock(StateObject.class));
-        result.discardState();
-        verify(result.getJobManagerOwnedSnapshot()).discardState();
-        verify(result.getTaskLocalSnapshot()).discardState();
+        result.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(result.getJobManagerOwnedSnapshot()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        verify(result.getTaskLocalSnapshot()).discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     @Test
@@ -58,7 +58,7 @@ public class SnapshotResultTest extends TestLogger {
         }
 
         @Override
-        public void discardState() {}
+        public void discardState(BulkFileDeleter bulkDeleter) {}
 
         @Override
         public long getStateSize() {

@@ -19,12 +19,15 @@
 package org.apache.flink.runtime.state;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -32,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
@@ -128,7 +132,9 @@ public class SharedStateRegistryImpl implements SharedStateRegistry {
             }
         }
 
-        scheduleAsyncDelete(scheduledStateDeletion);
+        if (scheduledStateDeletion != null && !isPlaceholder(scheduledStateDeletion)) {
+            scheduleAsyncDelete(Collections.singletonList(scheduledStateDeletion));
+        }
         return entry.stateHandle;
     }
 
@@ -154,9 +160,11 @@ public class SharedStateRegistryImpl implements SharedStateRegistry {
         }
 
         LOG.trace("Discard {} state asynchronously", subsumed.size());
-        for (StreamStateHandle handle : subsumed) {
-            scheduleAsyncDelete(handle);
-        }
+
+        scheduleAsyncDelete(
+                subsumed.stream()
+                        .filter(handle -> handle != null && !isPlaceholder(handle))
+                        .collect(Collectors.toList()));
     }
 
     @Override
@@ -190,26 +198,21 @@ public class SharedStateRegistryImpl implements SharedStateRegistry {
         }
     }
 
-    private void scheduleAsyncDelete(StreamStateHandle streamStateHandle) {
-        // We do the small optimization to not issue discards for placeholders, which are NOPs.
-        if (streamStateHandle != null && !isPlaceholder(streamStateHandle)) {
-            LOG.trace("Scheduled delete of state handle {}.", streamStateHandle);
-            AsyncDisposalRunnable asyncDisposalRunnable =
-                    new AsyncDisposalRunnable(streamStateHandle);
-            try {
-                asyncDisposalExecutor.execute(asyncDisposalRunnable);
-            } catch (RejectedExecutionException ex) {
-                // TODO This is a temporary fix for a problem during
-                // ZooKeeperCompletedCheckpointStore#shutdown:
-                // Disposal is issued in another async thread and the shutdown proceeds to close the
-                // I/O Executor pool.
-                // This leads to RejectedExecutionException once the async deletes are triggered by
-                // ZK. We need to
-                // wait for all pending ZK deletes before closing the I/O Executor pool. We can
-                // simply call #run()
-                // because we are already in the async ZK thread that disposes the handles.
-                asyncDisposalRunnable.run();
-            }
+    private void scheduleAsyncDelete(Collection<StreamStateHandle> streamStateHandles) {
+        AsyncDisposalRunnable asyncDisposalRunnable = new AsyncDisposalRunnable(streamStateHandles);
+        try {
+            asyncDisposalExecutor.execute(asyncDisposalRunnable);
+        } catch (RejectedExecutionException ex) {
+            // TODO This is a temporary fix for a problem during
+            // ZooKeeperCompletedCheckpointStore#shutdown:
+            // Disposal is issued in another async thread and the shutdown proceeds to close the
+            // I/O Executor pool.
+            // This leads to RejectedExecutionException once the async deletes are triggered by
+            // ZK. We need to
+            // wait for all pending ZK deletes before closing the I/O Executor pool. We can
+            // simply call #run()
+            // because we are already in the async ZK thread that disposes the handles.
+            asyncDisposalRunnable.run();
         }
     }
 
@@ -227,16 +230,18 @@ public class SharedStateRegistryImpl implements SharedStateRegistry {
     /** Encapsulates the operation the delete state handles asynchronously. */
     private static final class AsyncDisposalRunnable implements Runnable {
 
-        private final StateObject toDispose;
+        private final Collection<StreamStateHandle> toDispose;
 
-        public AsyncDisposalRunnable(StateObject toDispose) {
+        public AsyncDisposalRunnable(Collection<StreamStateHandle> toDispose) {
             this.toDispose = checkNotNull(toDispose);
         }
 
         @Override
         public void run() {
-            try {
-                toDispose.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                for (StateObject stateObject : toDispose) {
+                    stateObject.discardState(bulkDeleter);
+                }
             } catch (Exception e) {
                 LOG.warn(
                         "A problem occurred during asynchronous disposal of a shared state object: {}",

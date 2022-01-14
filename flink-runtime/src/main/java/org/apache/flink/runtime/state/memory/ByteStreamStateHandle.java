@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.state.memory;
 
 import org.apache.flink.core.fs.FSDataInputStream;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.util.Preconditions;
 
@@ -65,7 +66,7 @@ public class ByteStreamStateHandle implements StreamStateHandle {
     }
 
     @Override
-    public void discardState() {}
+    public void discardState(BulkFileDeleter bulkDeleter) {}
 
     @Override
     public long getStateSize() {

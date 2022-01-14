@@ -97,8 +97,8 @@ public class KeyGroupsStateHandle implements StreamStateHandle, KeyedStateHandle
     }
 
     @Override
-    public void discardState() throws Exception {
-        stateHandle.discardState();
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+        stateHandle.discardState(bulkDeleter);
     }
 
     @Override

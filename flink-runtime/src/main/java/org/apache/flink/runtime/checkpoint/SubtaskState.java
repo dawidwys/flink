@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.ChainedStateHandle;
 import org.apache.flink.runtime.state.CompositeStateHandle;
 import org.apache.flink.runtime.state.KeyedStateHandle;
@@ -110,7 +111,7 @@ public class SubtaskState implements CompositeStateHandle {
     }
 
     @Override
-    public void discardState() {
+    public void discardState(BulkFileDeleter bulkDeleter) {
         try {
             StateUtil.bestEffortDiscardAllStateObjects(
                     Arrays.asList(

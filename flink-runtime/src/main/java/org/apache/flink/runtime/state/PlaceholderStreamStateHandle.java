@@ -48,7 +48,7 @@ public class PlaceholderStreamStateHandle implements StreamStateHandle {
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         // nothing to do.
     }
 

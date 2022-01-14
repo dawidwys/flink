@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.util;
 
 import org.apache.flink.runtime.persistence.TestingLongStateHandleHelper;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.util.TestLogger;
 import org.apache.flink.util.function.RunnableWithException;
@@ -102,7 +103,7 @@ public class StateHandleStoreUtilsTest extends TestLogger {
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             discardStateRunnable.run();
         }
 

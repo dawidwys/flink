@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.persistence;
 
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.util.AbstractID;
@@ -69,7 +70,7 @@ public class TestingLongStateHandleHelper
 
     /**
      * {@code LongStateHandle} implements {@link StateObject} to monitor the {@link
-     * StateObject#discardState()} calls.
+     * StateObject#discardState(BulkFileDeleter)} calls.
      */
     public static class LongStateHandle implements StateObject {
 
@@ -88,7 +89,7 @@ public class TestingLongStateHandleHelper
         }
 
         @Override
-        public void discardState() {
+        public void discardState(BulkFileDeleter bulkDeleter) {
             numberOfDiscardCalls++;
         }
 
@@ -128,8 +129,8 @@ public class TestingLongStateHandleHelper
         }
 
         @Override
-        public void discardState() {
-            STATE_STORAGE.get(stateReference).discardState();
+        public void discardState(BulkFileDeleter bulkDeleter) {
+            STATE_STORAGE.get(stateReference).discardState(bulkDeleter);
         }
 
         @Override

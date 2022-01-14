@@ -22,6 +22,8 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.StateUtil;
@@ -248,8 +250,8 @@ public class CompletedCheckpoint implements Serializable, Checkpoint {
             Exception exception = null;
 
             // drop the metadata
-            try {
-                metadataHandle.discardState();
+            try (final BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                metadataHandle.discardState(bulkDeleter);
             } catch (Exception e) {
                 exception = e;
             }

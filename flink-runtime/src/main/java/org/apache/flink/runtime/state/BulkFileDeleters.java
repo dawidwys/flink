@@ -18,31 +18,18 @@
 
 package org.apache.flink.runtime.state;
 
-import org.apache.flink.runtime.state.memory.ByteStreamStateHandle;
+import org.apache.flink.core.fs.BulkDeletingFileSystem;
+import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-/** A simple test mock for a {@link StreamStateHandle}. */
-public class TestingStreamStateHandle extends ByteStreamStateHandle {
-    private static final long serialVersionUID = 1L;
+public final class BulkFileDeleters {
 
-    private boolean disposed;
 
-    public TestingStreamStateHandle() {
-        super(UUID.randomUUID().toString(), new byte[0]);
-    }
 
-    // ------------------------------------------------------------------------
-
-    @Override
-    public void discardState(BulkFileDeleter bulkDeleter) {
-        super.discardState(bulkDeleter);
-        disposed = true;
-    }
-
-    // ------------------------------------------------------------------------
-
-    public boolean isDisposed() {
-        return disposed;
-    }
+    private BulkFileDeleters() {}
 }

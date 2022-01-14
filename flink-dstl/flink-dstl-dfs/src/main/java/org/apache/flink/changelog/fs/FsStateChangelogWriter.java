@@ -20,6 +20,7 @@ package org.apache.flink.changelog.fs;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.changelog.fs.StateChangeUploader.UploadTask;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.changelog.ChangelogStateHandleStreamImpl;
@@ -242,7 +243,13 @@ class FsStateChangelogWriter implements StateChangelogWriter<ChangelogStateHandl
         synchronized (lock) {
             if (closed) {
                 results.forEach(
-                        r -> closeAllQuietly(() -> r.getStreamStateHandle().discardState()));
+                        r ->
+                                closeAllQuietly(
+                                        () ->
+                                                r.getStreamStateHandle()
+                                                        .discardState(
+                                                                BulkFileDeleter
+                                                                        .IMMEDIATE_DELETER)));
             } else {
                 uploadCompletionListeners.removeIf(listener -> listener.onSuccess(results));
                 for (UploadResult result : results) {

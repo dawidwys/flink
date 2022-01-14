@@ -21,6 +21,7 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.SharedStateRegistryImpl;
 import org.apache.flink.runtime.state.testutils.TestCompletedCheckpointStorageLocation;
@@ -390,8 +391,8 @@ public abstract class CompletedCheckpointStoreTest extends TestLogger {
         }
 
         @Override
-        public void discardState() {
-            super.discardState();
+        public void discardState(BulkFileDeleter bulkDeleter) {
+            super.discardState(bulkDeleter);
             Assert.assertFalse(discarded);
             discarded = true;
             registered = false;

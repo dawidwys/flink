@@ -156,7 +156,7 @@ public class IncrementalRemoteKeyedStateHandle implements IncrementalKeyedStateH
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
 
         SharedStateRegistry registry = this.sharedStateRegistry;
         final boolean isRegistered = (registry != null);
@@ -168,13 +168,13 @@ public class IncrementalRemoteKeyedStateHandle implements IncrementalKeyedStateH
                 backendIdentifier);
 
         try {
-            metaStateHandle.discardState();
+            metaStateHandle.discardState(bulkDeleter);
         } catch (Exception e) {
             LOG.warn("Could not properly discard meta data.", e);
         }
 
         try {
-            StateUtil.bestEffortDiscardAllStateObjects(privateState.values());
+            StateUtil.bestEffortDiscardAllStateObjects(privateState.values(), bulkDeleter);
         } catch (Exception e) {
             LOG.warn("Could not properly discard misc file states.", e);
         }
@@ -182,7 +182,7 @@ public class IncrementalRemoteKeyedStateHandle implements IncrementalKeyedStateH
         // discard only on TM; on JM, shared state is removed on subsumption
         if (!isRegistered) {
             try {
-                StateUtil.bestEffortDiscardAllStateObjects(sharedState.values());
+                StateUtil.bestEffortDiscardAllStateObjects(sharedState.values(), bulkDeleter);
             } catch (Exception e) {
                 LOG.warn("Could not properly discard new sst file states.", e);
             }

@@ -28,6 +28,8 @@ import org.apache.flink.runtime.checkpoint.metadata.MetadataV3Serializer;
 import org.apache.flink.runtime.executiongraph.ExecutionJobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.state.BulkFileDeleter;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageLoader;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
@@ -258,8 +260,8 @@ public class Checkpoints {
 
         // first dispose the savepoint metadata, so that the savepoint is not
         // addressable any more even if the following disposal fails
-        try {
-            metadataHandle.discardState();
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            metadataHandle.discardState(bulkDeleter);
         } catch (Exception e) {
             exception = e;
         }

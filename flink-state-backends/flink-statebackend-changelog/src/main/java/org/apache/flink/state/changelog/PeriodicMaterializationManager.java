@@ -20,6 +20,7 @@ package org.apache.flink.state.changelog;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SnapshotResult;
 import org.apache.flink.runtime.state.StateObject;
@@ -223,7 +224,7 @@ class PeriodicMaterializationManager implements Closeable {
                 try {
                     StateObject stateObject = materializedRunnableFuture.get();
                     if (stateObject != null) {
-                        stateObject.discardState();
+                        stateObject.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
                     }
                 } catch (Exception ex) {
                     LOG.debug(

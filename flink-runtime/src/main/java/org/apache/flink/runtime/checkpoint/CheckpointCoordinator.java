@@ -38,6 +38,7 @@ import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.coordination.OperatorInfo;
 import org.apache.flink.runtime.persistence.PossibleInconsistentStateException;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageCoordinatorView;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
@@ -1986,8 +1987,8 @@ public class CheckpointCoordinator {
                         @Override
                         public void run() {
 
-                            try {
-                                subtaskState.discardState();
+                            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                                subtaskState.discardState(bulkDeleter);
                             } catch (Throwable t2) {
                                 LOG.warn(
                                         "Could not properly discard state object of checkpoint {} "

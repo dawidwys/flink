@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.fs.local.LocalFileSystem;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStorageAccess;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
@@ -208,8 +209,8 @@ public class FsCheckpointStorageAccessTest extends AbstractFileCheckpointStorage
 
         // drop state
 
-        exclusiveHandle.discardState();
-        sharedHandle.discardState();
+        exclusiveHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
+        sharedHandle.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
     }
 
     /**

@@ -19,6 +19,7 @@
 package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.runtime.checkpoint.StateObjectCollection;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.DoneFuture;
 import org.apache.flink.runtime.state.InputChannelStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRangeOffsets;
@@ -38,6 +39,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RunnableFuture;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.powermock.api.mockito.PowerMockito.spy;
@@ -134,11 +136,11 @@ public class OperatorSnapshotFuturesTest extends TestLogger {
         verify(inputChannelStateRawFuture).cancel(true);
         verify(resultSubpartitionStateRawFuture).cancel(true);
 
-        verify(keyedManagedStateHandle).discardState();
-        verify(keyedRawStateHandle).discardState();
-        verify(operatorManagedStateHandle).discardState();
-        verify(operatorRawStateHandle).discardState();
-        verify(inputChannelRawStateHandle).discardState();
-        verify(resultSubpartitionRawStateHandle).discardState();
+        verify(keyedManagedStateHandle).discardState(any(BulkFileDeleter.class));
+        verify(keyedRawStateHandle).discardState(any(BulkFileDeleter.class));
+        verify(operatorManagedStateHandle).discardState(any(BulkFileDeleter.class));
+        verify(operatorRawStateHandle).discardState(any(BulkFileDeleter.class));
+        verify(inputChannelRawStateHandle).discardState(any(BulkFileDeleter.class));
+        verify(resultSubpartitionRawStateHandle).discardState(any(BulkFileDeleter.class));
     }
 }

@@ -79,7 +79,7 @@ public class ChainedStateHandle<T extends StateObject> implements StateObject {
     }
 
     @Override
-    public void discardState() throws Exception {
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
         StateUtil.bestEffortDiscardAllStateObjects(operatorStateHandles);
     }
 

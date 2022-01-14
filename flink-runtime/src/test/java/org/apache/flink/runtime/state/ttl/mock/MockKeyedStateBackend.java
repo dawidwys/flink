@@ -29,6 +29,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.KeyExtractorFunction;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -310,7 +311,7 @@ public class MockKeyedStateBackend<K> extends AbstractKeyedStateBackend<K> {
         }
 
         @Override
-        public void discardState() {
+        public void discardState(BulkFileDeleter bulkDeleter) {
             snapshotStates.clear();
         }
 

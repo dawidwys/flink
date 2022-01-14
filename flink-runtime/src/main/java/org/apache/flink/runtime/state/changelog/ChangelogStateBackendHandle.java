@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.state.changelog;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.runtime.state.BulkFileDeleter;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
@@ -71,10 +72,10 @@ public interface ChangelogStateBackendHandle extends KeyedStateHandle {
         }
 
         @Override
-        public void discardState() throws Exception {
+        public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
             try (Closer closer = Closer.create()) {
-                materialized.forEach(h -> closer.register(asCloseable(h)));
-                nonMaterialized.forEach(h -> closer.register(asCloseable(h)));
+                materialized.forEach(h -> closer.register(asCloseable(h, bulkDeleter)));
+                nonMaterialized.forEach(h -> closer.register(asCloseable(h, bulkDeleter)));
             }
         }
 
@@ -130,10 +131,10 @@ public interface ChangelogStateBackendHandle extends KeyedStateHandle {
                     keyGroupRange, materialized.size(), nonMaterialized.size());
         }
 
-        private static Closeable asCloseable(KeyedStateHandle h) {
+        private static Closeable asCloseable(KeyedStateHandle h, BulkFileDeleter bulkDeleter) {
             return () -> {
                 try {
-                    h.discardState();
+                    h.discardState(bulkDeleter);
                 } catch (Exception e) {
                     ExceptionUtils.rethrowIOException(e);
                 }

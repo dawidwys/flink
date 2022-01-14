@@ -19,6 +19,8 @@
 package org.apache.flink.runtime.util;
 
 import org.apache.flink.runtime.persistence.StateHandleStore;
+import org.apache.flink.runtime.state.BulkFileDeleter;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.RetrievableStateHandle;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.util.ExceptionUtils;
@@ -45,8 +47,8 @@ public class StateHandleStoreUtils {
         try {
             return InstantiationUtil.serializeObject(stateObject);
         } catch (Exception e) {
-            try {
-                stateObject.discardState();
+            try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+                stateObject.discardState(BulkFileDeleter.IMMEDIATE_DELETER);
             } catch (Exception discardException) {
                 e.addSuppressed(discardException);
             }

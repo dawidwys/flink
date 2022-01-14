@@ -26,6 +26,7 @@ import org.apache.flink.core.fs.CloseableRegistry;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
+import org.apache.flink.runtime.state.BulkFileDeleter.BulkFileDeleterImpl;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
@@ -129,8 +130,10 @@ public abstract class StateBackendTestContext {
 
     void dispose() throws Exception {
         disposeKeyedStateBackend();
-        for (KeyedStateHandle snapshot : snapshots) {
-            snapshot.discardState();
+        try (BulkFileDeleterImpl bulkDeleter = new BulkFileDeleterImpl()) {
+            for (KeyedStateHandle snapshot : snapshots) {
+                snapshot.discardState(bulkDeleter);
+            }
         }
         snapshots.clear();
         sharedStateRegistry.close();

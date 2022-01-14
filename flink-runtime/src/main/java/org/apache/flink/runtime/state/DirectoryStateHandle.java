@@ -47,7 +47,7 @@ public class DirectoryStateHandle implements StateObject {
     }
 
     @Override
-    public void discardState() throws IOException {
+    public void discardState(BulkFileDeleter bulkDeleter) throws IOException {
         ensurePath();
         FileUtils.deleteDirectory(directory.toFile());
     }

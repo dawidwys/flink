@@ -72,8 +72,8 @@ public class RetrievableStreamStateHandle<T extends Serializable>
     }
 
     @Override
-    public void discardState() throws Exception {
-        wrappedStreamStateHandle.discardState();
+    public void discardState(BulkFileDeleter bulkDeleter) throws Exception {
+        wrappedStreamStateHandle.discardState(bulkDeleter);
     }
 
     @Override
