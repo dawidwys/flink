@@ -25,6 +25,8 @@ import org.apache.flink.metrics.Counter;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointType;
+import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.StopMode;
 import org.apache.flink.runtime.metrics.MetricNames;
@@ -111,7 +113,7 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
         if (!isExternallyInducedSource) {
-            if (checkpointOptions.getCheckpointType().isSynchronous()) {
+            if (isSynchronous(checkpointOptions.getCheckpointType())) {
                 return triggerStopWithSavepointAsync(checkpointMetaData, checkpointOptions);
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
@@ -127,6 +129,10 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
         }
     }
 
+    private boolean isSynchronous(SnapshotType checkpointType) {
+        return checkpointType.isSavepoint() && ((SavepointType) checkpointType).isSynchronous();
+    }
+
     private CompletableFuture<Boolean> triggerStopWithSavepointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
 
@@ -136,7 +142,8 @@ public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T,
                     setSynchronousSavepoint(checkpointMetaData.getCheckpointId());
                     FutureUtils.forward(
                             mainOperator.stop(
-                                    checkpointOptions.getCheckpointType().shouldDrain()
+                                    ((SavepointType) checkpointOptions.getCheckpointType())
+                                                    .shouldDrain()
                                             ? StopMode.DRAIN
                                             : StopMode.NO_DRAIN),
                             operatorFinished);

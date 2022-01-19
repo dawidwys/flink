@@ -19,33 +19,23 @@
 package org.apache.flink.runtime.checkpoint;
 
 /** The type of checkpoint to perform. */
-public final class CheckpointType implements SnapshotType {
+public interface SnapshotType {
 
-    /** A checkpoint, full or incremental. */
-    public static final CheckpointType CHECKPOINT =
-            new CheckpointType("Checkpoint", SharingFilesStrategy.FORWARD_BACKWARD);
+    boolean isSavepoint();
 
-    public static final CheckpointType FULL_CHECKPOINT =
-            new CheckpointType("Full Checkpoint", SharingFilesStrategy.FORWARD);
+    String getName();
 
-    private final String name;
+    SharingFilesStrategy getSharingFilesStrategy();
 
-    private final SharingFilesStrategy sharingFilesStrategy;
-
-    private CheckpointType(final String name, SharingFilesStrategy sharingFilesStrategy) {
-        this.name = name;
-        this.sharingFilesStrategy = sharingFilesStrategy;
-    }
-
-    public boolean isSavepoint() {
-        return false;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public SharingFilesStrategy getSharingFilesStrategy() {
-        return sharingFilesStrategy;
+    /** Defines what files can be shared across snapshots. */
+    enum SharingFilesStrategy {
+        // current snapshot can share files with previous snapshots.
+        // new snapshots can use files of the current snapshot
+        FORWARD_BACKWARD,
+        // later snapshots can share files with the current snapshot
+        FORWARD,
+        // current snapshot can not use files of older ones, future snapshots can
+        // not use files of the current one.
+        NO_SHARING;
     }
 }

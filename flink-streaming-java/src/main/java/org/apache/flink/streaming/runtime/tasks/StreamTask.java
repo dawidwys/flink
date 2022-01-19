@@ -35,6 +35,8 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetricsBuilder;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointType;
+import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
 import org.apache.flink.runtime.checkpoint.channel.SequentialChannelStateReader;
@@ -1228,7 +1230,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
             CheckpointMetricsBuilder checkpointMetrics)
             throws Exception {
 
-        final CheckpointType checkpointType = checkpointOptions.getCheckpointType();
+        final SnapshotType checkpointType = checkpointOptions.getCheckpointType();
         LOG.debug(
                 "Starting checkpoint {} {} on task {}",
                 checkpointMetaData.getCheckpointId(),
@@ -1238,7 +1240,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
         if (isRunning) {
             actionExecutor.runThrowing(
                     () -> {
-                        if (checkpointType.isSynchronous()) {
+                        if (isSynchronous(checkpointType)) {
                             setSynchronousSavepoint(checkpointMetaData.getCheckpointId());
                         }
 
@@ -1275,6 +1277,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 
             return false;
         }
+    }
+
+    private boolean isSynchronous(SnapshotType checkpointType) {
+        return checkpointType.isSavepoint() && ((SavepointType) checkpointType).isSynchronous();
     }
 
     private void checkForcedFullSnapshotSupport(CheckpointOptions checkpointOptions) {
