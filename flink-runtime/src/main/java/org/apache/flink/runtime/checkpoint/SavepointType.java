@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import java.util.Objects;
+
 /** The type of checkpoint to perform. */
 public class SavepointType implements SnapshotType {
 
@@ -80,6 +82,38 @@ public class SavepointType implements SnapshotType {
 
     public SharingFilesStrategy getSharingFilesStrategy() {
         return SharingFilesStrategy.NO_SHARING;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SavepointType that = (SavepointType) o;
+        return name.equals(that.name)
+                && postCheckpointAction == that.postCheckpointAction
+                && formatType == that.formatType;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, postCheckpointAction, formatType);
+    }
+
+    @Override
+    public String toString() {
+        return "SavepointType{"
+                + "name='"
+                + name
+                + '\''
+                + ", postCheckpointAction="
+                + postCheckpointAction
+                + ", formatType="
+                + formatType
+                + '}';
     }
 
     /** What's the intended action after the checkpoint (relevant for stopping with savepoint). */

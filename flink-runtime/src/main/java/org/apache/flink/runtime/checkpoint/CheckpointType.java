@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import java.util.Objects;
+
 /** The type of checkpoint to perform. */
 public final class CheckpointType implements SnapshotType {
 
@@ -47,5 +49,33 @@ public final class CheckpointType implements SnapshotType {
 
     public SharingFilesStrategy getSharingFilesStrategy() {
         return sharingFilesStrategy;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CheckpointType type = (CheckpointType) o;
+        return name.equals(type.name) && sharingFilesStrategy == type.sharingFilesStrategy;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, sharingFilesStrategy);
+    }
+
+    @Override
+    public String toString() {
+        return "CheckpointType{"
+                + "name='"
+                + name
+                + '\''
+                + ", sharingFilesStrategy="
+                + sharingFilesStrategy
+                + '}';
     }
 }

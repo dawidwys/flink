@@ -216,7 +216,7 @@ public class CheckpointOptions implements Serializable {
             return true;
         } else if (obj != null && obj.getClass() == CheckpointOptions.class) {
             final CheckpointOptions that = (CheckpointOptions) obj;
-            return this.checkpointType == that.checkpointType
+            return this.checkpointType.equals(that.checkpointType)
                     && this.targetLocation.equals(that.targetLocation)
                     && this.alignmentType == that.alignmentType
                     && this.alignedCheckpointTimeout == that.alignedCheckpointTimeout;
