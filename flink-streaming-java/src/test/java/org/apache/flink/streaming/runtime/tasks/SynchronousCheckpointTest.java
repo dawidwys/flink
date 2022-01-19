@@ -92,7 +92,7 @@ public class SynchronousCheckpointTest {
         streamTaskUnderTest.triggerCheckpointAsync(
                 new CheckpointMetaData(42, System.currentTimeMillis()),
                 new CheckpointOptions(
-                        SavepointType.suspend(), CheckpointStorageLocationReference.getDefault()));
+                        SavepointType.suspend(SavepointType.FormatType.CANONICAL), CheckpointStorageLocationReference.getDefault()));
         waitForSyncSavepointIdToBeSet(streamTaskUnderTest);
     }
 

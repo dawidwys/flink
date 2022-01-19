@@ -93,7 +93,7 @@ public class SubtaskCheckpointCoordinatorTest {
     public void testInitCheckpoint() throws IOException, CheckpointException {
         assertTrue(initCheckpoint(true, CHECKPOINT));
         assertFalse(initCheckpoint(false, CHECKPOINT));
-        assertFalse(initCheckpoint(false, SavepointType.savepoint()));
+        assertFalse(initCheckpoint(false, SavepointType.savepoint(SavepointType.FormatType.CANONICAL)));
     }
 
     private boolean initCheckpoint(boolean unalignedCheckpointEnabled, SnapshotType checkpointType)
@@ -173,7 +173,7 @@ public class SubtaskCheckpointCoordinatorTest {
             coordinator.checkpointState(
                     new CheckpointMetaData(0, 0),
                     new CheckpointOptions(
-                            SavepointType.savepoint(),
+                            SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
                             CheckpointStorageLocationReference.getDefault()),
                     new CheckpointMetricsBuilder(),
                     operatorChain,
@@ -247,7 +247,7 @@ public class SubtaskCheckpointCoordinatorTest {
             coordinator.checkpointState(
                     new CheckpointMetaData(0, 0),
                     new CheckpointOptions(
-                            SavepointType.savepoint(),
+                            SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
                             CheckpointStorageLocationReference.getDefault()),
                     new CheckpointMetricsBuilder(),
                     new RegularOperatorChain<>(

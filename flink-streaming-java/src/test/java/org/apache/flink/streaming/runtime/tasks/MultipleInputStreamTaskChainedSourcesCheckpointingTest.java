@@ -547,7 +547,7 @@ public class MultipleInputStreamTaskChainedSourcesCheckpointingTest {
     private CheckpointBarrier createStopWithSavepointDrainBarrier() {
         CheckpointOptions checkpointOptions =
                 CheckpointOptions.alignedNoTimeout(
-                        SavepointType.terminate(), CheckpointStorageLocationReference.getDefault());
+                        SavepointType.terminate(SavepointType.FormatType.CANONICAL), CheckpointStorageLocationReference.getDefault());
 
         return new CheckpointBarrier(
                 metaData.getCheckpointId(), metaData.getTimestamp(), checkpointOptions);

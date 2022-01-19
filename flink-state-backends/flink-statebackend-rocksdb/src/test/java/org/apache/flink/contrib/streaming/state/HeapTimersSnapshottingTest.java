@@ -59,7 +59,7 @@ public class HeapTimersSnapshottingTest {
 
             OperatorSubtaskState state =
                     testHarness
-                            .snapshotWithLocalState(0L, 1L, SavepointType.savepoint())
+                            .snapshotWithLocalState(0L, 1L, SavepointType.savepoint(SavepointType.FormatType.CANONICAL))
                             .getJobManagerOwnedState();
             assertThat(state.getRawKeyedState().isEmpty(), equalTo(true));
         }

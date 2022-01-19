@@ -674,7 +674,7 @@ public class SourceStreamTaskTest extends SourceStreamTaskTestBase {
                     harness.streamTask.triggerCheckpointAsync(
                             new CheckpointMetaData(2, 2),
                             CheckpointOptions.alignedNoTimeout(
-                                    SavepointType.terminate(),
+                                    SavepointType.terminate(SavepointType.FormatType.CANONICAL),
                                     CheckpointStorageLocationReference.getDefault()));
             checkpointCompleted.whenComplete(
                     (ignored, exception) -> harness.streamTask.notifyCheckpointCompleteAsync(2));

@@ -97,7 +97,7 @@ public class CheckpointingStatisticsTest
                         4244L,
                         9,
                         9,
-                        RestAPICheckpointType.valueOf(SavepointType.savepoint()),
+                        RestAPICheckpointType.valueOf(SavepointType.savepoint(SavepointType.FormatType.CANONICAL)),
                         checkpointStatisticsPerTask,
                         "externalPath",
                         false);

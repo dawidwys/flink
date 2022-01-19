@@ -23,23 +23,27 @@ public class SavepointType implements SnapshotType {
 
     private final String name;
     private final PostCheckpointAction postCheckpointAction;
+    private final FormatType formatType;
 
-    private SavepointType(final String name, final PostCheckpointAction postCheckpointAction) {
-
+    private SavepointType(
+            final String name,
+            final PostCheckpointAction postCheckpointAction,
+            final FormatType formatType) {
         this.postCheckpointAction = postCheckpointAction;
         this.name = name;
+        this.formatType = formatType;
     }
 
-    public static SavepointType savepoint() {
-        return new SavepointType("Savepoint", PostCheckpointAction.NONE);
+    public static SavepointType savepoint(FormatType formatType) {
+        return new SavepointType("Savepoint", PostCheckpointAction.NONE, formatType);
     }
 
-    public static SavepointType terminate() {
-        return new SavepointType("Terminate Savepoint", PostCheckpointAction.TERMINATE);
+    public static SavepointType terminate(FormatType formatType) {
+        return new SavepointType("Terminate Savepoint", PostCheckpointAction.TERMINATE, formatType);
     }
 
-    public static SavepointType suspend() {
-        return new SavepointType("Suspend Savepoint", PostCheckpointAction.SUSPEND);
+    public static SavepointType suspend(FormatType formatType) {
+        return new SavepointType("Suspend Savepoint", PostCheckpointAction.SUSPEND, formatType);
     }
 
     public boolean isSavepoint() {
@@ -70,6 +74,10 @@ public class SavepointType implements SnapshotType {
         return name;
     }
 
+    public FormatType getFormatType() {
+        return formatType;
+    }
+
     public SharingFilesStrategy getSharingFilesStrategy() {
         return SharingFilesStrategy.NO_SHARING;
     }
@@ -79,5 +87,10 @@ public class SavepointType implements SnapshotType {
         NONE,
         SUSPEND,
         TERMINATE
+    }
+
+    public enum FormatType {
+        CANONICAL,
+        NATIVE
     }
 }

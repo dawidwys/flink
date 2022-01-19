@@ -87,8 +87,8 @@ public class UnalignedCheckpointCompatibilityITCase extends TestLogger {
         return new Object[][] {
             {CHECKPOINT, true},
             {CHECKPOINT, false},
-            {SavepointType.savepoint(), true},
-            {SavepointType.savepoint(), false},
+            {SavepointType.savepoint(SavepointType.FormatType.CANONICAL), true},
+            {SavepointType.savepoint(SavepointType.FormatType.CANONICAL), false},
         };
     }
 

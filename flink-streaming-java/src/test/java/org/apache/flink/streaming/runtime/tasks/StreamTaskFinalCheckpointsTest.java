@@ -692,12 +692,14 @@ public class StreamTaskFinalCheckpointsTest {
 
     static CompletableFuture<Boolean> triggerStopWithSavepointDrain(
             StreamTaskMailboxTestHarness<String> testHarness, long checkpointId) {
-        return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.terminate());
+        return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.terminate(
+                SavepointType.FormatType.CANONICAL));
     }
 
     static CompletableFuture<Boolean> triggerStopWithSavepointNoDrain(
             StreamTaskMailboxTestHarness<String> testHarness, long checkpointId) {
-        return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.suspend());
+        return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.suspend(
+                SavepointType.FormatType.CANONICAL));
     }
 
     static CompletableFuture<Boolean> triggerStopWithSavepoint(

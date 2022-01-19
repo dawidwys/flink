@@ -56,7 +56,7 @@ public final class SnapshotUtils {
 
         CheckpointOptions options =
                 CheckpointOptions.forConfig(
-                        SavepointType.savepoint(),
+                        SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
                         AbstractFsCheckpointStorageAccess.encodePathAsReference(savepointPath),
                         isExactlyOnceMode,
                         isUnalignedCheckpoint,

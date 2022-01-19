@@ -98,8 +98,8 @@ public class SourceTaskTerminationTest extends TestLogger {
                                     new CheckpointMetaData(syncSavepointId, 900),
                                     new CheckpointOptions(
                                             shouldTerminate
-                                                    ? SavepointType.terminate()
-                                                    : SavepointType.suspend(),
+                                                    ? SavepointType.terminate(SavepointType.FormatType.CANONICAL)
+                                                    : SavepointType.suspend(SavepointType.FormatType.CANONICAL),
                                             CheckpointStorageLocationReference.getDefault()))
                             ::isDone);
 

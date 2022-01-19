@@ -242,7 +242,7 @@ public abstract class SavepointStateBackendSwitchTestBase {
                         0L,
                         new MemCheckpointStreamFactory(4 * 1024 * 1024),
                         new CheckpointOptions(
-                                SavepointType.savepoint(),
+                                SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
                                 CheckpointStorageLocationReference.getDefault()));
 
         snapshot.run();
