@@ -1284,7 +1284,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
     }
 
     private void checkForcedFullSnapshotSupport(CheckpointOptions checkpointOptions) {
-        if (checkpointOptions.getCheckpointType() == CheckpointType.FULL_CHECKPOINT
+        if (checkpointOptions.getCheckpointType().equals(CheckpointType.FULL_CHECKPOINT)
                 && !stateBackend.supportsNoClaimRestoreMode()) {
             throw new IllegalStateException(
                     String.format(

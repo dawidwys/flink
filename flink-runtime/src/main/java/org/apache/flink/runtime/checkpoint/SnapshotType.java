@@ -18,8 +18,10 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import java.io.Serializable;
+
 /** The type of checkpoint to perform. */
-public interface SnapshotType {
+public interface SnapshotType extends Serializable {
 
     boolean isSavepoint();
 

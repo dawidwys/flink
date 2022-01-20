@@ -240,9 +240,9 @@ public class EventSerializer {
         final SnapshotType snapshotType = checkpointOptions.getCheckpointType();
         if (snapshotType.isSavepoint()) {
             encodeSavepointType(snapshotType, buf);
-        } else if (snapshotType == CheckpointType.CHECKPOINT) {
+        } else if (snapshotType.equals(CheckpointType.CHECKPOINT)) {
             buf.put(CHECKPOINT_TYPE_CHECKPOINT);
-        } else if (snapshotType == CheckpointType.FULL_CHECKPOINT) {
+        } else if (snapshotType.equals(CheckpointType.FULL_CHECKPOINT)) {
             buf.put(CHECKPOINT_TYPE_FULL_CHECKPOINT);
         } else {
             throw new IOException("Unknown checkpoint type: " + snapshotType);

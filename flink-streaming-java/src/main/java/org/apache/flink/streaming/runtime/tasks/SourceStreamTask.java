@@ -260,7 +260,7 @@ public class SourceStreamTask<
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
-        } else if (checkpointOptions.getCheckpointType() == CheckpointType.FULL_CHECKPOINT) {
+        } else if (checkpointOptions.getCheckpointType().equals(CheckpointType.FULL_CHECKPOINT)) {
             // see FLINK-25256
             throw new IllegalStateException(
                     "Using externally induced sources, we can not enforce taking a full checkpoint."
