@@ -100,7 +100,7 @@ public class CliFrontendCancelTest extends CliFrontendTestBase {
             String[] parameters = {"-s", jid.toString()};
             TestingClusterClient<String> clusterClient = new TestingClusterClient<>();
             clusterClient.setCancelWithSavepointFunction(
-                    (jobID, savepointDirectory) -> {
+                    (jobID, savepointDirectory, formatType) -> {
                         assertNull(savepointDirectory);
                         cancelWithSavepointLatch.trigger();
                         return CompletableFuture.completedFuture(savepointDirectory);
@@ -119,7 +119,7 @@ public class CliFrontendCancelTest extends CliFrontendTestBase {
             String[] parameters = {"-s", "targetDirectory", jid.toString()};
             TestingClusterClient<String> clusterClient = new TestingClusterClient<>();
             clusterClient.setCancelWithSavepointFunction(
-                    (jobID, savepointDirectory) -> {
+                    (jobID, savepointDirectory, formatType) -> {
                         assertNotNull(savepointDirectory);
                         cancelWithSavepointLatch.trigger();
                         return CompletableFuture.completedFuture(savepointDirectory);

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.runtime.checkpoint;
+package org.apache.flink.core.execution;
 
 import org.apache.flink.configuration.DescribedEnum;
 import org.apache.flink.configuration.description.InlineElement;
@@ -36,8 +36,8 @@ public enum SavepointFormatType implements DescribedEnum {
     NATIVE(
             "A format specific for the chosen state backend, in its native binary format."
                     + " Might be faster to take and restore from than the canonical one.");
-
     private final InlineElement description;
+    public static final SavepointFormatType DEFAULT = SavepointFormatType.CANONICAL;
 
     SavepointFormatType(String description) {
         this.description = text(description);

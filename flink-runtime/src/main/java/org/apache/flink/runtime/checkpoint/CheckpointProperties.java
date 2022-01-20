@@ -20,6 +20,7 @@ package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.runtime.jobgraph.RestoreMode;
 
 import java.io.Serializable;
@@ -289,7 +290,8 @@ public class CheckpointProperties implements Serializable {
      *
      * @return Checkpoint properties for a (manually triggered) savepoint.
      */
-    public static CheckpointProperties forSavepoint(boolean forced, SavepointFormatType formatType) {
+    public static CheckpointProperties forSavepoint(
+            boolean forced, SavepointFormatType formatType) {
         return new CheckpointProperties(
                 forced,
                 SavepointType.savepoint(formatType),
@@ -323,12 +325,13 @@ public class CheckpointProperties implements Serializable {
                 true);
     }
 
-    public static CheckpointProperties forSyncSavepoint(boolean forced, boolean terminate) {
+    public static CheckpointProperties forSyncSavepoint(
+            boolean forced, boolean terminate, SavepointFormatType formatType) {
         return new CheckpointProperties(
                 forced,
                 terminate
-                        ? SavepointType.terminate(SavepointFormatType.CANONICAL)
-                        : SavepointType.suspend(SavepointFormatType.CANONICAL),
+                        ? SavepointType.terminate(formatType)
+                        : SavepointType.suspend(formatType),
                 false,
                 false,
                 false,

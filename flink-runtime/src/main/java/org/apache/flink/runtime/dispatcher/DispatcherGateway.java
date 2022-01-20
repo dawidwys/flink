@@ -20,6 +20,7 @@ package org.apache.flink.runtime.dispatcher;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.messages.Acknowledge;
@@ -72,6 +73,7 @@ public interface DispatcherGateway extends FencedRpcGateway<DispatcherId>, Restf
      *
      * @param jobId the job id
      * @param targetDirectory Target directory for the savepoint.
+     * @param formatType Binary format of the savepoint.
      * @param savepointMode context of the savepoint operation
      * @param timeout Timeout for the asynchronous operation
      * @return Future which is completed once the operation is triggered successfully
@@ -79,6 +81,7 @@ public interface DispatcherGateway extends FencedRpcGateway<DispatcherId>, Restf
     default CompletableFuture<String> triggerSavepointAndGetLocation(
             JobID jobId,
             String targetDirectory,
+            SavepointFormatType formatType,
             TriggerSavepointMode savepointMode,
             @RpcTimeout Time timeout) {
         throw new UnsupportedOperationException();
@@ -97,6 +100,7 @@ public interface DispatcherGateway extends FencedRpcGateway<DispatcherId>, Restf
     default CompletableFuture<String> stopWithSavepointAndGetLocation(
             JobID jobId,
             String targetDirectory,
+            SavepointFormatType formatType,
             TriggerSavepointMode savepointMode,
             @RpcTimeout final Time timeout) {
         throw new UnsupportedOperationException();

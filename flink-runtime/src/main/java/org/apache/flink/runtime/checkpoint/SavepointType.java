@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.core.execution.SavepointFormatType;
+
 import java.util.Objects;
 
 /** The type of checkpoint to perform. */

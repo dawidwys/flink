@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.dispatcher.DispatcherGateway;
@@ -68,13 +69,13 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
     static final Function<ApplicationStatus, CompletableFuture<Acknowledge>>
             DEFAULT_SHUTDOWN_WITH_STATUS_FUNCTION =
                     status -> CompletableFuture.completedFuture(Acknowledge.get());
-    static final BiFunction<JobID, String, CompletableFuture<String>>
+    static final TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
             DEFAULT_TRIGGER_SAVEPOINT_AND_GET_LOCATION_FUNCTION =
-                    (JobID jobId, String targetDirectory) ->
+                    (JobID jobId, String targetDirectory, SavepointFormatType formatType) ->
                             FutureUtils.completedExceptionally(new UnsupportedOperationException());
-    static final BiFunction<JobID, String, CompletableFuture<String>>
+    static final TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
             DEFAULT_STOP_WITH_SAVEPOINT_AND_GET_LOCATION_FUNCTION =
-                    (JobID jobId, String targetDirectory) ->
+                    (JobID jobId, String targetDirectory, SavepointFormatType formatType) ->
                             FutureUtils.completedExceptionally(new UnsupportedOperationException());
 
     private final Function<JobGraph, CompletableFuture<Acknowledge>> submitFunction;
@@ -85,9 +86,9 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
             requestArchivedJobFunction;
     private final Function<ApplicationStatus, CompletableFuture<Acknowledge>>
             clusterShutdownWithStatusFunction;
-    private final BiFunction<JobID, String, CompletableFuture<String>>
+    private final TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
             triggerSavepointAndGetLocationFunction;
-    private final BiFunction<JobID, String, CompletableFuture<String>>
+    private final TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
             stopWithSavepointAndGetLocationFunction;
 
     public TestingDispatcherGateway() {
@@ -120,13 +121,21 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
             Supplier<CompletableFuture<Collection<Tuple2<ResourceID, String>>>>
                     requestTaskManagerMetricQueryServiceGatewaysSupplier,
             Supplier<CompletableFuture<ThreadDumpInfo>> requestThreadDumpSupplier,
-            BiFunction<AsynchronousJobOperationKey, String, CompletableFuture<Acknowledge>>
+            TriFunction<
+                            AsynchronousJobOperationKey,
+                            String,
+                            SavepointFormatType,
+                            CompletableFuture<Acknowledge>>
                     triggerSavepointFunction,
-            BiFunction<JobID, String, CompletableFuture<String>>
+            TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                     triggerSavepointAndGetLocationFunction,
-            BiFunction<AsynchronousJobOperationKey, String, CompletableFuture<Acknowledge>>
+            TriFunction<
+                            AsynchronousJobOperationKey,
+                            String,
+                            SavepointFormatType,
+                            CompletableFuture<Acknowledge>>
                     stopWithSavepointFunction,
-            BiFunction<JobID, String, CompletableFuture<String>>
+            TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                     stopWithSavepointAndGetLocationFunction,
             Function<AsynchronousJobOperationKey, CompletableFuture<OperationResult<String>>>
                     getSavepointStatusFunction,
@@ -204,14 +213,22 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
 
     @Override
     public CompletableFuture<String> triggerSavepointAndGetLocation(
-            JobID jobId, String targetDirectory, TriggerSavepointMode savepointMode, Time timeout) {
-        return triggerSavepointAndGetLocationFunction.apply(jobId, targetDirectory);
+            JobID jobId,
+            String targetDirectory,
+            SavepointFormatType formatType,
+            TriggerSavepointMode savepointMode,
+            Time timeout) {
+        return triggerSavepointAndGetLocationFunction.apply(jobId, targetDirectory, formatType);
     }
 
     @Override
     public CompletableFuture<String> stopWithSavepointAndGetLocation(
-            JobID jobId, String targetDirectory, TriggerSavepointMode savepointMode, Time timeout) {
-        return stopWithSavepointAndGetLocationFunction.apply(jobId, targetDirectory);
+            JobID jobId,
+            String targetDirectory,
+            SavepointFormatType formatType,
+            TriggerSavepointMode savepointMode,
+            Time timeout) {
+        return stopWithSavepointAndGetLocationFunction.apply(jobId, targetDirectory, formatType);
     }
 
     /** Builder for the {@link TestingDispatcherGateway}. */
@@ -225,9 +242,9 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
                 requestArchivedJobFunction;
         private Function<ApplicationStatus, CompletableFuture<Acknowledge>>
                 clusterShutdownWithStatusFunction = DEFAULT_SHUTDOWN_WITH_STATUS_FUNCTION;
-        private BiFunction<JobID, String, CompletableFuture<String>>
+        private TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                 triggerSavepointAndGetLocationFunction;
-        private BiFunction<JobID, String, CompletableFuture<String>>
+        private TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                 stopWithSavepointAndGetLocationFunction;
 
         public Builder setSubmitFunction(
@@ -263,14 +280,14 @@ public final class TestingDispatcherGateway extends TestingRestfulGateway
         }
 
         public Builder setTriggerSavepointAndGetLocationFunction(
-                BiFunction<JobID, String, CompletableFuture<String>>
+                TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                         triggerSavepointAndGetLocationFunction) {
             this.triggerSavepointAndGetLocationFunction = triggerSavepointAndGetLocationFunction;
             return this;
         }
 
         public Builder setStopWithSavepointAndGetLocationFunction(
-                BiFunction<JobID, String, CompletableFuture<String>>
+                TriFunction<JobID, String, SavepointFormatType, CompletableFuture<String>>
                         stopWithSavepointAndGetLocationFunction) {
             this.stopWithSavepointAndGetLocationFunction = stopWithSavepointAndGetLocationFunction;
             return this;

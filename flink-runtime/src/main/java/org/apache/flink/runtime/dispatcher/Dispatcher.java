@@ -28,6 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.checkpoint.Checkpoints;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.runtime.client.DuplicateJobSubmissionException;
 import org.apache.flink.runtime.client.JobSubmissionException;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
@@ -718,20 +719,28 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
     public CompletableFuture<Acknowledge> triggerSavepoint(
             final AsynchronousJobOperationKey operationKey,
             final String targetDirectory,
+            SavepointFormatType formatType,
             final TriggerSavepointMode savepointMode,
             final Time timeout) {
         return dispatcherCachedOperationsHandler.triggerSavepoint(
-                operationKey, targetDirectory, savepointMode, timeout);
+                operationKey, targetDirectory, formatType, savepointMode, timeout);
     }
 
     @Override
     public CompletableFuture<String> triggerSavepointAndGetLocation(
-            JobID jobId, String targetDirectory, TriggerSavepointMode savepointMode, Time timeout) {
+            JobID jobId,
+            String targetDirectory,
+            SavepointFormatType formatType,
+            TriggerSavepointMode savepointMode,
+            Time timeout) {
         return performOperationOnJobMasterGateway(
                 jobId,
                 gateway ->
                         gateway.triggerSavepoint(
-                                targetDirectory, savepointMode.isTerminalMode(), timeout));
+                                targetDirectory,
+                                savepointMode.isTerminalMode(),
+                                formatType,
+                                timeout));
     }
 
     @Override
@@ -744,23 +753,28 @@ public abstract class Dispatcher extends PermanentlyFencedRpcEndpoint<Dispatcher
     public CompletableFuture<Acknowledge> stopWithSavepoint(
             AsynchronousJobOperationKey operationKey,
             String targetDirectory,
+            SavepointFormatType formatType,
             TriggerSavepointMode savepointMode,
             final Time timeout) {
         return dispatcherCachedOperationsHandler.stopWithSavepoint(
-                operationKey, targetDirectory, savepointMode, timeout);
+                operationKey, targetDirectory, formatType, savepointMode, timeout);
     }
 
     @Override
     public CompletableFuture<String> stopWithSavepointAndGetLocation(
             final JobID jobId,
             final String targetDirectory,
+            final SavepointFormatType formatType,
             final TriggerSavepointMode savepointMode,
             final Time timeout) {
         return performOperationOnJobMasterGateway(
                 jobId,
                 gateway ->
                         gateway.stopWithSavepoint(
-                                targetDirectory, savepointMode.isTerminalMode(), timeout));
+                                targetDirectory,
+                                formatType,
+                                savepointMode.isTerminalMode(),
+                                timeout));
     }
 
     @Override

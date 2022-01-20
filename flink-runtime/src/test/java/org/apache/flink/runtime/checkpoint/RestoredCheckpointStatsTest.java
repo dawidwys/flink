@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.core.execution.SavepointFormatType;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

@@ -24,6 +24,7 @@ import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.queryablestate.KvStateID;
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot;
 import org.apache.flink.runtime.blob.BlobWriter;
@@ -787,9 +788,12 @@ public class JobMaster extends PermanentlyFencedRpcEndpoint<JobMasterId>
 
     @Override
     public CompletableFuture<String> triggerSavepoint(
-            @Nullable final String targetDirectory, final boolean cancelJob, final Time timeout) {
+            @Nullable final String targetDirectory,
+            final boolean cancelJob,
+            final SavepointFormatType formatType,
+            final Time timeout) {
 
-        return schedulerNG.triggerSavepoint(targetDirectory, cancelJob);
+        return schedulerNG.triggerSavepoint(targetDirectory, cancelJob, formatType);
     }
 
     @Override
@@ -799,9 +803,12 @@ public class JobMaster extends PermanentlyFencedRpcEndpoint<JobMasterId>
 
     @Override
     public CompletableFuture<String> stopWithSavepoint(
-            @Nullable final String targetDirectory, final boolean terminate, final Time timeout) {
+            @Nullable final String targetDirectory,
+            final SavepointFormatType formatType,
+            final boolean terminate,
+            final Time timeout) {
 
-        return schedulerNG.stopWithSavepoint(targetDirectory, terminate);
+        return schedulerNG.stopWithSavepoint(targetDirectory, terminate, formatType);
     }
 
     @Override

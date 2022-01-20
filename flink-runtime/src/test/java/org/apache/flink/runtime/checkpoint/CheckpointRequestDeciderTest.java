@@ -17,6 +17,7 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.CheckpointCoordinator.CheckpointTriggerRequest;
 import org.apache.flink.util.clock.ManualClock;
 
