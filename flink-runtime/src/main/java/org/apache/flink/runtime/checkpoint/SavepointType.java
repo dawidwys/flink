@@ -25,26 +25,26 @@ public class SavepointType implements SnapshotType {
 
     private final String name;
     private final PostCheckpointAction postCheckpointAction;
-    private final FormatType formatType;
+    private final SavepointFormatType formatType;
 
     private SavepointType(
             final String name,
             final PostCheckpointAction postCheckpointAction,
-            final FormatType formatType) {
+            final SavepointFormatType formatType) {
         this.postCheckpointAction = postCheckpointAction;
         this.name = name;
         this.formatType = formatType;
     }
 
-    public static SavepointType savepoint(FormatType formatType) {
+    public static SavepointType savepoint(SavepointFormatType formatType) {
         return new SavepointType("Savepoint", PostCheckpointAction.NONE, formatType);
     }
 
-    public static SavepointType terminate(FormatType formatType) {
+    public static SavepointType terminate(SavepointFormatType formatType) {
         return new SavepointType("Terminate Savepoint", PostCheckpointAction.TERMINATE, formatType);
     }
 
-    public static SavepointType suspend(FormatType formatType) {
+    public static SavepointType suspend(SavepointFormatType formatType) {
         return new SavepointType("Suspend Savepoint", PostCheckpointAction.SUSPEND, formatType);
     }
 
@@ -76,7 +76,7 @@ public class SavepointType implements SnapshotType {
         return name;
     }
 
-    public FormatType getFormatType() {
+    public SavepointFormatType getFormatType() {
         return formatType;
     }
 
@@ -121,10 +121,5 @@ public class SavepointType implements SnapshotType {
         NONE,
         SUSPEND,
         TERMINATE
-    }
-
-    public enum FormatType {
-        CANONICAL,
-        NATIVE
     }
 }

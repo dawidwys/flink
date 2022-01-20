@@ -30,6 +30,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointMetricsBuilder;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -693,13 +694,13 @@ public class StreamTaskFinalCheckpointsTest {
     static CompletableFuture<Boolean> triggerStopWithSavepointDrain(
             StreamTaskMailboxTestHarness<String> testHarness, long checkpointId) {
         return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.terminate(
-                SavepointType.FormatType.CANONICAL));
+                SavepointFormatType.CANONICAL));
     }
 
     static CompletableFuture<Boolean> triggerStopWithSavepointNoDrain(
             StreamTaskMailboxTestHarness<String> testHarness, long checkpointId) {
         return triggerStopWithSavepoint(testHarness, checkpointId, SavepointType.suspend(
-                SavepointType.FormatType.CANONICAL));
+                SavepointFormatType.CANONICAL));
     }
 
     static CompletableFuture<Boolean> triggerStopWithSavepoint(

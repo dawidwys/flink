@@ -19,6 +19,7 @@ package org.apache.flink.streaming.runtime.io.checkpointing;
 
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.checkpoint.channel.InputChannelInfo;
@@ -108,7 +109,7 @@ public class AlternatingCheckpointsTest {
             sendBarrier(
                     0,
                     clock.relativeTimeMillis(),
-                    SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
+                    SavepointType.savepoint(SavepointFormatType.CANONICAL),
                     gate,
                     0); // using AC because UC would require ordering in gate while polling
             ((RemoteInputChannel) gate.getChannel(0))
@@ -166,7 +167,7 @@ public class AlternatingCheckpointsTest {
 
     @Test
     public void testSavepointHandling() throws Exception {
-        testBarrierHandling(SavepointType.savepoint(SavepointType.FormatType.CANONICAL));
+        testBarrierHandling(SavepointType.savepoint(SavepointFormatType.CANONICAL));
     }
 
     @Test
@@ -183,7 +184,7 @@ public class AlternatingCheckpointsTest {
             for (long barrier = 0; barrier < numBarriers; barrier++) {
                 barriers.add(barrier);
                 SnapshotType type = barrier % 2 == 0 ? CHECKPOINT : SavepointType.savepoint(
-                        SavepointType.FormatType.CANONICAL);
+                        SavepointFormatType.CANONICAL);
                 for (int channel = 0; channel < numChannels; channel++) {
                     send(
                             barrier(
@@ -1061,7 +1062,7 @@ public class AlternatingCheckpointsTest {
 
         startNanos = clock.relativeTimeNanos();
         long checkpoint2CreationTime = clock.relativeTimeMillis() - 5;
-        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), gate, 0);
+        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointFormatType.CANONICAL), gate, 0);
         sendData(bufferSize, 1, gate);
 
         assertMetrics(
@@ -1073,7 +1074,7 @@ public class AlternatingCheckpointsTest {
                 5_000_000L,
                 bufferSize * 2);
         clock.advanceTime(5, TimeUnit.MILLISECONDS);
-        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), gate, 1);
+        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointFormatType.CANONICAL), gate, 1);
         sendData(bufferSize, 0, gate);
 
         assertMetrics(
@@ -1138,7 +1139,7 @@ public class AlternatingCheckpointsTest {
         long checkpoint2CreationTime = clock.relativeTimeMillis() - 5;
         startNanos = clock.relativeTimeNanos();
         sendData(1000, 0, gate);
-        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), gate, 0);
+        sendBarrier(2, checkpoint2CreationTime, SavepointType.savepoint(SavepointFormatType.CANONICAL), gate, 0);
         sendData(1000, 0, gate);
         clock.advanceTime(5, TimeUnit.MILLISECONDS);
         assertMetrics(
@@ -1180,7 +1181,7 @@ public class AlternatingCheckpointsTest {
 
         for (int i = 0; i < 4; i++) {
             int channel = i % 2;
-            SnapshotType type = channel == 0 ? SavepointType.savepoint(SavepointType.FormatType.CANONICAL) : CHECKPOINT;
+            SnapshotType type = channel == 0 ? SavepointType.savepoint(SavepointFormatType.CANONICAL) : CHECKPOINT;
             target.setNextExpectedCheckpointId(-1);
 
             if (type.isSavepoint()) {
@@ -1255,7 +1256,7 @@ public class AlternatingCheckpointsTest {
                 new CheckpointBarrier(
                         outOfOrderSavepointId,
                         clock.relativeTimeMillis(),
-                        new CheckpointOptions(SavepointType.savepoint(SavepointType.FormatType.CANONICAL), getDefault())),
+                        new CheckpointOptions(SavepointType.savepoint(SavepointFormatType.CANONICAL), getDefault())),
                 new InputChannelInfo(0, 1),
                 false);
 

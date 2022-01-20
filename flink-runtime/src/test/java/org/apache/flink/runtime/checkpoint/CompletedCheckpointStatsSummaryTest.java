@@ -18,7 +18,6 @@
 
 package org.apache.flink.runtime.checkpoint;
 
-import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 
 import org.junit.Test;
@@ -130,7 +129,7 @@ public class CompletedCheckpointStatsSummaryTest {
                 new CompletedCheckpointStats(
                         1L,
                         triggerTimestamp,
-                        CheckpointProperties.forSavepoint(false, FormatType.CANONICAL),
+                        CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL),
                         1,
                         singletonMap(new JobVertexID(), new TaskStateStats(new JobVertexID(), 1)),
                         1,

@@ -21,7 +21,6 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
-import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.runtime.executiongraph.ExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ExecutionJobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -136,7 +135,7 @@ public class CheckpointStatsTrackerTest {
                 tracker.reportPendingCheckpoint(
                         2,
                         1,
-                        CheckpointProperties.forSavepoint(true, FormatType.CANONICAL),
+                        CheckpointProperties.forSavepoint(true, SavepointFormatType.CANONICAL),
                         vertexToDop);
 
         savepoint.reportSubtaskStats(jobVertexID, createSubtaskStats(0));

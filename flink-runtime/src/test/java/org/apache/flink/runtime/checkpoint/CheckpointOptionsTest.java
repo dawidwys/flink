@@ -58,9 +58,9 @@ public class CheckpointOptionsTest {
         final SnapshotType[] snapshotTypes = {
             CHECKPOINT,
             FULL_CHECKPOINT,
-            SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
-            SavepointType.suspend(SavepointType.FormatType.CANONICAL),
-            SavepointType.terminate(SavepointType.FormatType.CANONICAL)
+            SavepointType.savepoint(SavepointFormatType.CANONICAL),
+            SavepointType.suspend(SavepointFormatType.CANONICAL),
+            SavepointType.terminate(SavepointFormatType.CANONICAL)
         };
 
         final CheckpointOptions options =
@@ -76,7 +76,7 @@ public class CheckpointOptionsTest {
     @Test(expected = IllegalArgumentException.class)
     public void testSavepointNeedsAlignment() {
         new CheckpointOptions(
-                SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
+                SavepointType.savepoint(SavepointFormatType.CANONICAL),
                 CheckpointStorageLocationReference.getDefault(),
                 AlignmentType.UNALIGNED,
                 0);
@@ -155,10 +155,10 @@ public class CheckpointOptionsTest {
 
         assertReversable(CheckpointOptions.alignedNoTimeout(CHECKPOINT, location), false);
         assertReversable(
-                CheckpointOptions.alignedNoTimeout(SavepointType.savepoint(SavepointType.FormatType.CANONICAL), location), false);
+                CheckpointOptions.alignedNoTimeout(SavepointType.savepoint(SavepointFormatType.CANONICAL), location), false);
         assertReversable(CheckpointOptions.notExactlyOnce(CHECKPOINT, location), false);
         assertReversable(
-                CheckpointOptions.notExactlyOnce(SavepointType.savepoint(SavepointType.FormatType.CANONICAL), location), false);
+                CheckpointOptions.notExactlyOnce(SavepointType.savepoint(SavepointFormatType.CANONICAL), location), false);
     }
 
     private void assertReversable(CheckpointOptions options, boolean forceHasEffect) {

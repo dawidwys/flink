@@ -122,7 +122,7 @@ public class PendingCheckpointTest {
         // Forced checkpoints cannot be subsumed
         CheckpointProperties forced =
                 new CheckpointProperties(
-                        true, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), false, false, false, false, false, false);
+                        true, SavepointType.savepoint(SavepointFormatType.CANONICAL), false, false, false, false, false, false);
         PendingCheckpoint pending = createPendingCheckpoint(forced);
         assertFalse(pending.canBeSubsumed());
 
@@ -136,7 +136,7 @@ public class PendingCheckpointTest {
         // Non-forced checkpoints can be subsumed
         CheckpointProperties subsumed =
                 new CheckpointProperties(
-                        false, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), false, false, false, false, false, false);
+                        false, SavepointType.savepoint(SavepointFormatType.CANONICAL), false, false, false, false, false, false);
         pending = createPendingCheckpoint(subsumed);
         assertFalse(pending.canBeSubsumed());
     }
@@ -164,7 +164,7 @@ public class PendingCheckpointTest {
     public void testCompletionFuture() throws Exception {
         CheckpointProperties props =
                 new CheckpointProperties(
-                        false, SavepointType.savepoint(SavepointType.FormatType.CANONICAL), false, false, false, false, false, false);
+                        false, SavepointType.savepoint(SavepointFormatType.CANONICAL), false, false, false, false, false, false);
 
         // Abort declined
         PendingCheckpoint pending = createPendingCheckpoint(props);

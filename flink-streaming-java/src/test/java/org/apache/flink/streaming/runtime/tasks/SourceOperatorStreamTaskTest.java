@@ -37,6 +37,7 @@ import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
+import org.apache.flink.runtime.checkpoint.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -123,7 +124,7 @@ public class SourceOperatorStreamTaskTest extends SourceStreamTaskTestBase {
 
             final CheckpointOptions checkpointOptions =
                     new CheckpointOptions(
-                            SavepointType.terminate(SavepointType.FormatType.CANONICAL),
+                            SavepointType.terminate(SavepointFormatType.CANONICAL),
                             CheckpointStorageLocationReference.getDefault());
             triggerCheckpointWaitForFinish(testHarness, checkpointId, checkpointOptions);
 
@@ -262,7 +263,7 @@ public class SourceOperatorStreamTaskTest extends SourceStreamTaskTestBase {
                     testHarness.streamTask.triggerCheckpointAsync(
                             new CheckpointMetaData(2, 2),
                             CheckpointOptions.alignedNoTimeout(
-                                    SavepointType.terminate(SavepointType.FormatType.CANONICAL),
+                                    SavepointType.terminate(SavepointFormatType.CANONICAL),
                                     CheckpointStorageLocationReference.getDefault()));
             checkpointCompleted.whenComplete(
                     (ignored, exception) ->

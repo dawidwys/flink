@@ -20,7 +20,6 @@ package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.OperatorIDPair;
-import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.runtime.checkpoint.metadata.CheckpointMetadata;
 import org.apache.flink.runtime.executiongraph.ExecutionJobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -78,7 +77,7 @@ public class CheckpointMetadataLoadingTest {
                         testSavepoint,
                         cl,
                         false,
-                        CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
+                        CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL));
 
         assertEquals(jobId, loaded.getJobId());
         assertEquals(checkpointId, loaded.getCheckpointID());
@@ -102,7 +101,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
+                    CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("Max parallelism mismatch"));
@@ -128,7 +127,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
+                    CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("allowNonRestoredState"));
@@ -154,7 +153,7 @@ public class CheckpointMetadataLoadingTest {
                         testSavepoint,
                         cl,
                         true,
-                        CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
+                        CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL));
 
         assertTrue(loaded.getOperatorStates().isEmpty());
     }
@@ -183,7 +182,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
+                    CheckpointProperties.forSavepoint(false, SavepointFormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("allowNonRestoredState"));

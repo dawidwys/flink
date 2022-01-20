@@ -29,6 +29,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetricsBuilder;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
@@ -93,7 +94,7 @@ public class SubtaskCheckpointCoordinatorTest {
     public void testInitCheckpoint() throws IOException, CheckpointException {
         assertTrue(initCheckpoint(true, CHECKPOINT));
         assertFalse(initCheckpoint(false, CHECKPOINT));
-        assertFalse(initCheckpoint(false, SavepointType.savepoint(SavepointType.FormatType.CANONICAL)));
+        assertFalse(initCheckpoint(false, SavepointType.savepoint(SavepointFormatType.CANONICAL)));
     }
 
     private boolean initCheckpoint(boolean unalignedCheckpointEnabled, SnapshotType checkpointType)
@@ -173,7 +174,7 @@ public class SubtaskCheckpointCoordinatorTest {
             coordinator.checkpointState(
                     new CheckpointMetaData(0, 0),
                     new CheckpointOptions(
-                            SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
+                            SavepointType.savepoint(SavepointFormatType.CANONICAL),
                             CheckpointStorageLocationReference.getDefault()),
                     new CheckpointMetricsBuilder(),
                     operatorChain,
@@ -247,7 +248,7 @@ public class SubtaskCheckpointCoordinatorTest {
             coordinator.checkpointState(
                     new CheckpointMetaData(0, 0),
                     new CheckpointOptions(
-                            SavepointType.savepoint(SavepointType.FormatType.CANONICAL),
+                            SavepointType.savepoint(SavepointFormatType.CANONICAL),
                             CheckpointStorageLocationReference.getDefault()),
                     new CheckpointMetricsBuilder(),
                     new RegularOperatorChain<>(

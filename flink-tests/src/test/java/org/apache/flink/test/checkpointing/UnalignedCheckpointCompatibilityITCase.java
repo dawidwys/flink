@@ -23,6 +23,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.runtime.checkpoint.CheckpointType;
+import org.apache.flink.runtime.checkpoint.SavepointFormatType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
@@ -87,8 +88,8 @@ public class UnalignedCheckpointCompatibilityITCase extends TestLogger {
         return new Object[][] {
             {CHECKPOINT, true},
             {CHECKPOINT, false},
-            {SavepointType.savepoint(SavepointType.FormatType.CANONICAL), true},
-            {SavepointType.savepoint(SavepointType.FormatType.CANONICAL), false},
+            {SavepointType.savepoint(SavepointFormatType.CANONICAL), true},
+            {SavepointType.savepoint(SavepointFormatType.CANONICAL), false},
         };
     }
 
