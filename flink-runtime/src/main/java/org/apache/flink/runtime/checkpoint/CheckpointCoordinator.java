@@ -1702,7 +1702,12 @@ public class CheckpointCoordinator {
                 checkpointProperties = this.checkpointProperties;
                 break;
             case LEGACY:
-                checkpointProperties = CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN);
+                checkpointProperties =
+                        CheckpointProperties.forSavepoint(
+                                false,
+                                // we do not care about the format when restoring, the format is
+                                // necessary when triggering a savepoint
+                                FormatType.CANONICAL);
                 break;
             case NO_CLAIM:
                 checkpointProperties = CheckpointProperties.forUnclaimedSnapshot();

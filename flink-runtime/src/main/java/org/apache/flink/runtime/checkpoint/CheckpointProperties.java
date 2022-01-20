@@ -312,8 +312,10 @@ public class CheckpointProperties implements Serializable {
     public static CheckpointProperties forUnclaimedSnapshot() {
         return new CheckpointProperties(
                 false,
-                SavepointType.savepoint(
-                        FormatType.UNKNOWN), // unclaimed snapshot is similar to a savepoint
+                // unclaimed snapshot is similar to a savepoint
+                // we do not care about the format when restoring, the format is
+                // necessary when triggering a savepoint
+                SavepointType.savepoint(FormatType.CANONICAL),
                 false,
                 false,
                 false,

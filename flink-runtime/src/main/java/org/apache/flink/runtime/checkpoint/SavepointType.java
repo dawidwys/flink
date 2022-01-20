@@ -124,7 +124,6 @@ public class SavepointType implements SnapshotType {
     }
 
     public enum FormatType {
-        UNKNOWN,
         CANONICAL,
         NATIVE
     }

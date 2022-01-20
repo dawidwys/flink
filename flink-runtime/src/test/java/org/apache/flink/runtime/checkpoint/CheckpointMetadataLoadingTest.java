@@ -78,7 +78,7 @@ public class CheckpointMetadataLoadingTest {
                         testSavepoint,
                         cl,
                         false,
-                        CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN));
+                        CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
 
         assertEquals(jobId, loaded.getJobId());
         assertEquals(checkpointId, loaded.getCheckpointID());
@@ -102,7 +102,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN));
+                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("Max parallelism mismatch"));
@@ -128,7 +128,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN));
+                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("allowNonRestoredState"));
@@ -154,7 +154,7 @@ public class CheckpointMetadataLoadingTest {
                         testSavepoint,
                         cl,
                         true,
-                        CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN));
+                        CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
 
         assertTrue(loaded.getOperatorStates().isEmpty());
     }
@@ -183,7 +183,7 @@ public class CheckpointMetadataLoadingTest {
                     testSavepoint,
                     cl,
                     false,
-                    CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN));
+                    CheckpointProperties.forSavepoint(false, FormatType.CANONICAL));
             fail("Did not throw expected Exception");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("allowNonRestoredState"));
