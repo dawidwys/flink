@@ -22,6 +22,8 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.core.testutils.FlinkMatchers;
 import org.apache.flink.runtime.checkpoint.CheckpointProperties;
 import org.apache.flink.runtime.checkpoint.CompletedCheckpoint;
+import org.apache.flink.runtime.checkpoint.SavepointType;
+import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.runtime.checkpoint.TestingCheckpointScheduling;
 import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.scheduler.SchedulerNG;
@@ -221,7 +223,7 @@ public class StopWithSavepointTerminationHandlerImplTest extends TestLogger {
                 0L,
                 new HashMap<>(),
                 null,
-                CheckpointProperties.forSavepoint(true),
+                CheckpointProperties.forSavepoint(true, FormatType.CANONICAL),
                 new TestCompletedCheckpointStorageLocation(streamStateHandle, "savepoint-path"));
     }
 }

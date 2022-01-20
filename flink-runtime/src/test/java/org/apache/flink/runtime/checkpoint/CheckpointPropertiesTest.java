@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.checkpoint;
 
+import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.util.InstantiationUtil;
 
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class CheckpointPropertiesTest {
     /** Tests the default (manually triggered) savepoint properties. */
     @Test
     public void testSavepointProperties() {
-        CheckpointProperties props = CheckpointProperties.forSavepoint(true);
+        CheckpointProperties props = CheckpointProperties.forSavepoint(true, FormatType.CANONICAL);
 
         assertTrue(props.forceCheckpoint());
         assertFalse(props.discardOnSubsumed());
@@ -83,7 +84,8 @@ public class CheckpointPropertiesTest {
         }
 
         {
-            CheckpointProperties props = CheckpointProperties.forSavepoint(true);
+            CheckpointProperties props =
+                    CheckpointProperties.forSavepoint(true, FormatType.CANONICAL);
             assertTrue(props.isSavepoint());
 
             CheckpointProperties deserializedCheckpointProperties =

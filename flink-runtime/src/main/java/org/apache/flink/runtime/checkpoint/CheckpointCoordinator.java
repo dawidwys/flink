@@ -21,6 +21,7 @@ package org.apache.flink.runtime.checkpoint;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.runtime.checkpoint.SavepointType.FormatType;
 import org.apache.flink.runtime.checkpoint.hooks.MasterHooks;
 import org.apache.flink.runtime.executiongraph.Execution;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
@@ -432,7 +433,8 @@ public class CheckpointCoordinator {
     public CompletableFuture<CompletedCheckpoint> triggerSavepoint(
             @Nullable final String targetLocation) {
         final CheckpointProperties properties =
-                CheckpointProperties.forSavepoint(!unalignedCheckpointsEnabled);
+                CheckpointProperties.forSavepoint(
+                        !unalignedCheckpointsEnabled, FormatType.CANONICAL);
         return triggerSavepointInternal(properties, targetLocation);
     }
 
@@ -1700,7 +1702,7 @@ public class CheckpointCoordinator {
                 checkpointProperties = this.checkpointProperties;
                 break;
             case LEGACY:
-                checkpointProperties = CheckpointProperties.forSavepoint(false);
+                checkpointProperties = CheckpointProperties.forSavepoint(false, FormatType.UNKNOWN);
                 break;
             case NO_CLAIM:
                 checkpointProperties = CheckpointProperties.forUnclaimedSnapshot();
