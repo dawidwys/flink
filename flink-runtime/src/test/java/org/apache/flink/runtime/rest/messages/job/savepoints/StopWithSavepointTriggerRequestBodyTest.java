@@ -47,14 +47,38 @@ public class StopWithSavepointTriggerRequestBodyTest
     public static Collection<Object[]> data() {
         return Arrays.asList(
                 new Object[][] {
-                    {new StopWithSavepointRequestBody("/tmp", true, SavepointFormatType.CANONICAL, null)},
-                    {new StopWithSavepointRequestBody("/tmp", false, SavepointFormatType.CANONICAL, null)},
-                    {new StopWithSavepointRequestBody("/tmp", true, SavepointFormatType.CANONICAL, new TriggerId())},
-                    {new StopWithSavepointRequestBody("/tmp", false, SavepointFormatType.CANONICAL, new TriggerId())},
-                    {new StopWithSavepointRequestBody("/tmp", true, SavepointFormatType.NATIVE, null)},
-                    {new StopWithSavepointRequestBody("/tmp", false, SavepointFormatType.NATIVE, null)},
-                    {new StopWithSavepointRequestBody("/tmp", true, SavepointFormatType.NATIVE, new TriggerId())},
-                    {new StopWithSavepointRequestBody("/tmp", false, SavepointFormatType.NATIVE, new TriggerId())},
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", true, SavepointFormatType.CANONICAL, null)
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", false, SavepointFormatType.CANONICAL, null)
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", true, SavepointFormatType.CANONICAL, new TriggerId())
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", false, SavepointFormatType.CANONICAL, new TriggerId())
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", true, SavepointFormatType.NATIVE, null)
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", false, SavepointFormatType.NATIVE, null)
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", true, SavepointFormatType.NATIVE, new TriggerId())
+                    },
+                    {
+                        new StopWithSavepointRequestBody(
+                                "/tmp", false, SavepointFormatType.NATIVE, new TriggerId())
+                    },
                 });
     }
 

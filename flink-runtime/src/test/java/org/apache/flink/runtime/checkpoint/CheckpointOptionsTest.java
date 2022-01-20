@@ -156,10 +156,14 @@ public class CheckpointOptionsTest {
 
         assertReversable(CheckpointOptions.alignedNoTimeout(CHECKPOINT, location), false);
         assertReversable(
-                CheckpointOptions.alignedNoTimeout(SavepointType.savepoint(SavepointFormatType.CANONICAL), location), false);
+                CheckpointOptions.alignedNoTimeout(
+                        SavepointType.savepoint(SavepointFormatType.CANONICAL), location),
+                false);
         assertReversable(CheckpointOptions.notExactlyOnce(CHECKPOINT, location), false);
         assertReversable(
-                CheckpointOptions.notExactlyOnce(SavepointType.savepoint(SavepointFormatType.CANONICAL), location), false);
+                CheckpointOptions.notExactlyOnce(
+                        SavepointType.savepoint(SavepointFormatType.CANONICAL), location),
+                false);
     }
 
     private void assertReversable(CheckpointOptions options, boolean forceHasEffect) {

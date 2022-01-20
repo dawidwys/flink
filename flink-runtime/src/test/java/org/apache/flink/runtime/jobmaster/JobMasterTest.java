@@ -1212,8 +1212,7 @@ public class JobMasterTest extends TestLogger {
                 .map(
                         accessExecutionJobVertex ->
                                 Arrays.asList(accessExecutionJobVertex.getTaskVertices()))
-                .orElse(Collections.emptyList())
-                .stream()
+                .orElse(Collections.emptyList()).stream()
                 .map(AccessExecutionVertex::getCurrentExecutionAttempt)
                 .collect(Collectors.toList());
     }

@@ -57,7 +57,8 @@ public class CheckpointPropertiesTest {
     /** Tests the default (manually triggered) savepoint properties. */
     @Test
     public void testSavepointProperties() {
-        CheckpointProperties props = CheckpointProperties.forSavepoint(true, SavepointFormatType.CANONICAL);
+        CheckpointProperties props =
+                CheckpointProperties.forSavepoint(true, SavepointFormatType.CANONICAL);
 
         assertTrue(props.forceCheckpoint());
         assertFalse(props.discardOnSubsumed());

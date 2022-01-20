@@ -126,10 +126,7 @@ public class RMQSourceITCase {
         CommonTestUtils.waitUntilCondition(
                 () ->
                         clusterClient.getJobStatus(JOB_ID).get() == JobStatus.RUNNING
-                                && clusterClient
-                                        .getJobDetails(JOB_ID)
-                                        .get()
-                                        .getJobVertexInfos()
+                                && clusterClient.getJobDetails(JOB_ID).get().getJobVertexInfos()
                                         .stream()
                                         .allMatch(
                                                 info ->

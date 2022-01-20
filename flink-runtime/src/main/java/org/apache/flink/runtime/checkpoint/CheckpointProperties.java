@@ -329,9 +329,7 @@ public class CheckpointProperties implements Serializable {
             boolean forced, boolean terminate, SavepointFormatType formatType) {
         return new CheckpointProperties(
                 forced,
-                terminate
-                        ? SavepointType.terminate(formatType)
-                        : SavepointType.suspend(formatType),
+                terminate ? SavepointType.terminate(formatType) : SavepointType.suspend(formatType),
                 false,
                 false,
                 false,

@@ -33,7 +33,14 @@ public class RestoredCheckpointStatsTest {
         long triggerTimestamp = Integer.MAX_VALUE + 1L;
         CheckpointProperties props =
                 new CheckpointProperties(
-                        true, SavepointType.savepoint(SavepointFormatType.CANONICAL), false, false, true, false, true, false);
+                        true,
+                        SavepointType.savepoint(SavepointFormatType.CANONICAL),
+                        false,
+                        false,
+                        true,
+                        false,
+                        true,
+                        false);
         long restoreTimestamp = Integer.MAX_VALUE + 1L;
         String externalPath = "external-path";
 

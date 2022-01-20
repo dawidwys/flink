@@ -46,14 +46,38 @@ public class SavepointTriggerRequestBodyTest
     public static Collection<Object[]> data() {
         return Arrays.asList(
                 new Object[][] {
-                    {new SavepointTriggerRequestBody("/tmp", true, SavepointFormatType.CANONICAL, null)},
-                    {new SavepointTriggerRequestBody("/tmp", false, SavepointFormatType.CANONICAL, null)},
-                    {new SavepointTriggerRequestBody("/tmp", true, SavepointFormatType.CANONICAL, new TriggerId())},
-                    {new SavepointTriggerRequestBody("/tmp", false, SavepointFormatType.CANONICAL, new TriggerId())},
-                    {new SavepointTriggerRequestBody("/tmp", true, SavepointFormatType.NATIVE, null)},
-                    {new SavepointTriggerRequestBody("/tmp", false, SavepointFormatType.NATIVE, null)},
-                    {new SavepointTriggerRequestBody("/tmp", true, SavepointFormatType.NATIVE, new TriggerId())},
-                    {new SavepointTriggerRequestBody("/tmp", false, SavepointFormatType.NATIVE, new TriggerId())}
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", true, SavepointFormatType.CANONICAL, null)
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", false, SavepointFormatType.CANONICAL, null)
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", true, SavepointFormatType.CANONICAL, new TriggerId())
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", false, SavepointFormatType.CANONICAL, new TriggerId())
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", true, SavepointFormatType.NATIVE, null)
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", false, SavepointFormatType.NATIVE, null)
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", true, SavepointFormatType.NATIVE, new TriggerId())
+                    },
+                    {
+                        new SavepointTriggerRequestBody(
+                                "/tmp", false, SavepointFormatType.NATIVE, new TriggerId())
+                    }
                 });
     }
 

@@ -312,7 +312,9 @@ public class CheckpointRequestDeciderTest {
 
     private static CheckpointTriggerRequest savepointRequest(boolean force, boolean periodic) {
         return new CheckpointTriggerRequest(
-                CheckpointProperties.forSavepoint(force, SavepointFormatType.CANONICAL), null, periodic);
+                CheckpointProperties.forSavepoint(force, SavepointFormatType.CANONICAL),
+                null,
+                periodic);
     }
 
     private static CheckpointTriggerRequest checkpointRequest(boolean periodic) {

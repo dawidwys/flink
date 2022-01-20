@@ -433,8 +433,7 @@ public class CheckpointCoordinator {
     public CompletableFuture<CompletedCheckpoint> triggerSavepoint(
             @Nullable final String targetLocation, final SavepointFormatType formatType) {
         final CheckpointProperties properties =
-                CheckpointProperties.forSavepoint(
-                        !unalignedCheckpointsEnabled, formatType);
+                CheckpointProperties.forSavepoint(!unalignedCheckpointsEnabled, formatType);
         return triggerSavepointInternal(properties, targetLocation);
     }
 
