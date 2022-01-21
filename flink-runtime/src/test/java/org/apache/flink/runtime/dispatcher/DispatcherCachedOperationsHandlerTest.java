@@ -103,7 +103,12 @@ public class DispatcherCachedOperationsHandlerTest extends TestLogger {
         assertThat(triggerSavepointFunction.getNumberOfInvocations(), is(1));
         assertThat(
                 triggerSavepointFunction.getInvocationParameters().get(0),
-                is(new Tuple3<>(jobID, targetDirectory, TriggerSavepointMode.SAVEPOINT)));
+                is(
+                        new Tuple4<>(
+                                jobID,
+                                targetDirectory,
+                                SavepointFormatType.CANONICAL,
+                                TriggerSavepointMode.SAVEPOINT)));
 
         assertThat(firstAcknowledge.get(), is(Acknowledge.get()));
         assertThat(secondAcknowledge.get(), is(Acknowledge.get()));
@@ -130,9 +135,10 @@ public class DispatcherCachedOperationsHandlerTest extends TestLogger {
         assertThat(
                 stopWithSavepointFunction.getInvocationParameters().get(0),
                 is(
-                        new Tuple3<>(
+                        new Tuple4<>(
                                 jobID,
                                 targetDirectory,
+                                SavepointFormatType.CANONICAL,
                                 TriggerSavepointMode.TERMINATE_WITH_SAVEPOINT)));
 
         assertThat(firstAcknowledge.get(), is(Acknowledge.get()));
