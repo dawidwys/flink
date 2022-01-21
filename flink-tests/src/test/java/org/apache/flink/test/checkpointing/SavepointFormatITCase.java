@@ -67,6 +67,7 @@ import static org.apache.flink.runtime.testutils.CommonTestUtils.waitForAllTaskR
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+/** Tests for taking savepoint in different {@link SavepointFormatType format types}. */
 public class SavepointFormatITCase {
 
     @TempDir Path originalSavepointDir;
