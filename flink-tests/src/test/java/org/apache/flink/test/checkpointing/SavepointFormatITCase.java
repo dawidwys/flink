@@ -34,7 +34,10 @@ import org.apache.flink.runtime.checkpoint.Checkpoints;
 import org.apache.flink.runtime.checkpoint.OperatorState;
 import org.apache.flink.runtime.checkpoint.metadata.CheckpointMetadata;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.jobgraph.RestoreMode;
+import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.KeyGroupsStateHandle;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SavepointKeyedStateHandle;
 import org.apache.flink.runtime.state.filesystem.AbstractFsCheckpointStorageAccess;
@@ -45,9 +48,11 @@ import org.apache.flink.test.util.MiniClusterWithClientResource;
 import org.apache.flink.testutils.logging.LoggerAuditingExtension;
 
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.event.Level;
 
 import java.io.DataInputStream;
@@ -56,6 +61,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static org.apache.flink.runtime.testutils.CommonTestUtils.waitForAllTaskRunning;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -70,22 +76,102 @@ public class SavepointFormatITCase {
     LoggerAuditingExtension loggerAuditingExtension =
             new LoggerAuditingExtension(SavepointFormatITCase.class, Level.INFO);
 
-    @Test
-    public void testTriggerSavepointAndResumeWithFileBasedCheckpointsAndRelocateBasePath()
+    private static Stream<Arguments> parameters() {
+        return Stream.of(
+                Arguments.of(
+                        SavepointFormatType.CANONICAL,
+                        HEAP,
+                        (Consumer<KeyedStateHandle>)
+                                keyedState ->
+                                        assertThat(
+                                                keyedState,
+                                                instanceOf(SavepointKeyedStateHandle.class))),
+                Arguments.of(
+                        SavepointFormatType.NATIVE,
+                        HEAP,
+                        (Consumer<KeyedStateHandle>)
+                                keyedState ->
+                                        assertThat(
+                                                keyedState,
+                                                instanceOf(KeyGroupsStateHandle.class))),
+                Arguments.of(
+                        SavepointFormatType.CANONICAL,
+                        ROCKSDB_FULL_SNAPSHOTS,
+                        (Consumer<KeyedStateHandle>)
+                                keyedState ->
+                                        assertThat(
+                                                keyedState,
+                                                instanceOf(SavepointKeyedStateHandle.class))),
+                Arguments.of(
+                        SavepointFormatType.NATIVE,
+                        ROCKSDB_FULL_SNAPSHOTS,
+                        (Consumer<KeyedStateHandle>)
+                                keyedState ->
+                                        assertThat(
+                                                keyedState,
+                                                instanceOf(KeyGroupsStateHandle.class))));
+    }
+
+    private abstract static class StateBackendConfig {
+        public abstract String getName();
+
+        public abstract Configuration getConfiguration();
+
+        @Override
+        public final String toString() {
+            return getName();
+        }
+    }
+
+    private static final StateBackendConfig HEAP =
+            new StateBackendConfig() {
+                @Override
+                public String getName() {
+                    return "HEAP";
+                }
+
+                @Override
+                public Configuration getConfiguration() {
+                    Configuration stateBackendConfig = new Configuration();
+                    stateBackendConfig.setString(StateBackendOptions.STATE_BACKEND, "filesystem");
+                    stateBackendConfig.set(
+                            CheckpointingOptions.FS_SMALL_FILE_THRESHOLD, MemorySize.ZERO);
+                    return stateBackendConfig;
+                }
+            };
+
+    private static final StateBackendConfig ROCKSDB_FULL_SNAPSHOTS =
+            new StateBackendConfig() {
+                @Override
+                public String getName() {
+                    return "ROCKSDB_FULL_SNAPSHOTS";
+                }
+
+                @Override
+                public Configuration getConfiguration() {
+                    Configuration stateBackendConfig = new Configuration();
+                    stateBackendConfig.setString(StateBackendOptions.STATE_BACKEND, "rocksdb");
+                    stateBackendConfig.set(
+                            CheckpointingOptions.FS_SMALL_FILE_THRESHOLD, MemorySize.ZERO);
+                    stateBackendConfig.set(CheckpointingOptions.INCREMENTAL_CHECKPOINTS, false);
+                    return stateBackendConfig;
+                }
+            };
+
+    @ParameterizedTest(name = "[{index}] {0}, {1}")
+    @MethodSource("parameters")
+    public void testTriggerSavepointAndResumeWithFileBasedCheckpointsAndRelocateBasePath(
+            SavepointFormatType formatType,
+            StateBackendConfig stateBackendConfig,
+            Consumer<KeyedStateHandle> stateHandleVerification)
             throws Exception {
         final int numTaskManagers = 2;
         final int numSlotsPerTaskManager = 2;
 
-        Configuration stateBackendConfig = new Configuration();
-        stateBackendConfig.setString(StateBackendOptions.STATE_BACKEND, "filesystem");
-        stateBackendConfig.set(CheckpointingOptions.FS_SMALL_FILE_THRESHOLD, MemorySize.ZERO);
-        stateBackendConfig.setString(
-                CheckpointingOptions.SAVEPOINT_DIRECTORY, originalSavepointDir.toUri().toString());
-
         final MiniClusterWithClientResource miniClusterResource =
                 new MiniClusterWithClientResource(
                         new MiniClusterResourceConfiguration.Builder()
-                                .setConfiguration(stateBackendConfig)
+                                .setConfiguration(stateBackendConfig.getConfiguration())
                                 .setNumberTaskManagers(numTaskManagers)
                                 .setNumberSlotsPerTaskManager(numSlotsPerTaskManager)
                                 .build());
@@ -93,14 +179,8 @@ public class SavepointFormatITCase {
         miniClusterResource.before();
         try {
 
-            final String savepointPath =
-                    submitJobAndTakeSavepoint(miniClusterResource, SavepointFormatType.CANONICAL);
-            //            relocateAndVerify(savepointPath, renamedSavepointDir);
+            final String savepointPath = submitJobAndTakeSavepoint(miniClusterResource, formatType);
             final CheckpointMetadata metadata = loadCheckpointMetadata(savepointPath);
-
-            final Consumer<KeyedStateHandle> stateHandleVerification =
-                    keyedState ->
-                            assertThat(keyedState, instanceOf(SavepointKeyedStateHandle.class));
 
             final OperatorState operatorState =
                     metadata.getOperatorStates().stream().filter(hasKeyedState()).findFirst().get();
@@ -112,6 +192,7 @@ public class SavepointFormatITCase {
                                         .getManagedKeyedState()
                                         .forEach(stateHandleVerification);
                             });
+            relocateAndVerify(miniClusterResource, savepointPath, renamedSavepointDir);
         } finally {
             miniClusterResource.after();
         }
@@ -138,18 +219,41 @@ public class SavepointFormatITCase {
         }
     }
 
-    private void relocateAndVerify(String savepointPath, Path renamedSavepointDir)
-            throws IOException {
+    private void relocateAndVerify(
+            MiniClusterWithClientResource cluster, String savepointPath, Path renamedSavepointDir)
+            throws Exception {
         final org.apache.flink.core.fs.Path oldPath =
                 new org.apache.flink.core.fs.Path(savepointPath);
         final org.apache.flink.core.fs.Path newPath =
                 new org.apache.flink.core.fs.Path(renamedSavepointDir.toUri().toString());
         (new org.apache.flink.core.fs.Path(savepointPath).getFileSystem()).rename(oldPath, newPath);
+        final JobGraph jobGraph = createJobGraph();
+        jobGraph.setSavepointRestoreSettings(
+                SavepointRestoreSettings.forPath(
+                        renamedSavepointDir.toUri().toString(), false, RestoreMode.CLAIM));
+
+        final JobID jobId = jobGraph.getJobID();
+        ClusterClient<?> client = cluster.getClusterClient();
+        client.submitJob(jobGraph).get();
+        waitForAllTaskRunning(cluster.getMiniCluster(), jobId, false);
     }
 
     private String submitJobAndTakeSavepoint(
             MiniClusterWithClientResource cluster, SavepointFormatType formatType)
             throws Exception {
+        final JobGraph jobGraph = createJobGraph();
+
+        final JobID jobId = jobGraph.getJobID();
+        ClusterClient<?> client = cluster.getClusterClient();
+        client.submitJob(jobGraph).get();
+        waitForAllTaskRunning(cluster.getMiniCluster(), jobId, false);
+
+        return client.cancelWithSavepoint(
+                        jobId, originalSavepointDir.toUri().toString(), formatType)
+                .get();
+    }
+
+    private static JobGraph createJobGraph() {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(4);
         env.setRuntimeMode(RuntimeExecutionMode.STREAMING);
@@ -160,17 +264,7 @@ public class SavepointFormatITCase {
                 .map(new StatefulCounter())
                 .addSink(new DiscardingSink<>());
 
-        final JobGraph jobGraph = env.getStreamGraph().getJobGraph();
-
-        final JobID jobId = jobGraph.getJobID();
-
-        ClusterClient<?> client = cluster.getClusterClient();
-
-        client.submitJob(jobGraph).get();
-
-        waitForAllTaskRunning(cluster.getMiniCluster(), jobId, false);
-
-        return client.cancelWithSavepoint(jobId, null, formatType).get();
+        return env.getStreamGraph().getJobGraph();
     }
 
     private static final class StatefulCounter extends RichMapFunction<Long, Long> {
