@@ -18,12 +18,14 @@
 
 package org.apache.flink.core.execution;
 
+import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.configuration.DescribedEnum;
 import org.apache.flink.configuration.description.InlineElement;
 
 import static org.apache.flink.configuration.description.TextElement.text;
 
 /** Describes the binary format in which a savepoint should be taken. */
+@PublicEvolving
 public enum SavepointFormatType implements DescribedEnum {
     /** A canonical, common for all state backends format. It lets users switch state backends. */
     CANONICAL(
