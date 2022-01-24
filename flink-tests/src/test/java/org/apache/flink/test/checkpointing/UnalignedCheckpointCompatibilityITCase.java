@@ -23,8 +23,8 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.core.execution.SavepointFormatType;
-import org.apache.flink.runtime.checkpoint.CheckpointType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
+import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -79,7 +79,7 @@ public class UnalignedCheckpointCompatibilityITCase extends TestLogger {
     private static final int PARALLELISM = 1;
 
     private final boolean startAligned;
-    private final CheckpointType type;
+    private final SnapshotType type;
 
     private static MiniClusterWithClientResource miniCluster;
 
@@ -93,7 +93,7 @@ public class UnalignedCheckpointCompatibilityITCase extends TestLogger {
         };
     }
 
-    public UnalignedCheckpointCompatibilityITCase(CheckpointType type, boolean startAligned) {
+    public UnalignedCheckpointCompatibilityITCase(SnapshotType type, boolean startAligned) {
         this.startAligned = startAligned;
         this.type = type;
     }
