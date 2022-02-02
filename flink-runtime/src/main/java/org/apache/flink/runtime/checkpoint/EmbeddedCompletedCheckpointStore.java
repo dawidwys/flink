@@ -88,9 +88,7 @@ public class EmbeddedCompletedCheckpointStore extends AbstractCompleteCheckpoint
 
         CompletedCheckpoint completedCheckpoint =
                 CheckpointSubsumeHelper.subsume(
-                                checkpoints,
-                                maxRetainedCheckpoints,
-                                CompletedCheckpoint::discardOnSubsume)
+                                checkpoints, maxRetainedCheckpoints, this::subsumeCheckpoint)
                         .orElse(null);
 
         unregisterUnusedState(checkpoints);
@@ -101,8 +99,13 @@ public class EmbeddedCompletedCheckpointStore extends AbstractCompleteCheckpoint
     @VisibleForTesting
     void removeOldestCheckpoint() throws Exception {
         CompletedCheckpoint checkpointToSubsume = checkpoints.removeFirst();
-        checkpointToSubsume.discardOnSubsume();
+        subsumeCheckpoint(checkpointToSubsume);
         unregisterUnusedState(checkpoints);
+    }
+
+    private void subsumeCheckpoint(CompletedCheckpoint checkpointToSubsume) throws Exception {
+        checkpointToSubsume.discardOnSubsume();
+        tryToDeleteClaimedLocation();
     }
 
     @Override

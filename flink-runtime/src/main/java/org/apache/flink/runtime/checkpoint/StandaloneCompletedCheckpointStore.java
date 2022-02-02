@@ -101,7 +101,10 @@ public class StandaloneCompletedCheckpointStore extends AbstractCompleteCheckpoi
                 CheckpointSubsumeHelper.subsume(
                                 checkpoints,
                                 maxNumberOfCheckpointsToRetain,
-                                CompletedCheckpoint::discardOnSubsume)
+                                subsumedCheckpoint -> {
+                                    subsumedCheckpoint.discardOnSubsume();
+                                    tryToDeleteClaimedLocation();
+                                })
                         .orElse(null);
 
         unregisterUnusedState(checkpoints);
@@ -136,6 +139,7 @@ public class StandaloneCompletedCheckpointStore extends AbstractCompleteCheckpoi
                 if (!checkpoint.discardOnShutdown(jobStatus)) {
                     lowestRetained = Math.min(checkpoint.getCheckpointID(), lowestRetained);
                 }
+                tryToDeleteClaimedLocation();
             }
             if (jobStatus.isGloballyTerminalState()) {
                 // Now discard the shared state of not subsumed checkpoints - only if:

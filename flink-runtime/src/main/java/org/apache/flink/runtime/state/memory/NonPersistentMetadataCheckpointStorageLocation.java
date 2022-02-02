@@ -86,6 +86,11 @@ public class NonPersistentMetadataCheckpointStorageLocation extends MemCheckpoin
 
         @Override
         public void disposeStorageLocation() {}
+
+        @Override
+        public boolean isEmpty() throws IOException {
+            return true;
+        }
     }
 
     // ------------------------------------------------------------------------

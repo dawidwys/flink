@@ -2148,6 +2148,11 @@ public class JobMasterTest extends TestLogger {
 
         @Override
         public void disposeStorageLocation() throws IOException {}
+
+        @Override
+        public boolean isEmpty() throws IOException {
+            return true;
+        }
     }
 
     private static void registerSlotsRequiredForJobExecution(

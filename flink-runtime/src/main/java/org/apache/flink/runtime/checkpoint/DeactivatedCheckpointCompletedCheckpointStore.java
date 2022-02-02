@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 
 import java.util.List;
@@ -37,6 +38,11 @@ public enum DeactivatedCheckpointCompletedCheckpointStore implements CompletedCh
             CheckpointsCleaner checkpointsCleaner,
             Runnable postCleanup)
             throws Exception {
+        throw unsupportedOperationException();
+    }
+
+    @Override
+    public void deleteLocationWhenEmpty(CompletedCheckpointStorageLocation storageLocation) {
         throw unsupportedOperationException();
     }
 

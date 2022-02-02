@@ -62,4 +62,9 @@ public class TestCompletedCheckpointStorageLocation implements CompletedCheckpoi
     public void disposeStorageLocation() throws IOException {
         disposed = true;
     }
+
+    @Override
+    public boolean isEmpty() throws IOException {
+        return true;
+    }
 }

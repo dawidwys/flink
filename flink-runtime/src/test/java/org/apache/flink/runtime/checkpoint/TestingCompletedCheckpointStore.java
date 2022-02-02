@@ -18,6 +18,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 
 import java.util.Collections;
@@ -38,6 +39,11 @@ public final class TestingCompletedCheckpointStore implements CompletedCheckpoin
             CompletedCheckpoint checkpoint,
             CheckpointsCleaner checkpointsCleaner,
             Runnable postCleanup) {
+        throw new UnsupportedOperationException("Not implemented.");
+    }
+
+    @Override
+    public void deleteLocationWhenEmpty(CompletedCheckpointStorageLocation storageLocation) {
         throw new UnsupportedOperationException("Not implemented.");
     }
 

@@ -43,4 +43,9 @@ public interface CompletedCheckpointStorageLocation extends java.io.Serializable
      * checkpoint directory.
      */
     void disposeStorageLocation() throws IOException;
+
+    /**
+     * Checks if the storage location is empty, and thus safe to {@link #disposeStorageLocation()}.
+     */
+    boolean isEmpty() throws IOException;
 }

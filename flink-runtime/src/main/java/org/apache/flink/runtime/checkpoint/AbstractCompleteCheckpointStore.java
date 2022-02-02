@@ -19,8 +19,13 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.SharedStateRegistry;
+import org.apache.flink.util.WrappingRuntimeException;
 
+import javax.annotation.concurrent.GuardedBy;
+
+import java.io.IOException;
 import java.util.Deque;
 import java.util.Optional;
 
@@ -31,8 +36,18 @@ import java.util.Optional;
 public abstract class AbstractCompleteCheckpointStore implements CompletedCheckpointStore {
     private final SharedStateRegistry sharedStateRegistry;
 
+    private final Object lock = new Object();
+
+    @GuardedBy("lock")
+    private CompletedCheckpointStorageLocation locationToDeleteWhenEmpty;
+
     public AbstractCompleteCheckpointStore(SharedStateRegistry sharedStateRegistry) {
         this.sharedStateRegistry = sharedStateRegistry;
+    }
+
+    @Override
+    public void deleteLocationWhenEmpty(CompletedCheckpointStorageLocation storageLocation) {
+        this.locationToDeleteWhenEmpty = storageLocation;
     }
 
     @Override
@@ -45,6 +60,26 @@ public abstract class AbstractCompleteCheckpointStore implements CompletedCheckp
             throws Exception {
         if (jobStatus.isGloballyTerminalState()) {
             sharedStateRegistry.close();
+        }
+    }
+
+    protected final void tryToDeleteClaimedLocation() {
+        try {
+            if (locationToDeleteWhenEmpty == null) {
+                return;
+            }
+            CompletedCheckpointStorageLocation locationToDelete = null;
+            synchronized (lock) {
+                if (locationToDeleteWhenEmpty != null && locationToDeleteWhenEmpty.isEmpty()) {
+                    locationToDelete = locationToDeleteWhenEmpty;
+                    locationToDeleteWhenEmpty = null;
+                }
+            }
+            if (locationToDelete != null) {
+                locationToDelete.disposeStorageLocation();
+            }
+        } catch (IOException e) {
+            throw new WrappingRuntimeException(e);
         }
     }
 

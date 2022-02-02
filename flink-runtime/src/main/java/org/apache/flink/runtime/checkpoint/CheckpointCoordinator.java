@@ -42,6 +42,7 @@ import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageCoordinatorView;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
+import org.apache.flink.runtime.state.StreamStateHandle;
 import org.apache.flink.runtime.state.memory.ByteStreamStateHandle;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkRuntimeException;
@@ -1743,6 +1744,20 @@ public class CheckpointCoordinator {
                         allowNonRestored,
                         checkpointProperties);
 
+        if (restoreSettings.getRestoreMode() == RestoreMode.CLAIM) {
+            completedCheckpointStore.deleteLocationWhenEmpty(checkpointLocation);
+            savepoint =
+                    new CompletedCheckpoint(
+                            savepoint.getJobId(),
+                            savepoint.getCheckpointID(),
+                            savepoint.getTimestamp(),
+                            savepoint.getCompletionTimestamp(),
+                            savepoint.getOperatorStates(),
+                            savepoint.getMasterHookStates(),
+                            savepoint.getProperties(),
+                            new NonDisposingCompletedCheckpointLocation(checkpointLocation));
+        }
+
         // register shared state - even before adding the checkpoint to the store
         // because the latter might trigger subsumption so the ref counts must be up-to-date
         savepoint.registerSharedStatesAfterRestored(
@@ -2216,5 +2231,35 @@ public class CheckpointCoordinator {
     @Nullable
     private PendingCheckpointStats getStatsCallback(PendingCheckpoint pendingCheckpoint) {
         return statsTracker.getPendingCheckpointStats(pendingCheckpoint.getCheckpointID());
+    }
+
+    private static final class NonDisposingCompletedCheckpointLocation
+            implements CompletedCheckpointStorageLocation {
+        private final CompletedCheckpointStorageLocation wrapped;
+
+        private NonDisposingCompletedCheckpointLocation(
+                CompletedCheckpointStorageLocation wrapped) {
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public String getExternalPointer() {
+            return wrapped.getExternalPointer();
+        }
+
+        @Override
+        public StreamStateHandle getMetadataHandle() {
+            return wrapped.getMetadataHandle();
+        }
+
+        @Override
+        public void disposeStorageLocation() throws IOException {
+            // disposal of the location is ceded to the completed checkpoint store
+        }
+
+        @Override
+        public boolean isEmpty() throws IOException {
+            return wrapped.isEmpty();
+        }
     }
 }

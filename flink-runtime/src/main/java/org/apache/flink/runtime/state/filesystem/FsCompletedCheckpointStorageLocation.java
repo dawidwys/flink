@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.state.filesystem;
 
+import org.apache.flink.core.fs.FileStatus;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
@@ -72,5 +73,15 @@ public class FsCompletedCheckpointStorageLocation implements CompletedCheckpoint
             fs = exclusiveCheckpointDir.getFileSystem();
         }
         fs.delete(exclusiveCheckpointDir, false);
+    }
+
+    @Override
+    public boolean isEmpty() throws IOException {
+        if (fs == null) {
+            fs = exclusiveCheckpointDir.getFileSystem();
+        }
+
+        final FileStatus[] statuses = fs.listStatus(exclusiveCheckpointDir);
+        return statuses == null || statuses.length == 0;
     }
 }

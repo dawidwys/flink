@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.checkpoint;
 
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 
 import org.slf4j.Logger;
@@ -48,6 +49,15 @@ public interface CompletedCheckpointStore {
             CheckpointsCleaner checkpointsCleaner,
             Runnable postCleanup)
             throws Exception;
+
+    /**
+     * Tells the {@link CompletedCheckpointStore} to try to delete the given storage location. Each
+     * time a checkpoint is subsumed, the store will try to delete the location, as the subsumption
+     * might have deleted a shared files from within the given location.
+     *
+     * @param storageLocation location to delete
+     */
+    void deleteLocationWhenEmpty(CompletedCheckpointStorageLocation storageLocation);
 
     /**
      * Returns the latest {@link CompletedCheckpoint} instance or <code>null</code> if none was

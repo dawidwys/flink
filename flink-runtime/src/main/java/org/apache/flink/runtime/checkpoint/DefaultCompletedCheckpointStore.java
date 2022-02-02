@@ -226,7 +226,13 @@ public class DefaultCompletedCheckpointStore<R extends ResourceVersion<R>>
             throws Exception {
         if (tryRemove(completedCheckpoint.getCheckpointID())) {
             checkpointsCleaner.cleanCheckpoint(
-                    completedCheckpoint, shouldDiscard, postCleanup, ioExecutor);
+                    completedCheckpoint,
+                    shouldDiscard,
+                    () -> {
+                        postCleanup.run();
+                        tryToDeleteClaimedLocation();
+                    },
+                    ioExecutor);
             return shouldDiscard;
         }
         return shouldDiscard;
