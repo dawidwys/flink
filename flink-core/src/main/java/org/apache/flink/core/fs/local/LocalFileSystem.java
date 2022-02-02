@@ -164,7 +164,7 @@ public class LocalFileSystem extends FileSystem {
         }
         results = new FileStatus[names.length];
         for (int i = 0; i < names.length; i++) {
-            results[i] = getFileStatus(new Path(f, names[i]));
+            results[i] = new LocalFileStatus(pathToFile(new Path(f, names[i])), this);
         }
 
         return results;
