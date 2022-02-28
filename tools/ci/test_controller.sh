@@ -115,7 +115,9 @@ else
 	fi
 	MVN_TEST_MODULES=$(get_test_modules_for_stage ${STAGE})
 
-	run_with_watchdog "run_mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE $MVN_TEST_MODULES verify" $CALLBACK_ON_TIMEOUT
+  for (( i = 0; i < 30; i++ )); do
+    run_with_watchdog "run_mvn -Dtest=org.apache.flink.test.checkpointing.UnalignedCheckpointRescaleITCase -DfailIfNoTests=false $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE $MVN_TEST_MODULES verify" $CALLBACK_ON_TIMEOUT
+  done
 	EXIT_CODE=$?
 fi
 
