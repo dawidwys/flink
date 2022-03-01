@@ -21,14 +21,12 @@ package org.apache.flink.streaming.runtime.tasks;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
-import org.apache.flink.runtime.checkpoint.CheckpointType;
 import org.apache.flink.runtime.checkpoint.SavepointType;
 import org.apache.flink.runtime.checkpoint.SnapshotType;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.StopMode;
 import org.apache.flink.runtime.metrics.MetricNames;
-import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.operators.StreamSource;
@@ -37,10 +35,12 @@ import org.apache.flink.streaming.runtime.tasks.mailbox.MailboxDefaultAction;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FatalExitExceptionHandler;
 import org.apache.flink.util.FlinkException;
+import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -67,7 +67,7 @@ public class SourceStreamTask<
     private final LegacySourceFunctionThread sourceThread;
     private final Object lock;
 
-    private volatile boolean externallyInducedCheckpoints;
+    private volatile ExternallyInducedCheckpoints externallyInducedCheckpoints;
 
     private final AtomicBoolean stopped = new AtomicBoolean(false);
 
@@ -118,45 +118,10 @@ public class SourceStreamTask<
         // than the trigger
         SourceFunction<?> source = mainOperator.getUserFunction();
         if (source instanceof ExternallyInducedSource) {
-            externallyInducedCheckpoints = true;
+            externallyInducedCheckpoints = new ExternallyInducedCheckpoints();
 
-            ExternallyInducedSource.CheckpointTrigger triggerHook =
-                    new ExternallyInducedSource.CheckpointTrigger() {
-
-                        @Override
-                        public void triggerCheckpoint(long checkpointId) throws FlinkException {
-                            // TODO - we need to see how to derive those. We should probably not
-                            // encode this in the
-                            // TODO -   source's trigger message, but do a handshake in this task
-                            // between the trigger
-                            // TODO -   message from the master, and the source's trigger
-                            // notification
-                            final CheckpointOptions checkpointOptions =
-                                    CheckpointOptions.forConfig(
-                                            CheckpointType.CHECKPOINT,
-                                            CheckpointStorageLocationReference.getDefault(),
-                                            configuration.isExactlyOnceCheckpointMode(),
-                                            configuration.isUnalignedCheckpointsEnabled(),
-                                            configuration.getAlignedCheckpointTimeout().toMillis());
-                            final long timestamp = System.currentTimeMillis();
-
-                            final CheckpointMetaData checkpointMetaData =
-                                    new CheckpointMetaData(checkpointId, timestamp, timestamp);
-
-                            try {
-                                SourceStreamTask.super
-                                        .triggerCheckpointAsync(
-                                                checkpointMetaData, checkpointOptions)
-                                        .get();
-                            } catch (RuntimeException e) {
-                                throw e;
-                            } catch (Exception e) {
-                                throw new FlinkException(e.getMessage(), e);
-                            }
-                        }
-                    };
-
-            ((ExternallyInducedSource<?, ?>) source).setCheckpointTrigger(triggerHook);
+            ((ExternallyInducedSource<?, ?>) source)
+                    .setCheckpointTrigger(this::externallyInducedTriggerHook);
         }
         getEnvironment()
                 .getMetricGroup()
@@ -164,6 +129,29 @@ public class SourceStreamTask<
                 .gauge(
                         MetricNames.CHECKPOINT_START_DELAY_TIME,
                         this::getAsyncCheckpointStartDelayNanos);
+    }
+
+    private void externallyInducedTriggerHook(long checkpointId) throws FlinkException {
+        final Optional<ExternallyInducedCheckpoints.CheckpointParameters> toTrigger =
+                externallyInducedCheckpoints.triggerCheckpoint(checkpointId);
+
+        if (toTrigger.isPresent()) {
+            final ExternallyInducedCheckpoints.CheckpointParameters params = toTrigger.get();
+            final long timestamp = System.currentTimeMillis();
+
+            final CheckpointMetaData checkpointMetaData =
+                    new CheckpointMetaData(checkpointId, params.getTriggeringTime(), timestamp);
+
+            try {
+                SourceStreamTask.super
+                        .triggerCheckpointAsync(checkpointMetaData, params.getOptions())
+                        .get();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new FlinkException(e.getMessage(), e);
+            }
+        }
     }
 
     @Override
@@ -254,28 +242,41 @@ public class SourceStreamTask<
     @Override
     public CompletableFuture<Boolean> triggerCheckpointAsync(
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
-        if (!externallyInducedCheckpoints) {
+        if (externallyInducedCheckpoints == null) {
             if (isSynchronousSavepoint(checkpointOptions.getCheckpointType())) {
                 return triggerStopWithSavepointAsync(checkpointMetaData, checkpointOptions);
             } else {
                 return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
             }
-        } else if (checkpointOptions.getCheckpointType().equals(CheckpointType.FULL_CHECKPOINT)) {
-            // see FLINK-25256
-            throw new IllegalStateException(
-                    "Using externally induced sources, we can not enforce taking a full checkpoint."
-                            + "If you are restoring from a snapshot in NO_CLAIM mode, please use"
-                            + " either CLAIM or LEGACY mode.");
+        } else if (isSynchronousSavepoint(checkpointOptions.getCheckpointType())) {
+            throw new FlinkRuntimeException(
+                    "Stopping with savepoint is not supported in combination with externally"
+                            + " induced sources.");
         } else {
             // we do not trigger checkpoints here, we simply state whether we can trigger them
             synchronized (lock) {
-                return CompletableFuture.completedFuture(isRunning());
+                return triggerExternallyInducedCheckpointAsync(
+                        checkpointMetaData, checkpointOptions);
             }
         }
     }
 
     private boolean isSynchronousSavepoint(SnapshotType snapshotType) {
         return snapshotType.isSavepoint() && ((SavepointType) snapshotType).isSynchronous();
+    }
+
+    private CompletableFuture<Boolean> triggerExternallyInducedCheckpointAsync(
+            CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
+        final boolean running = isRunning();
+        if (running) {
+            final boolean shouldTrigger =
+                    externallyInducedCheckpoints.registerCheckpoint(
+                            checkpointMetaData, checkpointOptions);
+            if (shouldTrigger) {
+                return super.triggerCheckpointAsync(checkpointMetaData, checkpointOptions);
+            }
+        }
+        return CompletableFuture.completedFuture(running);
     }
 
     private CompletableFuture<Boolean> triggerStopWithSavepointAsync(
@@ -308,8 +309,10 @@ public class SourceStreamTask<
 
     @Override
     protected void declineCheckpoint(long checkpointId) {
-        if (!externallyInducedCheckpoints) {
+        if (externallyInducedCheckpoints == null) {
             super.declineCheckpoint(checkpointId);
+        } else {
+            externallyInducedCheckpoints.declineCheckpoint(checkpointId);
         }
     }
 
