@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
+import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
@@ -61,7 +62,7 @@ import java.util.stream.Collectors;
 /** A {@link SplitReader} implementation that reads records from Kafka partitions. */
 @Internal
 public class KafkaPartitionSplitReader
-        implements SplitReader<ConsumerRecord<byte[], byte[]>, KafkaPartitionSplit> {
+        implements AlignedSplitReader<ConsumerRecord<byte[], byte[]>, KafkaPartitionSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionSplitReader.class);
     private static final long POLL_TIMEOUT = 10000L;
 
@@ -396,6 +397,20 @@ public class KafkaPartitionSplitReader
         if (needToRegister) {
             kafkaSourceReaderMetrics.registerKafkaConsumerMetrics(consumer);
         }
+    }
+
+    @Override
+    public void alignSplits(
+            Collection<KafkaPartitionSplit> splitsToPause,
+            Collection<KafkaPartitionSplit> splitsToResume) {
+        consumer.resume(
+                splitsToResume.stream()
+                        .map(KafkaPartitionSplit::getTopicPartition)
+                        .collect(Collectors.toList()));
+        consumer.pause(
+                splitsToPause.stream()
+                        .map(KafkaPartitionSplit::getTopicPartition)
+                        .collect(Collectors.toList()));
     }
 
     // ---------------- private helper class ------------------------
