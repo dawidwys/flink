@@ -50,6 +50,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 public class WatermarkOutputMultiplexer {
     /** A callback for propagating changes to split based watermarks. */
     @FunctionalInterface
+    @Internal
     public interface SplitWatermarkUpdateListener {
         void updateWatermark(long watermark);
     }
