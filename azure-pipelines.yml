@@ -100,7 +100,6 @@ stages:
           environment: PROFILE="-Dhadoop.version=2.8.5 -Dinclude_hadoop_aws -Dscala-2.12"
           container: flink-build-container
           jdk: 8
-          test_pattern: variables['TEST-PATTERN']
   # CI / Special stage for release, e.g. building PyFlink wheel packages, etc:
   - stage: ci_release
     displayName: "CI build (release)"

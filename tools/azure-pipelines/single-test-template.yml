@@ -20,7 +20,6 @@ parameters:
   environment: # defines environment variables for downstream scripts
   container: # the container name for the build
   jdk: # the jdk version to use
-  test_pattern: # the pattern for choosing tests to run
 
 jobs:
   - job: run_single_test_${{parameters.stage_name}}
@@ -60,7 +59,7 @@ jobs:
         displayName: Set coredump pattern
 
       # Test
-      - script: ${{parameters.environment}} ./tools/azure-pipelines/uploading_watchdog.sh ./tools/ci/test_controller.sh single-test ${{parameters.test_pattern}}
+      - script: ${{parameters.environment}} ./tools/azure-pipelines/uploading_watchdog.sh ./tools/ci/test_controller.sh single-test $(TEST_PATTERN)
         displayName: Test - single-test
         env:
           IT_CASE_S3_BUCKET: $(SECRET_S3_BUCKET)

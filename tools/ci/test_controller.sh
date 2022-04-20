@@ -113,9 +113,9 @@ if [ $STAGE == $STAGE_PYTHON ]; then
 elif [ $STAGE == $STAGE_SINGLE_TEST ]; then
   echo "Running single test"
 	MVN_TEST_OPTIONS="-Dflink.tests.with-openssl -Dflink.tests.check-segment-multiple-free -Darchunit.freeze.store.default.allowStoreUpdate=false -Dakka.rpc.force-invocation-serialization"
-	MVN_SINGLE_TEST="-Dtest=${TEST_PATTERN}"
+	MVN_SINGLE_TEST="-DfailIfNoTests=false -Dtest=${TEST_PATTERN}"
 
-	run_with_watchdog "run_mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE $MVN_SINGLE_TEST verify" $CALLBACK_ON_TIMEOUT
+	run_with_watchdog "run_mvn $MVN_COMMON_OPTIONS $MVN_TEST_OPTIONS $PROFILE $MVN_SINGLE_TEST install" $CALLBACK_ON_TIMEOUT
 	EXIT_CODE=$?
 else
 	MVN_TEST_OPTIONS="-Dflink.tests.with-openssl -Dflink.tests.check-segment-multiple-free -Darchunit.freeze.store.default.allowStoreUpdate=false -Dakka.rpc.force-invocation-serialization"
