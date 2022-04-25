@@ -25,7 +25,6 @@ import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SourceSplit;
-import org.apache.flink.api.connector.source.WithSplitsAlignment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -40,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +66,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  */
 @PublicEvolving
 public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitStateT>
-        implements SourceReader<T, SplitT>, WithSplitsAlignment {
+        implements SourceReader<T, SplitT> {
     private static final Logger LOG = LoggerFactory.getLogger(SourceReaderBase.class);
 
     /** A queue to buffer the elements fetched by the fetcher thread. */
@@ -242,11 +240,6 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
                                 s.splitId(), new SplitContext<>(s.splitId(), initializedState(s))));
         // Hand over the splits to the split fetcher to start fetch.
         splitFetcherManager.addSplits(splits);
-    }
-
-    @Override
-    public void alignSplits(Collection<String> splitsToPause, Collection<String> splitsToResume) {
-        splitFetcherManager.alignSplits(splitsToPause, splitsToResume);
     }
 
     @Override

@@ -83,7 +83,8 @@ public class SourceOperatorTestContext implements AutoCloseable {
                         mockGateway,
                         SUBTASK_INDEX,
                         5,
-                        true);
+                        true,
+                        false);
         Environment env = getTestingEnvironment();
         operator.setup(
                 new SourceOperatorStreamTask<Integer>(env),

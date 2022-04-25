@@ -19,6 +19,7 @@
 package org.apache.flink.api.connector.source;
 
 import org.apache.flink.annotation.Public;
+import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 import java.io.Serializable;
@@ -95,4 +96,10 @@ public interface Source<T, SplitT extends SourceSplit, EnumChkT> extends Seriali
      * @return The serializer for the SplitEnumerator checkpoint.
      */
     SimpleVersionedSerializer<EnumChkT> getEnumeratorCheckpointSerializer();
+
+    /** Tells the framework if the {@link SourceReader} supports pausing splits consumption. */
+    @PublicEvolving
+    default boolean supportsPausingSplits() {
+        return false;
+    }
 }

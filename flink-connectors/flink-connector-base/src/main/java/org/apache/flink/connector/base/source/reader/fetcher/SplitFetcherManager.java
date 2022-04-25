@@ -21,7 +21,6 @@ package org.apache.flink.connector.base.source.reader.fetcher;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.connector.source.SourceSplit;
-import org.apache.flink.api.connector.source.WithSplitsAlignment;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.SourceReaderBase;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -54,8 +53,7 @@ import java.util.function.Supplier;
  * fetcher may spawn a new thread every time a new split is assigned.
  */
 @Internal
-public abstract class SplitFetcherManager<E, SplitT extends SourceSplit>
-        implements WithSplitsAlignment {
+public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(SplitFetcherManager.class);
 
     private final Consumer<Throwable> errorHandler;
@@ -145,15 +143,14 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit>
 
     public abstract void addSplits(List<SplitT> splitsToAdd);
 
-    @Override
-    public void alignSplits(
+    public void alignSplitsWatermarks(
             Collection<String> splitIdsToPause, Collection<String> splitIdsToResume) {
         for (SplitFetcher<E, SplitT> fetcher : fetchers.values()) {
             Map<String, SplitT> idToSplit = fetcher.assignedSplits();
             List<SplitT> splitsToPause = lookupInAssignment(splitIdsToPause, idToSplit);
             List<SplitT> splitsToResume = lookupInAssignment(splitIdsToResume, idToSplit);
             if (!splitsToPause.isEmpty() || !splitsToResume.isEmpty()) {
-                fetcher.alignSplits(splitsToPause, splitsToResume);
+                fetcher.pauseOrResumeSplits(splitsToPause, splitsToResume);
             }
         }
     }

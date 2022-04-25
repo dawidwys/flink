@@ -29,7 +29,6 @@ import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SourceSplit;
-import org.apache.flink.api.connector.source.WithSplitsAlignment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MetricOptions;
 import org.apache.flink.core.io.InputStatus;
@@ -168,7 +167,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     private final Map<String, Long> splitCurrentWatermarks = new HashMap<>();
     private final Set<String> currentlyPausedSplits = new HashSet<>();
-    private @Nullable WithSplitsAlignment aligningSourceReader;
+    private final boolean supportsPausingSplits;
 
     private enum OperatingMode {
         READING,
@@ -197,12 +196,14 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
             ProcessingTimeService timeService,
             Configuration configuration,
             String localHostname,
-            boolean emitProgressiveWatermarks) {
+            boolean emitProgressiveWatermarks,
+            boolean supportsPausingSplits) {
 
         this.readerFactory = checkNotNull(readerFactory);
         this.operatorEventGateway = checkNotNull(operatorEventGateway);
         this.splitSerializer = checkNotNull(splitSerializer);
         this.watermarkStrategy = checkNotNull(watermarkStrategy);
+        this.supportsPausingSplits = supportsPausingSplits;
         this.processingTimeService = timeService;
         this.configuration = checkNotNull(configuration);
         this.localHostname = checkNotNull(localHostname);
@@ -297,9 +298,6 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 };
 
         sourceReader = readerFactory.apply(context);
-        if (sourceReader instanceof WithSplitsAlignment) {
-            this.aligningSourceReader = (WithSplitsAlignment) sourceReader;
-        }
     }
 
     public InternalSourceReaderMetricGroup getSourceMetricGroup() {
@@ -575,7 +573,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     private void updateMaxDesiredWatermark(WatermarkAlignmentEvent event) {
         currentMaxDesiredWatermark = event.getMaxWatermark();
-        if (aligningSourceReader != null) {
+        if (this.supportsPausingSplits) {
             checkSplitWatermarkAlignment();
         }
         sourceMetricGroup.updateMaxDesiredWatermark(currentMaxDesiredWatermark);
@@ -589,12 +587,12 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
 
     @Override
     public void updateCurrentSplitWatermark(String splitId, long watermark) {
-        if (aligningSourceReader == null) {
+        if (!this.supportsPausingSplits) {
             return;
         }
         splitCurrentWatermarks.put(splitId, watermark);
         if (currentMaxDesiredWatermark < watermark && !currentlyPausedSplits.contains(splitId)) {
-            aligningSourceReader.alignSplits(
+            sourceReader.pauseOrResumeSplits(
                     Collections.singletonList(splitId), Collections.emptyList());
             currentlyPausedSplits.add(splitId);
         }
@@ -617,7 +615,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit> extends AbstractStr
                 });
         splitsToPause.removeAll(currentlyPausedSplits);
         if (!splitsToPause.isEmpty() || !splitsToResume.isEmpty()) {
-            aligningSourceReader.alignSplits(splitsToPause, splitsToResume);
+            sourceReader.pauseOrResumeSplits(splitsToPause, splitsToResume);
             currentlyPausedSplits.addAll(splitsToPause);
             splitsToResume.forEach(currentlyPausedSplits::remove);
         }

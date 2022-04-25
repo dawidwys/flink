@@ -20,7 +20,7 @@ package org.apache.flink.connector.base.source.reader.fetcher;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceSplit;
-import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
+import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -28,7 +28,7 @@ import java.util.Collection;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Changes the paused splits of a n{@link AlignedSplitReader}. The task is used by default in {@link
+ * Changes the paused splits of a n{@link SplitReader}. The task is used by default in {@link
  * SplitFetcherManager} and assumes that a {@link SplitFetcher} has multiple splits. For {@code
  * SplitFetchers} with single splits, it's instead recommended to subclass {@link
  * SplitFetcherManager} and pause the whole {@code SplitFetcher}.
@@ -36,14 +36,14 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * @param <SplitT> the type of the split
  */
 @Internal
-class AlignmentTask<SplitT extends SourceSplit> implements SplitFetcherTask {
+class PauseOrResumeSplitsTask<SplitT extends SourceSplit> implements SplitFetcherTask {
 
-    private final AlignedSplitReader<?, SplitT> splitReader;
+    private final SplitReader<?, SplitT> splitReader;
     private final Collection<SplitT> splitsToPause;
     private final Collection<SplitT> splitsToResume;
 
-    AlignmentTask(
-            AlignedSplitReader<?, SplitT> splitReader,
+    PauseOrResumeSplitsTask(
+            SplitReader<?, SplitT> splitReader,
             Collection<SplitT> splitsToPause,
             Collection<SplitT> splitsToResume) {
         this.splitReader = checkNotNull(splitReader);
@@ -53,7 +53,7 @@ class AlignmentTask<SplitT extends SourceSplit> implements SplitFetcherTask {
 
     @Override
     public boolean run() throws IOException {
-        splitReader.alignSplits(splitsToPause, splitsToResume);
+        splitReader.pauseOrResumeSplits(splitsToPause, splitsToResume);
         return true;
     }
 

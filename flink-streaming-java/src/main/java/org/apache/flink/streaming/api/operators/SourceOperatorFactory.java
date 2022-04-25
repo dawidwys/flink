@@ -105,7 +105,8 @@ public class SourceOperatorFactory<OUT> extends AbstractStreamOperatorFactory<OU
                                 .getEnvironment()
                                 .getTaskManagerInfo()
                                 .getTaskManagerExternalAddress(),
-                        emitProgressiveWatermarks);
+                        emitProgressiveWatermarks,
+                        source.supportsPausingSplits());
 
         sourceOperator.setup(
                 parameters.getContainingTask(),
@@ -159,7 +160,8 @@ public class SourceOperatorFactory<OUT> extends AbstractStreamOperatorFactory<OU
                     ProcessingTimeService timeService,
                     Configuration config,
                     String localHostName,
-                    boolean emitProgressiveWatermarks) {
+                    boolean emitProgressiveWatermarks,
+                    boolean supportsPausingSplits) {
 
         // jumping through generics hoops: cast the generics away to then cast them back more
         // strictly typed
@@ -180,6 +182,7 @@ public class SourceOperatorFactory<OUT> extends AbstractStreamOperatorFactory<OU
                 timeService,
                 config,
                 localHostName,
-                emitProgressiveWatermarks);
+                emitProgressiveWatermarks,
+                supportsPausingSplits);
     }
 }

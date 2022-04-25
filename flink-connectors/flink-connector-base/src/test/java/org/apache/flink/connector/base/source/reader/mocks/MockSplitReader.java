@@ -21,7 +21,7 @@ package org.apache.flink.connector.base.source.reader.mocks;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
+import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 
@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - A non-blocking fetch do not expect to be interrupted. 2. handle splits changes in one
  * handleSplitsChanges call or handle one change in each call of handleSplitsChanges.
  */
-public class MockSplitReader implements AlignedSplitReader<int[], MockSourceSplit> {
+public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
     // Use LinkedHashMap for determinism.
     private final Map<String, MockSourceSplit> splits = new LinkedHashMap<>();
     private final int numRecordsPerSplitPerFetch;
@@ -148,7 +148,7 @@ public class MockSplitReader implements AlignedSplitReader<int[], MockSourceSpli
     }
 
     @Override
-    public void alignSplits(
+    public void pauseOrResumeSplits(
             Collection<MockSourceSplit> splitsToPause, Collection<MockSourceSplit> splitsToResume) {
         if (!splitsToPause.isEmpty()) {
             assertThat(pausedSplits).doesNotContainAnyElementsOf(splitsToPause);

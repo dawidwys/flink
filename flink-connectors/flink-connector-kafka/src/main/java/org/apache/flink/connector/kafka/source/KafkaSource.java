@@ -196,6 +196,11 @@ public class KafkaSource<OUT>
                 checkpoint.assignedPartitions());
     }
 
+    @Override
+    public boolean supportsPausingSplits() {
+        return true;
+    }
+
     @Internal
     @Override
     public SimpleVersionedSerializer<KafkaPartitionSplit> getSplitSerializer() {

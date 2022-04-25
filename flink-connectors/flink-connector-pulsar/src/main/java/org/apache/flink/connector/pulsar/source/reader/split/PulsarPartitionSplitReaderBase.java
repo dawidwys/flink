@@ -21,7 +21,7 @@ package org.apache.flink.connector.pulsar.source.reader.split;
 import org.apache.flink.api.common.time.Deadline;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.splitreader.AlignedSplitReader;
+import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.connector.pulsar.source.config.SourceConfiguration;
@@ -64,7 +64,7 @@ import static org.apache.flink.connector.pulsar.source.config.PulsarSourceConfig
  * @param <OUT> the type of the pulsar source message that would be serialized to downstream.
  */
 abstract class PulsarPartitionSplitReaderBase<OUT>
-        implements AlignedSplitReader<PulsarMessage<OUT>, PulsarPartitionSplit> {
+        implements SplitReader<PulsarMessage<OUT>, PulsarPartitionSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PulsarPartitionSplitReaderBase.class);
 
     protected final PulsarClient pulsarClient;
@@ -181,7 +181,7 @@ abstract class PulsarPartitionSplitReaderBase<OUT>
     }
 
     @Override
-    public void alignSplits(
+    public void pauseOrResumeSplits(
             Collection<PulsarPartitionSplit> splitsToPause,
             Collection<PulsarPartitionSplit> splitsToResume) {
         if (splitsToPause.size() > 1 || splitsToResume.size() > 1) {

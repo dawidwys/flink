@@ -23,6 +23,7 @@ import org.apache.flink.api.connector.source.SourceSplit;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 
 import java.io.IOException;
+import java.util.Collection;
 
 /**
  * An interface used to read from splits. The implementation could either read from a single split
@@ -68,4 +69,19 @@ public interface SplitReader<E, SplitT extends SourceSplit> {
      * @throws Exception if closing the split reader failed.
      */
     void close() throws Exception;
+
+    /**
+     * Temporarily halts consumption of some splits and resume consumption of others.
+     *
+     * <p>Note that no other methods can be called in parallel, so it's fine to non-atomically
+     * update subscriptions. This method is simply providing connectors with more expressive APIs
+     * the opportunity to update all subscriptions at once.
+     *
+     * <p>This is currently used for align the watermarks of splits.
+     *
+     * @param splitsToPause the splits to pause
+     * @param splitsToResume the splits to resume
+     */
+    default void pauseOrResumeSplits(
+            Collection<SplitT> splitsToPause, Collection<SplitT> splitsToResume) {}
 }

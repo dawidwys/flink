@@ -23,7 +23,6 @@ import org.apache.flink.api.common.eventtime.Watermark;
 import org.apache.flink.api.common.eventtime.WatermarkGenerator;
 import org.apache.flink.api.common.eventtime.WatermarkOutput;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.connector.source.WithSplitsAlignment;
 import org.apache.flink.api.connector.source.mocks.MockSourceReader;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.api.connector.source.mocks.MockSourceSplitSerializer;
@@ -89,6 +88,7 @@ public class SourceOperatorSplitWatermarkAlignmentTest {
                         new MockOperatorEventGateway(),
                         1,
                         5,
+                        true,
                         true);
         Environment env = getTestingEnvironment();
         operator.setup(
@@ -129,16 +129,25 @@ public class SourceOperatorSplitWatermarkAlignmentTest {
                 new TestTaskStateManager());
     }
 
-    private static class SplitAligningSourceReader extends MockSourceReader
-            implements WithSplitsAlignment {
+    private static class SplitAligningSourceReader extends MockSourceReader {
         Set<String> pausedSplits = new HashSet<>();
 
         public SplitAligningSourceReader() {
             super(WaitingForSplits.DO_NOT_WAIT_FOR_SPLITS, false, true);
         }
 
-        @Override
-        public void alignSplits(
+        /**
+         * Align the watermarks of splits by temporarily halt consumption of some splits and resume
+         * consumption of others.
+         *
+         * <p>Note that no other methods can be called in parallel (except {@link #wakeUp()}, so
+         * it's fine to non-atomically update subscriptions. This method is simply providing
+         * connectors with more expressive APIs the opportunity to update all subscriptions at once.
+         *
+         * @param splitsToPause the splits to pause
+         * @param splitsToResume the splits to resume
+         */
+        public void pauseOrResumeSplits(
                 Collection<String> splitsToPause, Collection<String> splitsToResume) {
             pausedSplits.removeAll(splitsToResume);
             pausedSplits.addAll(splitsToPause);

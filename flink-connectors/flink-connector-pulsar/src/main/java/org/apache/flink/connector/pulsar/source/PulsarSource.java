@@ -185,4 +185,9 @@ public final class PulsarSource<OUT>
     public TypeInformation<OUT> getProducedType() {
         return deserializationSchema.getProducedType();
     }
+
+    @Override
+    public boolean supportsPausingSplits() {
+        return true;
+    }
 }

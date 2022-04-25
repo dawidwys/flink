@@ -19,12 +19,14 @@
 package org.apache.flink.api.connector.source;
 
 import org.apache.flink.annotation.Public;
+import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.state.CheckpointListener;
 import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.groups.OperatorIOMetricGroup;
 import org.apache.flink.metrics.groups.SourceReaderMetricGroup;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,9 +38,6 @@ import java.util.concurrent.CompletableFuture;
  * org.apache.flink.connector.base.source.reader.SourceReaderBase SourceReaderBase} which provides
  * an efficient hand-over protocol to avoid blocking I/O inside the task thread and supports various
  * split-threading models.
- *
- * <p>If the source reader reads split in parallel and can align on a global watermark (recommended
- * for message queues), {@link AlignedSourceReader} should be implemented.
  *
  * <p>Implementations can provide the following metrics:
  *
@@ -140,4 +139,22 @@ public interface SourceReader<T, SplitT extends SourceSplit>
      */
     @Override
     default void notifyCheckpointComplete(long checkpointId) throws Exception {}
+
+    /**
+     * Temporarily halts consumption of some splits and resume consumption of others.
+     *
+     * <p>Note that no other methods can be called in parallel, so it's fine to non-atomically
+     * update subscriptions. This method is simply providing connectors with more expressive APIs
+     * the opportunity to update all subscriptions at once.
+     *
+     * <p>This is currently used for align the watermarks of splits.
+     *
+     * <p>This method must be implemented if {@link Source#supportsPausingSplits()} returns true.
+     *
+     * @param splitsToPause the splits to pause
+     * @param splitsToResume the splits to resume
+     */
+    @PublicEvolving
+    default void pauseOrResumeSplits(
+            Collection<String> splitsToPause, Collection<String> splitsToResume) {}
 }

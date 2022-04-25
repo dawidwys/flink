@@ -69,7 +69,8 @@ public class TestingSourceOperator<T> extends SourceOperator<T, MockSourceSplit>
                 new MockOperatorEventGateway(),
                 1,
                 5,
-                emitProgressiveWatermarks);
+                emitProgressiveWatermarks,
+                false);
     }
 
     public TestingSourceOperator(
@@ -79,7 +80,8 @@ public class TestingSourceOperator<T> extends SourceOperator<T, MockSourceSplit>
             OperatorEventGateway eventGateway,
             int subtaskIndex,
             int parallelism,
-            boolean emitProgressiveWatermarks) {
+            boolean emitProgressiveWatermarks,
+            boolean supportsWatermarksSplitsAlignment) {
 
         super(
                 (context) -> reader,
@@ -89,7 +91,8 @@ public class TestingSourceOperator<T> extends SourceOperator<T, MockSourceSplit>
                 timeService,
                 new Configuration(),
                 "localhost",
-                emitProgressiveWatermarks);
+                emitProgressiveWatermarks,
+                supportsWatermarksSplitsAlignment);
 
         this.subtaskIndex = subtaskIndex;
         this.parallelism = parallelism;
