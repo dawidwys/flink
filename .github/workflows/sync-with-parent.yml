@@ -1,0 +1,20 @@
+name: Sync with parent
+on:
+  schedule:
+    # Daily at 8:20 UTC
+    - cron: '20 8 * * *'
+  workflow_dispatch: {}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      GITHUB_FORK: dawidwys
+      GITHUB_PARENT: apache
+      GITHUB_BRANCH: master
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Sync or create PR
+        run: |
+          gh repo sync $GITHUB_FORK/flink -b $GITHUB_BRANCH || gh pr create -B $GITHUB_BRANCH -H $GITHUB_PARENT:$GITHUB_BRANCH -t "Merge branch '$GITHUB_BRANCH' of https://github.com/$GITHUB_PARENT/flink into $GITHUB_BRANCH" -b ""
