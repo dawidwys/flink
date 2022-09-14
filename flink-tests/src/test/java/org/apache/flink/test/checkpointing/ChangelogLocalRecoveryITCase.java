@@ -165,7 +165,7 @@ public class ChangelogLocalRecoveryITCase extends TestLogger {
         env.enableCheckpointing(checkpointInterval);
         env.getCheckpointConfig().enableUnalignedCheckpoints(false);
         env.setStateBackend(stateBackend)
-                .setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 10));
+                .setRestartStrategy(RestartStrategies.fixedDelayRestart(2, 10));
         env.configure(new Configuration().set(LOCAL_RECOVERY, true));
 
         env.getCheckpointConfig().setCheckpointStorage(checkpointFile.toURI());
