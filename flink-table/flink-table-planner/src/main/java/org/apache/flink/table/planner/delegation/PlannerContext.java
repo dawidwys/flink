@@ -26,6 +26,7 @@ import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.config.OptimizerConfigOptions;
 import org.apache.flink.table.catalog.CatalogManager;
 import org.apache.flink.table.catalog.FunctionCatalog;
+import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.module.ModuleManager;
 import org.apache.flink.table.planner.calcite.CalciteConfig;
 import org.apache.flink.table.planner.calcite.CalciteConfig$;
@@ -70,6 +71,7 @@ import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Frameworks;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -193,13 +195,19 @@ public class PlannerContext {
         final SchemaPlus finalRootSchema = getRootSchema(rootSchema.plus());
 
         final CatalogManager catalogManager = context.getCatalogManager();
+        final List<List<String>> paths = new ArrayList<>();
+        if (!ObjectIdentifier.isUnknown(catalogManager.getCurrentCatalog())) {
+            if (!ObjectIdentifier.isUnknown(catalogManager.getCurrentDatabase())) {
+                paths.add(asList(
+                        catalogManager.getCurrentCatalog(),
+                        catalogManager.getCurrentDatabase()));
+            }
+            paths.add(singletonList(catalogManager.getCurrentCatalog()));
+        }
+
         return new FlinkCalciteCatalogReader(
                 CalciteSchema.from(finalRootSchema),
-                asList(
-                        asList(
-                                catalogManager.getCurrentCatalog(),
-                                catalogManager.getCurrentDatabase()),
-                        singletonList(catalogManager.getCurrentCatalog())),
+                paths,
                 typeFactory,
                 CalciteConfig$.MODULE$.connectionConfig(newSqlParserConfig));
     }
@@ -267,8 +275,8 @@ public class PlannerContext {
     private FlinkSqlConformance getSqlConformance() {
         SqlDialect sqlDialect = context.getTableConfig().getSqlDialect();
         switch (sqlDialect) {
-                // Actually, in Hive dialect, we won't use Calcite parser.
-                // So, we can just use Flink's default sql conformance as a placeholder
+            // Actually, in Hive dialect, we won't use Calcite parser.
+            // So, we can just use Flink's default sql conformance as a placeholder
             case HIVE:
             case DEFAULT:
                 return FlinkSqlConformance.DEFAULT;

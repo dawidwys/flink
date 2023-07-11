@@ -21,6 +21,7 @@ package org.apache.flink.table.catalog;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.StringUtils;
 
 import javax.annotation.Nullable;
 
@@ -46,6 +47,9 @@ import static org.apache.flink.table.utils.EncodingUtils.escapeIdentifier;
 @PublicEvolving
 public final class ObjectIdentifier implements Serializable {
 
+    /**
+     * Reserved identifier for a catalog or database that has not been set.
+     */
     public static final String UNKNOWN = "<UNKNOWN>";
 
     private final @Nullable String catalogName;
@@ -122,6 +126,10 @@ public final class ObjectIdentifier implements Serializable {
             return Collections.singletonList(getObjectName());
         }
         return Arrays.asList(getCatalogName(), getDatabaseName(), getObjectName());
+    }
+
+    public static boolean isUnknown(String objectName) {
+        return StringUtils.isNullOrWhitespaceOnly(objectName) || UNKNOWN.equals(objectName);
     }
 
     /**
