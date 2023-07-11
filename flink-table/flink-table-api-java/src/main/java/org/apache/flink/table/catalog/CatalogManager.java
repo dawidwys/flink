@@ -86,7 +86,7 @@ public class CatalogManager implements CatalogRegistry {
 
     private final ManagedTableListener managedTableListener;
 
-    private CatalogManager(
+    protected CatalogManager(
             String defaultCatalogName,
             Catalog defaultCatalog,
             DataTypeFactory typeFactory,
@@ -94,12 +94,16 @@ public class CatalogManager implements CatalogRegistry {
         checkArgument(
                 !StringUtils.isNullOrWhitespaceOnly(defaultCatalogName),
                 "Default catalog name cannot be null or empty");
-        checkNotNull(defaultCatalog, "Default catalog cannot be null");
 
         catalogs = new LinkedHashMap<>();
-        catalogs.put(defaultCatalogName, defaultCatalog);
-        currentCatalogName = defaultCatalogName;
-        currentDatabaseName = defaultCatalog.getDefaultDatabase();
+        if (defaultCatalog != null) {
+            catalogs.put(defaultCatalogName, defaultCatalog);
+            currentCatalogName = defaultCatalogName;
+            currentDatabaseName = defaultCatalog.getDefaultDatabase();
+        } else {
+            currentCatalogName = ObjectIdentifier.UNKNOWN;
+            currentDatabaseName = ObjectIdentifier.UNKNOWN;
+        }
 
         temporaryTables = new HashMap<>();
         // right now the default catalog is always the built-in one
@@ -141,6 +145,12 @@ public class CatalogManager implements CatalogRegistry {
         public Builder defaultCatalog(String defaultCatalogName, Catalog defaultCatalog) {
             this.defaultCatalogName = defaultCatalogName;
             this.defaultCatalog = defaultCatalog;
+            return this;
+        }
+
+        public Builder noDefaultCatalog() {
+            this.defaultCatalogName = ObjectIdentifier.UNKNOWN;
+            this.defaultCatalog = null;
             return this;
         }
 
