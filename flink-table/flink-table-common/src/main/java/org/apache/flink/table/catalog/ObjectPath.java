@@ -40,6 +40,11 @@ public class ObjectPath implements Serializable {
                 !StringUtils.isNullOrWhitespaceOnly(objectName),
                 "objectName cannot be null or empty");
 
+        if (Objects.equals(databaseName, ObjectIdentifier.UNKNOWN)) {
+            throw new IllegalArgumentException(
+                    String.format("Database cannot be named '%s'", ObjectIdentifier.UNKNOWN));
+        }
+
         this.databaseName = databaseName;
         this.objectName = objectName;
     }
