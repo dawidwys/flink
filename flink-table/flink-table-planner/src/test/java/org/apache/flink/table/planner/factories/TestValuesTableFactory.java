@@ -702,6 +702,7 @@ public final class TestValuesTableFactory
                         DATA_ID,
                         CHANGELOG_MODE,
                         BOUNDED,
+                        FINITE,
                         RUNTIME_SOURCE,
                         TABLE_SOURCE_CLASS,
                         FAILING_SOURCE,
