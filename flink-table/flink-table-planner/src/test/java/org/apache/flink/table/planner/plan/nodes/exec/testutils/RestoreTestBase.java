@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.flink.table.planner.plan.nodes.exec.testutils;
 
 import org.apache.flink.api.common.JobStatus;
@@ -15,16 +33,15 @@ import org.apache.flink.table.api.config.TableConfigOptions;
 import org.apache.flink.table.planner.factories.TestValuesTableFactory;
 import org.apache.flink.table.planner.plan.nodes.exec.ExecNode;
 import org.apache.flink.table.planner.plan.nodes.exec.ExecNodeMetadata;
-import org.apache.flink.table.planner.plan.nodes.exec.stream.StreamExecCalc;
 import org.apache.flink.table.planner.plan.utils.ExecNodeMetadataUtil;
 import org.apache.flink.table.test.program.SinkTestStep;
 import org.apache.flink.table.test.program.SourceTestStep;
 import org.apache.flink.table.test.program.SqlTestStep;
 import org.apache.flink.table.test.program.TableTestProgram;
 import org.apache.flink.table.test.program.TableTestProgramRunner;
-
 import org.apache.flink.table.test.program.TestStep.TestKind;
 import org.apache.flink.types.Row;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.io.TempDir;
@@ -65,17 +82,12 @@ public abstract class RestoreTestBase implements TableTestProgramRunner {
 
     @Override
     public EnumSet<TestKind> supportedSetupSteps() {
-        return EnumSet.of(
-                TestKind.SOURCE_WITH_RESTORE_DATA,
-                TestKind.SINK_WITH_RESTORE_DATA
-        );
+        return EnumSet.of(TestKind.SOURCE_WITH_RESTORE_DATA, TestKind.SINK_WITH_RESTORE_DATA);
     }
 
     @Override
     public EnumSet<TestKind> supportedRunSteps() {
-        return EnumSet.of(
-                TestKind.SQL
-        );
+        return EnumSet.of(TestKind.SQL);
     }
 
     private @TempDir Path tmpDir;
@@ -107,8 +119,7 @@ public abstract class RestoreTestBase implements TableTestProgramRunner {
         final TableEnvironment tEnv =
                 TableEnvironment.create(EnvironmentSettings.inStreamingMode());
         for (SourceTestStep sourceTestStep : program.getSetupSourceTestSteps()) {
-            final String id =
-                    TestValuesTableFactory.registerData(sourceTestStep.dataBeforeRestore);
+            final String id = TestValuesTableFactory.registerData(sourceTestStep.dataBeforeRestore);
             final Map<String, String> options = new HashMap<>();
             options.put("connector", "values");
             options.put("data-id", id);
@@ -126,8 +137,9 @@ public abstract class RestoreTestBase implements TableTestProgramRunner {
             TestValuesTableFactory.registerLocalRawResultsObserver(
                     tableName,
                     (integer, strings) -> {
-                        final boolean canTakeSavepoint = sinkTestStep.expectedBeforeRestore.test(
-                                TestValuesTableFactory.getRawResults(tableName));
+                        final boolean canTakeSavepoint =
+                                sinkTestStep.expectedBeforeRestore.test(
+                                        TestValuesTableFactory.getRawResults(tableName));
                         if (canTakeSavepoint) {
                             future.complete(null);
                         }
@@ -172,8 +184,7 @@ public abstract class RestoreTestBase implements TableTestProgramRunner {
                         TableConfigOptions.PLAN_RESTORE_CATALOG_OBJECTS,
                         TableConfigOptions.CatalogPlanRestore.IDENTIFIER);
         for (SourceTestStep sourceTestStep : program.getSetupSourceTestSteps()) {
-            final String id =
-                    TestValuesTableFactory.registerData(sourceTestStep.dataAfterRestore);
+            final String id = TestValuesTableFactory.registerData(sourceTestStep.dataAfterRestore);
             final Map<String, String> options = new HashMap<>();
             options.put("connector", "values");
             options.put("data-id", id);
