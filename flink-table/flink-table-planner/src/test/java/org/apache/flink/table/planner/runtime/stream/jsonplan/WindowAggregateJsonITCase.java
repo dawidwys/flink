@@ -100,7 +100,7 @@ public class WindowAggregateJsonITCase extends JsonPlanTestBase {
                                 + "GROUP BY name, window_start, window_end")
                 .await();
 
-        List<String> result = TestValuesTableFactory.getResults("MySink");
+        List<String> result = TestValuesTableFactory.getResultsAsStrings("MySink");
         assertResult(
                 Arrays.asList(
                         "+I[a, 2020-10-10T00:00, 2020-10-10T00:00:05, 4, 10, 2]",
@@ -124,7 +124,7 @@ public class WindowAggregateJsonITCase extends JsonPlanTestBase {
                                 + "GROUP BY name, window_start, window_end")
                 .await();
 
-        List<String> result = TestValuesTableFactory.getResults("MySink");
+        List<String> result = TestValuesTableFactory.getResultsAsStrings("MySink");
         assertResult(
                 Arrays.asList(
                         "+I[a, 1]",
@@ -157,7 +157,7 @@ public class WindowAggregateJsonITCase extends JsonPlanTestBase {
                                 + "GROUP BY name, window_start, window_end")
                 .await();
 
-        List<String> result = TestValuesTableFactory.getResults("MySink");
+        List<String> result = TestValuesTableFactory.getResultsAsStrings("MySink");
         assertResult(
                 Arrays.asList(
                         "+I[a, 4]",
@@ -197,7 +197,7 @@ public class WindowAggregateJsonITCase extends JsonPlanTestBase {
                                 + "GROUP BY name, window_start, window_end")
                 .await();
 
-        List<String> result = TestValuesTableFactory.getResults("MySink");
+        List<String> result = TestValuesTableFactory.getResultsAsStrings("MySink");
         assertResult(
                 Arrays.asList(
                         "+I[a, 5.0, 3]",

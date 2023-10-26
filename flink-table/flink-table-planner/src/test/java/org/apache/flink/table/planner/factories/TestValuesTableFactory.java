@@ -226,7 +226,16 @@ public final class TestValuesTableFactory
      *
      * @param tableName the table name of the registered table sink.
      */
-    public static List<String> getRawResults(String tableName) {
+    public static List<String> getRawResultsAsStrings(String tableName) {
+        return TestValuesRuntimeFunctions.getRawResultsAsStrings(tableName);
+    }
+
+    /**
+     * Returns received raw results of the registered table sink.
+     *
+     * @param tableName the table name of the registered table sink.
+     */
+    public static List<Row> getRawResults(String tableName) {
         return TestValuesRuntimeFunctions.getRawResults(tableName);
     }
 
@@ -236,8 +245,8 @@ public final class TestValuesTableFactory
      *
      * <p>The raw results are encoded with {@link RowKind}.
      */
-    public static List<String> getOnlyRawResults() {
-        return TestValuesRuntimeFunctions.getOnlyRawResults();
+    public static List<String> getOnlyRawResultsAsStrings() {
+        return TestValuesRuntimeFunctions.getOnlyRawResultsAsStrings();
     }
 
     /**
@@ -245,7 +254,16 @@ public final class TestValuesTableFactory
      *
      * @param tableName the table name of the registered table sink.
      */
-    public static List<String> getResults(String tableName) {
+    public static List<String> getResultsAsStrings(String tableName) {
+        return TestValuesRuntimeFunctions.getResultsAsStrings(tableName);
+    }
+
+    /**
+     * Returns materialized (final) results of the registered table sink.
+     *
+     * @param tableName the table name of the registered table sink.
+     */
+    public static List<Row> getResults(String tableName) {
         return TestValuesRuntimeFunctions.getResults(tableName);
     }
 
@@ -1976,7 +1994,7 @@ public final class TestValuesTableFactory
                             @Override
                             public SinkFunction<RowData> createSinkFunction() {
                                 return new AppendingSinkFunction(
-                                        tableName, converter, rowtimeIndex);
+                                        tableName, consumedDataType, converter, rowtimeIndex);
                             }
                         };
                     case "OutputFormat":
@@ -2000,7 +2018,10 @@ public final class TestValuesTableFactory
                                 DataStreamSink<RowData> sink =
                                         dataStream.addSink(
                                                 new AppendingSinkFunction(
-                                                        tableName, converter, rowtimeIndex));
+                                                        tableName,
+                                                        consumedDataType,
+                                                        converter,
+                                                        rowtimeIndex));
                                 providerContext.generateUid("sink-function").ifPresent(sink::uid);
                                 return sink;
                             }
@@ -2029,6 +2050,7 @@ public final class TestValuesTableFactory
                     sinkFunction =
                             new KeyedUpsertingSinkFunction(
                                     tableName,
+                                    consumedDataType,
                                     converter,
                                     primaryKeyIndices,
                                     Arrays.stream(targetColumns).mapToInt(a -> a[0]).toArray(),
@@ -2040,7 +2062,8 @@ public final class TestValuesTableFactory
                             "Retracting Sink doesn't support '"
                                     + SINK_EXPECTED_MESSAGES_NUM.key()
                                     + "' yet.");
-                    sinkFunction = new RetractingSinkFunction(tableName, converter);
+                    sinkFunction =
+                            new RetractingSinkFunction(tableName, consumedDataType, converter);
                 }
                 return SinkFunctionProvider.of(sinkFunction, this.parallelism);
             }

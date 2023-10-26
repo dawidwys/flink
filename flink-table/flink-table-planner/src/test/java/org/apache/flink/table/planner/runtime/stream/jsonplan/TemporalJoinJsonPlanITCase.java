@@ -87,7 +87,7 @@ public class TemporalJoinJsonPlanITCase extends JsonPlanTestBase {
                                 + "WHERE o.currency = r.currency ")
                 .await();
         List<String> expected = Arrays.asList("+I[102]", "+I[228]", "+I[348]", "+I[50]");
-        assertResult(expected, TestValuesTableFactory.getResults("MySink"));
+        assertResult(expected, TestValuesTableFactory.getResultsAsStrings("MySink"));
     }
 
     @Test
@@ -100,6 +100,6 @@ public class TemporalJoinJsonPlanITCase extends JsonPlanTestBase {
                                 + "ON o.currency = r.currency ")
                 .await();
         List<String> expected = Arrays.asList("+I[102]", "+I[228]", "+I[348]", "+I[50]");
-        assertResult(expected, TestValuesTableFactory.getResults("MySink"));
+        assertResult(expected, TestValuesTableFactory.getResultsAsStrings("MySink"));
     }
 }

@@ -77,7 +77,7 @@ public class LookupJoinJsonPlanITCase extends JsonPlanTestBase {
                         "+I[1, 12, Julian, Julian]",
                         "+I[2, 15, Hello, Jark]",
                         "+I[3, 15, Fabian, Fabian]");
-        assertResult(expected, TestValuesTableFactory.getResults("MySink"));
+        assertResult(expected, TestValuesTableFactory.getResultsAsStrings("MySink"));
     }
 
     @Test
@@ -89,6 +89,6 @@ public class LookupJoinJsonPlanITCase extends JsonPlanTestBase {
                 .await();
         List<String> expected =
                 Arrays.asList("+I[2, 15, Hello, Jark]", "+I[3, 15, Fabian, Fabian]");
-        assertResult(expected, TestValuesTableFactory.getResults("MySink"));
+        assertResult(expected, TestValuesTableFactory.getResultsAsStrings("MySink"));
     }
 }
