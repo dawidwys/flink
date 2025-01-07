@@ -72,14 +72,14 @@ public class CalculatedQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString() {
+    public String asSerializableString(SerializationContext context) {
         // if we ever add multi-way join in JoinQueryOperation we need to sort out uniqueness of the
         // table name
         return String.format(
                 "LATERAL TABLE(%s) %s(%s)",
                 resolvedFunction
                         .toCallExpression(arguments, resolvedSchema.toPhysicalRowDataType())
-                        .asSerializableString(),
+                        .asSerializableString(new ExpressionSerializationContextAdapter(context)),
                 INPUT_ALIAS,
                 OperationUtils.formatSelectColumns(resolvedSchema, null));
     }

@@ -123,7 +123,9 @@ public class SqlCreateMaterializedTableConverter
                         context.toRelRoot(validateQuery).project(),
                         () -> context.toQuotedSqlString(validateQuery));
         String definitionQuery =
-                context.expandSqlIdentifiers(queryOperation.asSerializableString());
+                context.expandSqlIdentifiers(queryOperation.asSerializableString(context
+                        .getTableConfig()
+                        .getSerializationContext()));
 
         // get schema
         ResolvedSchema resolvedSchema = queryOperation.getResolvedSchema();

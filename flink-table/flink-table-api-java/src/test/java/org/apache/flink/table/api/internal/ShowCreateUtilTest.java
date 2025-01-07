@@ -31,6 +31,8 @@ import org.apache.flink.table.catalog.ResolvedCatalogView;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.TableDistribution;
 
+import org.apache.flink.table.operations.DefaultSerializationContext;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -65,7 +67,7 @@ public class ShowCreateUtilTest {
     void showCreateTable(ResolvedCatalogTable resolvedCatalogTable, String expected) {
         final String createTableString =
                 ShowCreateUtil.buildShowCreateTableRow(
-                        resolvedCatalogTable, TABLE_IDENTIFIER, false);
+                        resolvedCatalogTable, TABLE_IDENTIFIER, false, new DefaultSerializationContext());
         assertThat(createTableString).isEqualTo(expected);
     }
 

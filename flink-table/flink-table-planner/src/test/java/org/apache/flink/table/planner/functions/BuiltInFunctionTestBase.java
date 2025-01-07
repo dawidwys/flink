@@ -28,9 +28,9 @@ import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.api.internal.TableEnvironmentInternal;
 import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.expressions.Expression;
-import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.functions.BuiltInFunctionDefinition;
 import org.apache.flink.table.functions.UserDefinedFunction;
+import org.apache.flink.table.operations.ExpressionSerializationContextAdapter;
 import org.apache.flink.table.operations.ProjectQueryOperation;
 import org.apache.flink.table.types.AbstractDataType;
 import org.apache.flink.table.types.DataType;
@@ -526,7 +526,8 @@ abstract class BuiltInFunctionTestBase {
                     (ProjectQueryOperation) select.getQueryOperation();
             final String exprAsSerializableString =
                     projectQueryOperation.getProjectList().stream()
-                            .map(ResolvedExpression::asSerializableString)
+                            .map(resolvedExpression -> resolvedExpression.asSerializableString(
+                                    new ExpressionSerializationContextAdapter(env.getConfig().getSerializationContext())))
                             .collect(Collectors.joining(", "));
             return env.sqlQuery("SELECT " + exprAsSerializableString + " FROM " + inputTable);
         }

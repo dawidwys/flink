@@ -22,6 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.expressions.DefaultSerializationContext;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.functions.TableFunction;
 import org.apache.flink.table.functions.TemporalTableFunction;
@@ -99,7 +100,7 @@ public interface Table extends Explainable<Table>, Executable {
      */
     @Deprecated
     default TableSchema getSchema() {
-        return TableSchema.fromResolvedSchema(getResolvedSchema());
+        return TableSchema.fromResolvedSchema(getResolvedSchema(), new DefaultSerializationContext());
     }
 
     /** Returns the resolved schema of this table. */

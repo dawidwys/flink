@@ -25,11 +25,14 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.PipelineOptions;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.configuration.WritableConfig;
+import org.apache.flink.table.api.PlannerConfigs.SerializationConfig;
 import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.api.config.OptimizerConfigOptions;
 import org.apache.flink.table.api.config.TableConfigOptions;
 import org.apache.flink.table.delegation.Executor;
 import org.apache.flink.table.functions.FunctionContext;
+import org.apache.flink.table.operations.DefaultSerializationContext;
+import org.apache.flink.table.operations.SerializationContext;
 import org.apache.flink.util.Preconditions;
 
 import java.time.Duration;
@@ -329,7 +332,16 @@ public final class TableConfig implements WritableConfig, ReadableConfig {
      * has no effect after the first query has been defined.
      */
     public void setPlannerConfig(PlannerConfig plannerConfig) {
-        this.plannerConfig = Preconditions.checkNotNull(plannerConfig);
+        this.plannerConfig = PlannerConfigs.of(
+                this.plannerConfig,
+                Preconditions.checkNotNull(plannerConfig));
+    }
+
+    public SerializationContext getSerializationContext() {
+        return plannerConfig
+                .unwrap(SerializationConfig.class)
+                .map(SerializationConfig::getContext)
+                .orElseGet(DefaultSerializationContext::new);
     }
 
     /**

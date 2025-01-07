@@ -21,6 +21,7 @@ package org.apache.flink.table.api;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.expressions.DefaultSerializationContext;
 import org.apache.flink.table.legacy.api.TableSchema;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
@@ -138,7 +139,7 @@ public interface TableResult {
      */
     @Deprecated
     default TableSchema getTableSchema() {
-        return TableSchema.fromResolvedSchema(getResolvedSchema());
+        return TableSchema.fromResolvedSchema(getResolvedSchema(), new DefaultSerializationContext());
     }
 
     /**

@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.catalog.exceptions.TableNotExistException;
+import org.apache.flink.table.expressions.DefaultSerializationContext;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.expressions.resolver.ExpressionResolver.ExpressionResolverBuilder;
 import org.apache.flink.table.expressions.utils.ResolvedExpressionMock;
@@ -227,7 +228,7 @@ class CatalogBaseTableResolutionTest {
                         ResolvedCatalogMaterializedTable.class, catalogMaterializedTable);
         assertThat(
                         CatalogPropertiesUtil.serializeCatalogMaterializedTable(
-                                resolvedCatalogMaterializedTable))
+                                resolvedCatalogMaterializedTable, new DefaultSerializationContext()))
                 .isEqualTo(catalogMaterializedTableAsProperties());
 
         assertThat(resolvedCatalogMaterializedTable.getResolvedSchema())

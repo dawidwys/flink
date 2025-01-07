@@ -43,7 +43,7 @@ public interface QueryOperation extends Operation {
      * @return detailed string for persisting in a catalog
      * @see Operation#asSummaryString()
      */
-    default String asSerializableString() {
+    default String asSerializableString(SerializationContext context) {
         throw new UnsupportedOperationException(
                 "QueryOperations are not string serializable for now.");
     }

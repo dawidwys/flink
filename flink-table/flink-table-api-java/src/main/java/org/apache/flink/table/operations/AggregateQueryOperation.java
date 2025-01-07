@@ -77,8 +77,8 @@ public class AggregateQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString() {
-        final String groupingExprs = getGroupingExprs();
+    public String asSerializableString(SerializationContext context) {
+        final String groupingExprs = getGroupingExprs(context::serializeInlineFunction);
         return String.format(
                 "SELECT %s FROM (%s\n) %s\nGROUP BY %s",
                 Stream.concat(groupingExpressions.stream(), aggregateExpressions.stream())
@@ -86,14 +86,14 @@ public class AggregateQueryOperation implements QueryOperation {
                                 expr ->
                                         OperationExpressionsUtils.scopeReferencesWithAlias(
                                                 INPUT_ALIAS, expr))
-                        .map(ResolvedExpression::asSerializableString)
+                        .map(resolvedExpression -> resolvedExpression.asSerializableString(context::serializeInlineFunction))
                         .collect(Collectors.joining(", ")),
-                OperationUtils.indent(child.asSerializableString()),
+                OperationUtils.indent(child.asSerializableString(context)),
                 INPUT_ALIAS,
                 groupingExprs);
     }
 
-    private String getGroupingExprs() {
+    private String getGroupingExprs(org.apache.flink.table.expressions.SerializationContext context) {
         if (groupingExpressions.isEmpty()) {
             return "1";
         } else {
@@ -102,7 +102,7 @@ public class AggregateQueryOperation implements QueryOperation {
                             expr ->
                                     OperationExpressionsUtils.scopeReferencesWithAlias(
                                             INPUT_ALIAS, expr))
-                    .map(ResolvedExpression::asSerializableString)
+                    .map(resolvedExpression -> resolvedExpression.asSerializableString(context))
                     .collect(Collectors.joining(", "));
         }
     }

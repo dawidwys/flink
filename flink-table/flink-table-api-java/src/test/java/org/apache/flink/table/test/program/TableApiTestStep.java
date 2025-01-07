@@ -72,7 +72,9 @@ public class TableApiTestStep implements TestStep {
 
     public TableResult applyAsSql(TableEnvironment env) {
         final Table table = toTable(env);
-        final String query = table.getQueryOperation().asSerializableString();
+        final String query = table
+                .getQueryOperation()
+                .asSerializableString(env.getConfig().getSerializationContext());
         return env.executeSql(String.format("INSERT INTO %s %s", sinkName, query));
     }
 

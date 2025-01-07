@@ -75,7 +75,7 @@ public class ProjectQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString() {
+    public String asSerializableString(SerializationContext context) {
         return String.format(
                 "SELECT %s FROM (%s\n) " + INPUT_ALIAS,
                 IntStream.range(0, projectList.size())
@@ -84,9 +84,9 @@ public class ProjectQueryOperation implements QueryOperation {
                                 expr ->
                                         OperationExpressionsUtils.scopeReferencesWithAlias(
                                                 INPUT_ALIAS, expr))
-                        .map(ResolvedExpression::asSerializableString)
+                        .map(resolvedExpression -> resolvedExpression.asSerializableString(context::serializeInlineFunction))
                         .collect(Collectors.joining(", ")),
-                OperationUtils.indent(child.asSerializableString()));
+                OperationUtils.indent(child.asSerializableString(context)));
     }
 
     private ResolvedExpression alias(int index) {

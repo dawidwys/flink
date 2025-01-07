@@ -94,6 +94,7 @@ import org.apache.flink.table.runtime.groupwindow.WindowEnd;
 import org.apache.flink.table.runtime.groupwindow.WindowReference;
 import org.apache.flink.table.runtime.groupwindow.WindowStart;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.util.Preconditions;
 
 import org.apache.calcite.plan.ViewExpanders;
@@ -373,8 +374,10 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
             RelDataType rowType =
                     relBuilder
                             .getTypeFactory()
-                            .buildRelNodeRowType(
-                                    TableSchema.fromResolvedSchema(values.getResolvedSchema()));
+                            .buildRelNodeRowType((RowType) values
+                                    .getResolvedSchema()
+                                    .toSourceRowDataType()
+                                    .getLogicalType());
             if (values.getValues().isEmpty()) {
                 relBuilder.values(rowType);
                 return relBuilder.build();

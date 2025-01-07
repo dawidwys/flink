@@ -32,6 +32,8 @@ import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.ExplainDetail;
 import org.apache.flink.table.api.ExplainFormat;
 import org.apache.flink.table.api.PlanReference;
+import org.apache.flink.table.api.PlannerConfigs;
+import org.apache.flink.table.api.PlannerConfigs.SerializationConfig;
 import org.apache.flink.table.api.ResultKind;
 import org.apache.flink.table.api.SqlParserException;
 import org.apache.flink.table.api.StatementSet;
@@ -89,6 +91,7 @@ import org.apache.flink.table.module.ModuleManager;
 import org.apache.flink.table.operations.CollectModifyOperation;
 import org.apache.flink.table.operations.CompileAndExecutePlanOperation;
 import org.apache.flink.table.operations.CreateTableASOperation;
+import org.apache.flink.table.operations.DefaultSerializationContext;
 import org.apache.flink.table.operations.DeleteFromFilterOperation;
 import org.apache.flink.table.operations.ExecutableOperation;
 import org.apache.flink.table.operations.ExplainOperation;
@@ -97,6 +100,7 @@ import org.apache.flink.table.operations.NopOperation;
 import org.apache.flink.table.operations.Operation;
 import org.apache.flink.table.operations.QueryOperation;
 import org.apache.flink.table.operations.ReplaceTableAsOperation;
+import org.apache.flink.table.operations.SerializationContext;
 import org.apache.flink.table.operations.SinkModifyOperation;
 import org.apache.flink.table.operations.SourceQueryOperation;
 import org.apache.flink.table.operations.StatementSetOperation;
@@ -1226,7 +1230,7 @@ public class TableEnvironmentImpl implements TableEnvironmentInternal {
         String defaultJobName = "collect";
 
         try {
-            defaultJobName = operation.asSerializableString();
+            defaultJobName = operation.asSerializableString(tableConfig.getSerializationContext());
         } catch (Throwable e) {
             // ignore error for unsupported operations and use 'collect' as default job name
         }

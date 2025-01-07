@@ -21,6 +21,7 @@ package org.apache.flink.table.planner.plan.nodes.exec.serde;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.expressions.ResolvedExpression;
+import org.apache.flink.table.operations.ExpressionSerializationContextAdapter;
 import org.apache.flink.table.planner.expressions.RexNodeExpression;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
@@ -72,7 +73,12 @@ final class ResolvedExpressionJsonSerializer extends StdSerializer<ResolvedExpre
             JsonGenerator jsonGenerator,
             SerializerProvider serializerProvider)
             throws IOException {
+        final SerdeContext serde = SerdeContext.get(serializerProvider);
+        final ExpressionSerializationContextAdapter contextAdapter = new ExpressionSerializationContextAdapter(
+                serde.getConfiguration().getSerializationContext());
         serializerProvider.defaultSerializeField(REX_NODE, expression.getRexNode(), jsonGenerator);
-        jsonGenerator.writeStringField(SERIALIZABLE_STRING, expression.asSerializableString());
+        jsonGenerator.writeStringField(
+                SERIALIZABLE_STRING,
+                expression.asSerializableString(contextAdapter));
     }
 }
