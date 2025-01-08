@@ -62,8 +62,9 @@ class JsonFunctionsCallSyntax {
                         getSymbolLiteral(operands.get(3), JsonValueOnEmptyOrError.class);
 
                 if (onEmpty == JsonValueOnEmptyOrError.DEFAULT) {
-                    s.append(String.format("DEFAULT %s", operands.get(4).asSerializableString(
-                            context)));
+                    s.append(
+                            String.format(
+                                    "DEFAULT %s", operands.get(4).asSerializableString(context)));
                 } else {
                     s.append(onEmpty);
                 }
@@ -73,8 +74,9 @@ class JsonFunctionsCallSyntax {
                         getSymbolLiteral(operands.get(5), JsonValueOnEmptyOrError.class);
 
                 if (onError == JsonValueOnEmptyOrError.DEFAULT) {
-                    s.append(String.format("DEFAULT %s", operands.get(6).asSerializableString(
-                            context)));
+                    s.append(
+                            String.format(
+                                    "DEFAULT %s", operands.get(6).asSerializableString(context)));
                 } else {
                     s.append(onError);
                 }
@@ -141,8 +143,9 @@ class JsonFunctionsCallSyntax {
                 }
                 final String entries =
                         operands.subList(1, operands.size()).stream()
-                                .map(resolvedExpression -> resolvedExpression.asSerializableString(
-                                        context))
+                                .map(
+                                        resolvedExpression ->
+                                                resolvedExpression.asSerializableString(context))
                                 .collect(Collectors.joining(", "));
 
                 final JsonOnNull onNull = getSymbolLiteral(operands.get(0), JsonOnNull.class);

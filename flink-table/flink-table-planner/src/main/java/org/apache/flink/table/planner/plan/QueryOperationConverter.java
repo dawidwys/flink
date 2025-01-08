@@ -41,7 +41,6 @@ import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.table.functions.FunctionDefinition;
 import org.apache.flink.table.functions.TableFunction;
 import org.apache.flink.table.functions.TableFunctionDefinition;
-import org.apache.flink.table.legacy.api.TableSchema;
 import org.apache.flink.table.legacy.sources.LookupableTableSource;
 import org.apache.flink.table.legacy.sources.TableSource;
 import org.apache.flink.table.operations.AggregateQueryOperation;
@@ -374,10 +373,11 @@ public class QueryOperationConverter extends QueryOperationDefaultVisitor<RelNod
             RelDataType rowType =
                     relBuilder
                             .getTypeFactory()
-                            .buildRelNodeRowType((RowType) values
-                                    .getResolvedSchema()
-                                    .toSourceRowDataType()
-                                    .getLogicalType());
+                            .buildRelNodeRowType(
+                                    (RowType)
+                                            values.getResolvedSchema()
+                                                    .toSourceRowDataType()
+                                                    .getLogicalType());
             if (values.getValues().isEmpty()) {
                 relBuilder.values(rowType);
                 return relBuilder.build();

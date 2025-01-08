@@ -87,7 +87,7 @@ public class SortQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         final StringBuilder s =
                 new StringBuilder(
                         String.format(
@@ -102,8 +102,11 @@ public class SortQueryOperation implements QueryOperation {
                                                         OperationExpressionsUtils
                                                                 .scopeReferencesWithAlias(
                                                                         INPUT_ALIAS, expr))
-                                        .map(resolvedExpression ->
-                                                resolvedExpression.asSerializableString(new ExpressionSerializationContextAdapter(context)))
+                                        .map(
+                                                resolvedExpression ->
+                                                        resolvedExpression.asSerializableString(
+                                                                new ExpressionSerializationContextAdapter(
+                                                                        context)))
                                         .collect(Collectors.joining(", "))));
 
         if (offset >= 0) {

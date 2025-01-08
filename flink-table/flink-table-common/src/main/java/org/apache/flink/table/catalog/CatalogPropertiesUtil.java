@@ -25,8 +25,8 @@ import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.catalog.Column.ComputedColumn;
 import org.apache.flink.table.catalog.Column.MetadataColumn;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.flink.table.expressions.SerializationContext;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.util.StringUtils;
@@ -73,7 +73,8 @@ public final class CatalogPropertiesUtil {
     public static final String FLINK_PROPERTY_PREFIX = "flink.";
 
     /** Serializes the given {@link ResolvedCatalogTable} into a map of string properties. */
-    public static Map<String, String> serializeCatalogTable(ResolvedCatalogTable resolvedTable, SerializationContext context) {
+    public static Map<String, String> serializeCatalogTable(
+            ResolvedCatalogTable resolvedTable, ExpressionSerializationContext context) {
         try {
             final Map<String, String> properties = new HashMap<>();
 
@@ -100,7 +101,8 @@ public final class CatalogPropertiesUtil {
     }
 
     /** Serializes the given {@link ResolvedCatalogView} into a map of string properties. */
-    public static Map<String, String> serializeCatalogView(ResolvedCatalogView resolvedView, SerializationContext context) {
+    public static Map<String, String> serializeCatalogView(
+            ResolvedCatalogView resolvedView, ExpressionSerializationContext context) {
         try {
             final Map<String, String> properties = new HashMap<>();
 
@@ -127,11 +129,12 @@ public final class CatalogPropertiesUtil {
      */
     public static Map<String, String> serializeCatalogMaterializedTable(
             ResolvedCatalogMaterializedTable resolvedMaterializedTable,
-            SerializationContext context) {
+            ExpressionSerializationContext context) {
         try {
             final Map<String, String> properties = new HashMap<>();
 
-            serializeResolvedSchema(properties, resolvedMaterializedTable.getResolvedSchema(), context);
+            serializeResolvedSchema(
+                    properties, resolvedMaterializedTable.getResolvedSchema(), context);
 
             final String comment = resolvedMaterializedTable.getComment();
             if (comment != null && comment.length() > 0) {
@@ -177,8 +180,7 @@ public final class CatalogPropertiesUtil {
 
     /** Serializes the given {@link ResolvedCatalogModel} into a map of string properties. */
     public static Map<String, String> serializeResolvedCatalogModel(
-            ResolvedCatalogModel resolvedModel,
-            SerializationContext context) {
+            ResolvedCatalogModel resolvedModel, ExpressionSerializationContext context) {
         try {
             final Map<String, String> properties = new HashMap<>();
 
@@ -536,7 +538,10 @@ public final class CatalogPropertiesUtil {
     }
 
     private static void serializeResolvedModelSchema(
-            Map<String, String> map, ResolvedSchema inputSchema, ResolvedSchema outputSchema, SerializationContext context) {
+            Map<String, String> map,
+            ResolvedSchema inputSchema,
+            ResolvedSchema outputSchema,
+            ExpressionSerializationContext context) {
         checkNotNull(inputSchema);
         checkNotNull(outputSchema);
         serializeColumnsWithKey(map, inputSchema.getColumns(), MODEL_INPUT_SCHEMA, context);
@@ -546,7 +551,7 @@ public final class CatalogPropertiesUtil {
     private static void serializeResolvedSchema(
             Map<String, String> map,
             ResolvedSchema schema,
-            SerializationContext context) {
+            ExpressionSerializationContext context) {
         checkNotNull(schema);
 
         serializeColumns(map, schema.getColumns(), context);
@@ -564,7 +569,9 @@ public final class CatalogPropertiesUtil {
     }
 
     private static void serializeWatermarkSpecs(
-            Map<String, String> map, List<WatermarkSpec> specs, SerializationContext context) {
+            Map<String, String> map,
+            List<WatermarkSpec> specs,
+            ExpressionSerializationContext context) {
         if (!specs.isEmpty()) {
             final List<List<String>> watermarkValues = new ArrayList<>();
             for (WatermarkSpec spec : specs) {
@@ -586,12 +593,16 @@ public final class CatalogPropertiesUtil {
         }
     }
 
-    private static void serializeColumns(Map<String, String> map, List<Column> columns, SerializationContext context) {
+    private static void serializeColumns(
+            Map<String, String> map, List<Column> columns, ExpressionSerializationContext context) {
         serializeColumnsWithKey(map, columns, SCHEMA, context);
     }
 
     private static void serializeColumnsWithKey(
-            Map<String, String> map, List<Column> columns, String schemaKey, SerializationContext context) {
+            Map<String, String> map,
+            List<Column> columns,
+            String schemaKey,
+            ExpressionSerializationContext context) {
         final String[] names = serializeColumnNames(columns);
         final String[] dataTypes = serializeColumnDataTypes(columns);
         final String[] expressions = serializeColumnComputations(columns, context);
@@ -618,8 +629,8 @@ public final class CatalogPropertiesUtil {
                 values);
     }
 
-    private static String serializeResolvedExpression(ResolvedExpression resolvedExpression,
-                                                      SerializationContext context) {
+    private static String serializeResolvedExpression(
+            ResolvedExpression resolvedExpression, ExpressionSerializationContext context) {
         try {
             return resolvedExpression.asSerializableString(context);
         } catch (TableException e) {
@@ -662,7 +673,8 @@ public final class CatalogPropertiesUtil {
                 .toArray(String[]::new);
     }
 
-    private static String[] serializeColumnComputations(List<Column> columns, SerializationContext context) {
+    private static String[] serializeColumnComputations(
+            List<Column> columns, ExpressionSerializationContext context) {
         return columns.stream()
                 .map(
                         column -> {

@@ -18,11 +18,11 @@
 
 package org.apache.flink.table.expressions.utils;
 
-import org.apache.flink.table.expressions.DefaultSerializationContext;
+import org.apache.flink.table.expressions.DefaultExpressionSerializationContext;
 import org.apache.flink.table.expressions.Expression;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.ExpressionVisitor;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.flink.table.expressions.SerializationContext;
 import org.apache.flink.table.types.DataType;
 
 import java.util.Collections;
@@ -62,7 +62,7 @@ public class ResolvedExpressionMock implements ResolvedExpression {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(ExpressionSerializationContext context) {
         return stringRepresentation.get();
     }
 
@@ -91,7 +91,9 @@ public class ResolvedExpressionMock implements ResolvedExpression {
         }
         ResolvedExpression that = (ResolvedExpression) o;
         return Objects.equals(outputDataType, that.getOutputDataType())
-                && Objects.equals(stringRepresentation.get(), that.asSerializableString(new DefaultSerializationContext()));
+                && Objects.equals(
+                        stringRepresentation.get(),
+                        that.asSerializableString(new DefaultExpressionSerializationContext()));
     }
 
     @Override

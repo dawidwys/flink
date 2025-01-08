@@ -72,7 +72,7 @@ public class CalculatedQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         // if we ever add multi-way join in JoinQueryOperation we need to sort out uniqueness of the
         // table name
         return String.format(

@@ -21,10 +21,9 @@ package org.apache.flink.table.api;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.table.api.internal.TableEnvironmentImpl;
-import org.apache.flink.table.functions.FunctionDefinition;
 import org.apache.flink.table.operations.CollectModifyOperation;
+import org.apache.flink.table.operations.DefaultOperationSerializationContext;
 import org.apache.flink.table.operations.QueryOperation;
-import org.apache.flink.table.operations.SerializationContext;
 import org.apache.flink.table.test.program.SqlTestStep;
 import org.apache.flink.table.test.program.TableApiTestStep;
 import org.apache.flink.table.test.program.TableTestProgram;
@@ -42,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.flink.table.api.Expressions.call;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for serialization of {@link org.apache.flink.table.operations.QueryOperation}. */
@@ -90,7 +88,10 @@ public class QueryOperationSqlSerializationTest implements TableTestProgramRunne
                                 .findFirst()
                                 .get();
         final Table table = tableApiStep.toTable(env);
-        assertThat(table.getQueryOperation().asSerializableString(env.getConfig().getSerializationContext())).isEqualTo(sqlStep.sql);
+        assertThat(
+                        table.getQueryOperation()
+                                .asSerializableString(new DefaultOperationSerializationContext()))
+                .isEqualTo(sqlStep.sql);
     }
 
     @ParameterizedTest
@@ -113,17 +114,6 @@ public class QueryOperationSqlSerializationTest implements TableTestProgramRunne
                                 .get();
 
         final Table table = tableApiStep.toTable(env);
-
-        env.getConfig()
-           .setPlannerConfig(new PlannerConfigs.SerializationConfig(new SerializationContext() {
-               @Override
-               public String serializeInlineFunction(FunctionDefinition functionDefinition) {
-                   // register and generate an identifier
-           ...
-               }
-           }));
-
-        env.from("t").select(call(MyUDF.class, $("f0"))).execute().print();
 
         QueryOperation queryOperation = table.getQueryOperation();
         CollectModifyOperation sinkOperation = new CollectModifyOperation(queryOperation);

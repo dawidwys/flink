@@ -1,13 +1,13 @@
 package org.apache.flink.table.operations;
 
-import org.apache.flink.table.expressions.SerializationContext;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.functions.FunctionDefinition;
 
-public class ExpressionSerializationContextAdapter implements SerializationContext {
+public class ExpressionSerializationContextAdapter implements ExpressionSerializationContext {
 
-    private final org.apache.flink.table.operations.SerializationContext context;
+    private final OperationSerializationContext context;
 
-    public ExpressionSerializationContextAdapter(org.apache.flink.table.operations.SerializationContext context) {
+    public ExpressionSerializationContextAdapter(OperationSerializationContext context) {
         this.context = context;
     }
 

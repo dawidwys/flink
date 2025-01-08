@@ -20,7 +20,7 @@ package org.apache.flink.table.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.Schema;
-import org.apache.flink.table.expressions.SerializationContext;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.factories.DynamicTableFactory;
 import org.apache.flink.util.Preconditions;
 
@@ -44,9 +44,9 @@ import java.util.Optional;
  *
  * <p>Note: The default implementation that is available via {@link #of(Schema, String, List, Map)}
  * is always serializable. For example, it can be used for implementing a catalog that uses {@link
- * ResolvedCatalogTable#toProperties(SerializationContext)} or for persisting compiled plans. An implementation of this
- * interface determines whether a catalog table can be serialized by providing a proper {@link
- * #getOptions()} method.
+ * ResolvedCatalogTable#toProperties(ExpressionSerializationContext)} or for persisting compiled
+ * plans. An implementation of this interface determines whether a catalog table can be serialized
+ * by providing a proper {@link #getOptions()} method.
  */
 @PublicEvolving
 public interface CatalogTable extends CatalogBaseTable {
@@ -99,7 +99,8 @@ public interface CatalogTable extends CatalogBaseTable {
 
     /**
      * Creates an instance of {@link CatalogTable} from a map of string properties that were
-     * previously created with {@link ResolvedCatalogTable#toProperties(SerializationContext)}.
+     * previously created with {@link
+     * ResolvedCatalogTable#toProperties(ExpressionSerializationContext)}.
      *
      * <p>Note that the serialization and deserialization of catalog tables are not symmetric. The
      * framework will resolve functions and perform other validation tasks. A catalog implementation

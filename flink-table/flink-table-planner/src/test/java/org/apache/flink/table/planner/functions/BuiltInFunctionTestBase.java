@@ -30,6 +30,7 @@ import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.functions.BuiltInFunctionDefinition;
 import org.apache.flink.table.functions.UserDefinedFunction;
+import org.apache.flink.table.operations.DefaultOperationSerializationContext;
 import org.apache.flink.table.operations.ExpressionSerializationContextAdapter;
 import org.apache.flink.table.operations.ProjectQueryOperation;
 import org.apache.flink.table.types.AbstractDataType;
@@ -526,8 +527,11 @@ abstract class BuiltInFunctionTestBase {
                     (ProjectQueryOperation) select.getQueryOperation();
             final String exprAsSerializableString =
                     projectQueryOperation.getProjectList().stream()
-                            .map(resolvedExpression -> resolvedExpression.asSerializableString(
-                                    new ExpressionSerializationContextAdapter(env.getConfig().getSerializationContext())))
+                            .map(
+                                    resolvedExpression ->
+                                            resolvedExpression.asSerializableString(
+                                                    new ExpressionSerializationContextAdapter(
+                                                            new DefaultOperationSerializationContext())))
                             .collect(Collectors.joining(", "));
             return env.sqlQuery("SELECT " + exprAsSerializableString + " FROM " + inputTable);
         }

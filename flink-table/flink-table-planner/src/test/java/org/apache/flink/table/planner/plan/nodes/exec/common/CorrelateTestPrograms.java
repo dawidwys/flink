@@ -183,13 +183,13 @@ public class CorrelateTestPrograms {
                                             Row.of(
                                                     "Bob",
                                                     new Row[] {
-                                                            Row.of("1"), Row.of("2"), Row.of("3")
+                                                        Row.of("1"), Row.of("2"), Row.of("3")
                                                     }))
                                     .producedAfterRestore(
                                             Row.of(
                                                     "Alice",
                                                     new Row[] {
-                                                            Row.of("4"), Row.of("5"), Row.of("6")
+                                                        Row.of("4"), Row.of("5"), Row.of("6")
                                                     }))
                                     .build())
                     .setupTableSink(

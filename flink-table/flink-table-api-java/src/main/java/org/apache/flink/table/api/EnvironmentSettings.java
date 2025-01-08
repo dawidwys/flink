@@ -25,6 +25,7 @@ import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.api.config.TableConfigOptions;
 import org.apache.flink.table.catalog.CatalogStore;
 import org.apache.flink.table.functions.UserDefinedFunction;
+import org.apache.flink.table.operations.OperationSerializationContext;
 
 import javax.annotation.Nullable;
 
@@ -63,16 +64,17 @@ public class EnvironmentSettings {
     private final ClassLoader classLoader;
 
     private final @Nullable CatalogStore catalogStore;
-
-    private EnvironmentSettings(Configuration configuration, ClassLoader classLoader) {
-        this(configuration, classLoader, null);
-    }
+    private final @Nullable OperationSerializationContext operationSerializationContext;
 
     private EnvironmentSettings(
-            Configuration configuration, ClassLoader classLoader, CatalogStore catalogStore) {
+            Configuration configuration,
+            ClassLoader classLoader,
+            CatalogStore catalogStore,
+            OperationSerializationContext operationSerializationContext) {
         this.configuration = configuration;
         this.classLoader = classLoader;
         this.catalogStore = catalogStore;
+        this.operationSerializationContext = operationSerializationContext;
     }
 
     /**
@@ -113,7 +115,10 @@ public class EnvironmentSettings {
     @Deprecated
     public static EnvironmentSettings fromConfiguration(ReadableConfig configuration) {
         return new EnvironmentSettings(
-                (Configuration) configuration, Thread.currentThread().getContextClassLoader());
+                (Configuration) configuration,
+                Thread.currentThread().getContextClassLoader(),
+                null,
+                null);
     }
 
     /**
@@ -167,6 +172,12 @@ public class EnvironmentSettings {
         return catalogStore;
     }
 
+    @Internal
+    @Nullable
+    public OperationSerializationContext getOperationSerializationContext() {
+        return operationSerializationContext;
+    }
+
     /** A builder for {@link EnvironmentSettings}. */
     @PublicEvolving
     public static class Builder {
@@ -175,6 +186,7 @@ public class EnvironmentSettings {
         private ClassLoader classLoader;
 
         private @Nullable CatalogStore catalogStore;
+        private @Nullable OperationSerializationContext operationSerializationContext;
 
         public Builder() {}
 
@@ -254,12 +266,19 @@ public class EnvironmentSettings {
             return this;
         }
 
+        public Builder withOperationSerializationContext(
+                OperationSerializationContext operationSerializationContext) {
+            this.operationSerializationContext = operationSerializationContext;
+            return this;
+        }
+
         /** Returns an immutable instance of {@link EnvironmentSettings}. */
         public EnvironmentSettings build() {
             if (classLoader == null) {
                 classLoader = Thread.currentThread().getContextClassLoader();
             }
-            return new EnvironmentSettings(configuration, classLoader, catalogStore);
+            return new EnvironmentSettings(
+                    configuration, classLoader, catalogStore, operationSerializationContext);
         }
     }
 }

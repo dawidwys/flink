@@ -21,6 +21,7 @@ package org.apache.flink.table.operations;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.FieldReferenceExpression;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.expressions.ValueLiteralExpression;
@@ -92,7 +93,7 @@ public class WindowAggregateQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         final ExpressionSerializationContextAdapter expressionSerializationContext =
                 new ExpressionSerializationContextAdapter(context);
         return String.format(
@@ -106,10 +107,15 @@ public class WindowAggregateQueryOperation implements QueryOperation {
                                 expr ->
                                         OperationExpressionsUtils.scopeReferencesWithAlias(
                                                 INPUT_ALIAS, expr))
-                        .map(resolvedExpression -> resolvedExpression.asSerializableString(expressionSerializationContext))
+                        .map(
+                                resolvedExpression ->
+                                        resolvedExpression.asSerializableString(
+                                                expressionSerializationContext))
                         .collect(Collectors.joining(", ")),
                 OperationUtils.indent(
-                        groupWindow.asSerializableString(child.asSerializableString(context), expressionSerializationContext)),
+                        groupWindow.asSerializableString(
+                                child.asSerializableString(context),
+                                expressionSerializationContext)),
                 INPUT_ALIAS,
                 Stream.concat(
                                 Stream.of("window_start", "window_end"),
@@ -119,8 +125,10 @@ public class WindowAggregateQueryOperation implements QueryOperation {
                                                         OperationExpressionsUtils
                                                                 .scopeReferencesWithAlias(
                                                                         INPUT_ALIAS, expr))
-                                        .map(resolvedExpression1 -> resolvedExpression1.asSerializableString(
-                                                expressionSerializationContext)))
+                                        .map(
+                                                resolvedExpression1 ->
+                                                        resolvedExpression1.asSerializableString(
+                                                                expressionSerializationContext)))
                         .collect(Collectors.joining(", ")));
     }
 
@@ -265,7 +273,7 @@ public class WindowAggregateQueryOperation implements QueryOperation {
             }
         }
 
-        public String asSerializableString(String table, org.apache.flink.table.expressions.SerializationContext context) {
+        public String asSerializableString(String table, ExpressionSerializationContext context) {
             switch (type) {
                 case SLIDE:
                     return String.format(

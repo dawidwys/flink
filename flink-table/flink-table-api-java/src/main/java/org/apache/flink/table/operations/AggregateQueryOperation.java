@@ -20,6 +20,7 @@ package org.apache.flink.table.operations;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.operations.utils.OperationExpressionsUtils;
 
@@ -77,7 +78,7 @@ public class AggregateQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         final String groupingExprs = getGroupingExprs(context::serializeInlineFunction);
         return String.format(
                 "SELECT %s FROM (%s\n) %s\nGROUP BY %s",
@@ -86,14 +87,17 @@ public class AggregateQueryOperation implements QueryOperation {
                                 expr ->
                                         OperationExpressionsUtils.scopeReferencesWithAlias(
                                                 INPUT_ALIAS, expr))
-                        .map(resolvedExpression -> resolvedExpression.asSerializableString(context::serializeInlineFunction))
+                        .map(
+                                resolvedExpression ->
+                                        resolvedExpression.asSerializableString(
+                                                context::serializeInlineFunction))
                         .collect(Collectors.joining(", ")),
                 OperationUtils.indent(child.asSerializableString(context)),
                 INPUT_ALIAS,
                 groupingExprs);
     }
 
-    private String getGroupingExprs(org.apache.flink.table.expressions.SerializationContext context) {
+    private String getGroupingExprs(ExpressionSerializationContext context) {
         if (groupingExpressions.isEmpty()) {
             return "1";
         } else {

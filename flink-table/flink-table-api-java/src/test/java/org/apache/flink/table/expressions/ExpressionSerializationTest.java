@@ -400,8 +400,10 @@ public class ExpressionSerializationTest {
 
         assertThat(resolved)
                 .hasSize(1)
-                .extracting(resolvedExpression ->
-                        resolvedExpression.asSerializableString(new DefaultSerializationContext()))
+                .extracting(
+                        resolvedExpression ->
+                                resolvedExpression.asSerializableString(
+                                        new DefaultExpressionSerializationContext()))
                 .containsOnly(spec.expectedStr);
     }
 

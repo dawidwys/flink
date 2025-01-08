@@ -31,7 +31,7 @@ import org.apache.flink.table.catalog.ResolvedCatalogTable;
 import org.apache.flink.table.catalog.TableDistribution;
 import org.apache.flink.table.catalog.UniqueConstraint;
 import org.apache.flink.table.operations.ExpressionSerializationContextAdapter;
-import org.apache.flink.table.operations.SerializationContext;
+import org.apache.flink.table.operations.OperationSerializationContext;
 import org.apache.flink.table.utils.EncodingUtils;
 
 import org.apache.commons.lang3.StringUtils;
@@ -53,7 +53,7 @@ public class ShowCreateUtil {
             ResolvedCatalogBaseTable<?> table,
             ObjectIdentifier tableIdentifier,
             boolean isTemporary,
-            SerializationContext context) {
+            OperationSerializationContext context) {
         if (table.getTableKind() == CatalogBaseTable.TableKind.VIEW) {
             throw new TableException(
                     String.format(
@@ -177,7 +177,9 @@ public class ShowCreateUtil {
     }
 
     static Optional<String> extractFormattedWatermarkSpecs(
-            ResolvedCatalogBaseTable<?> table, String printIndent, SerializationContext context) {
+            ResolvedCatalogBaseTable<?> table,
+            String printIndent,
+            OperationSerializationContext context) {
         if (table.getResolvedSchema().getWatermarkSpecs().isEmpty()) {
             return Optional.empty();
         }
@@ -192,7 +194,9 @@ public class ShowCreateUtil {
                                                         watermarkSpec.getRowtimeAttribute()),
                                                 watermarkSpec
                                                         .getWatermarkExpression()
-                                                        .asSerializableString(new ExpressionSerializationContextAdapter(context))))
+                                                        .asSerializableString(
+                                                                new ExpressionSerializationContextAdapter(
+                                                                        context))))
                         .collect(Collectors.joining("\n")));
     }
 

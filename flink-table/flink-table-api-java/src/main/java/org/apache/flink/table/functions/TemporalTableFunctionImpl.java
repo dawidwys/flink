@@ -20,12 +20,10 @@ package org.apache.flink.table.functions;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.expressions.Expression;
-import org.apache.flink.table.legacy.api.TableSchema;
 import org.apache.flink.table.operations.QueryOperation;
 import org.apache.flink.table.types.inference.InputTypeStrategies;
 import org.apache.flink.table.types.inference.TypeInference;
@@ -107,8 +105,8 @@ public final class TemporalTableFunctionImpl extends TemporalTableFunction {
                 operationTree,
                 timeAttribute,
                 primaryKey,
-                (TypeInformation<Row>) TypeConversions.fromDataTypeToLegacyInfo(operationTree
-                        .getResolvedSchema()
-                        .toSourceRowDataType()));
+                (TypeInformation<Row>)
+                        TypeConversions.fromDataTypeToLegacyInfo(
+                                operationTree.getResolvedSchema().toSourceRowDataType()));
     }
 }

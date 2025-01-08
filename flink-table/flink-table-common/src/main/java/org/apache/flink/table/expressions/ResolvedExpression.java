@@ -39,16 +39,18 @@ import java.util.List;
 @PublicEvolving
 public interface ResolvedExpression extends Expression {
 
-//    /**
-//     * Returns a string that fully serializes this instance. The serialized string can be used for
-//     * storing the query in, for example, a {@link org.apache.flink.table.catalog.Catalog} as a
-//     * view.
-//     *
-//     * @return detailed string for persisting in a catalog
-//     */
-//    default String asSerializableString() {
-//        return asSerializableString(new DefaultSerializationContext());
-//    }
+    //    /**
+    //     * Returns a string that fully serializes this instance. The serialized string can be used
+    // for
+    //     * storing the query in, for example, a {@link org.apache.flink.table.catalog.Catalog} as
+    // a
+    //     * view.
+    //     *
+    //     * @return detailed string for persisting in a catalog
+    //     */
+    //    default String asSerializableString() {
+    //        return asSerializableString(new DefaultSerializationContext());
+    //    }
 
     /**
      * Returns a string that fully serializes this instance. The serialized string can be used for
@@ -57,7 +59,7 @@ public interface ResolvedExpression extends Expression {
      *
      * @return detailed string for persisting in a catalog
      */
-    default String asSerializableString(SerializationContext context) {
+    default String asSerializableString(ExpressionSerializationContext context) {
         throw new TableException(
                 String.format(
                         "Expression '%s' is not string serializable. Currently, only expressions that "
@@ -69,5 +71,4 @@ public interface ResolvedExpression extends Expression {
     DataType getOutputDataType();
 
     List<ResolvedExpression> getResolvedChildren();
-
 }

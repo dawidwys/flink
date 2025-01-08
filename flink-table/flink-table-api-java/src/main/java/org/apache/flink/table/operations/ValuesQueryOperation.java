@@ -66,7 +66,7 @@ public class ValuesQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         return String.format(
                 "SELECT %s FROM (VALUES %s\n) %s(%s)",
                 OperationUtils.formatSelectColumns(resolvedSchema, INPUT_ALIAS),
@@ -76,7 +76,11 @@ public class ValuesQueryOperation implements QueryOperation {
                                         row ->
                                                 row.stream()
                                                         .map(
-                                                                resolvedExpression -> resolvedExpression.asSerializableString(new ExpressionSerializationContextAdapter(context)))
+                                                                resolvedExpression ->
+                                                                        resolvedExpression
+                                                                                .asSerializableString(
+                                                                                        new ExpressionSerializationContextAdapter(
+                                                                                                context)))
                                                         .collect(
                                                                 Collectors.joining(", ", "(", ")")))
                                 .collect(Collectors.joining(",\n"))),

@@ -18,6 +18,7 @@
 
 package org.apache.flink.table.api;
 
+import org.apache.flink.table.operations.OperationSerializationContext;
 import org.apache.flink.table.operations.QueryOperation;
 import org.apache.flink.table.planner.factories.TestValuesTableFactory;
 import org.apache.flink.table.test.program.TableApiTestStep;
@@ -43,7 +44,10 @@ import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Tests for executing results of {@link QueryOperation#asSerializableString(org.apache.flink.table.operations.SerializationContext)}. */
+/**
+ * Tests for executing results of {@link
+ * QueryOperation#asSerializableString(OperationSerializationContext)}.
+ */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(MiniClusterExtension.class)
 public class QueryOperationSqlExecutionTest implements TableTestProgramRunner {

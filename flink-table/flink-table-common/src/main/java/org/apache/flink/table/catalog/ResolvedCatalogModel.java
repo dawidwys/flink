@@ -19,7 +19,7 @@
 package org.apache.flink.table.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.table.expressions.SerializationContext;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 
 import java.util.Map;
 
@@ -49,11 +49,12 @@ public interface ResolvedCatalogModel extends CatalogModel {
      * <p>Compared to the pure table options in {@link #getOptions()}, the map includes input
      * schema, output schema, comment and options.
      */
-    Map<String, String> toProperties(SerializationContext context);
+    Map<String, String> toProperties(ExpressionSerializationContext context);
 
     /**
      * Creates an instance of {@link CatalogModel} from a map of string properties that were
-     * previously created with {@link ResolvedCatalogModel#toProperties(SerializationContext)}.
+     * previously created with {@link
+     * ResolvedCatalogModel#toProperties(ExpressionSerializationContext)}.
      *
      * @param properties serialized version of a {@link ResolvedCatalogModel} that includes input
      *     schema, output schema, comment and options.

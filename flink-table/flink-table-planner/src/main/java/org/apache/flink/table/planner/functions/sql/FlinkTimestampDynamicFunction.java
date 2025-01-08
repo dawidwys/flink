@@ -70,7 +70,6 @@ public class FlinkTimestampDynamicFunction extends SqlAbstractTimeFunction {
                 && this.isBatchMode == other.isBatchMode;
     }
 
-
     @Override
     public int hashCode() {
         return Objects.hash(kind, this.getName(), isBatchMode);

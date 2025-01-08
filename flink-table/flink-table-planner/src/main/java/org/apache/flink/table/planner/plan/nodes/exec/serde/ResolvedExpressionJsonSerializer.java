@@ -74,11 +74,13 @@ final class ResolvedExpressionJsonSerializer extends StdSerializer<ResolvedExpre
             SerializerProvider serializerProvider)
             throws IOException {
         final SerdeContext serde = SerdeContext.get(serializerProvider);
-        final ExpressionSerializationContextAdapter contextAdapter = new ExpressionSerializationContextAdapter(
-                serde.getConfiguration().getSerializationContext());
+        final ExpressionSerializationContextAdapter contextAdapter =
+                new ExpressionSerializationContextAdapter(
+                        serde.getFlinkContext()
+                                .getCatalogManager()
+                                .getOperationSerializationContext());
         serializerProvider.defaultSerializeField(REX_NODE, expression.getRexNode(), jsonGenerator);
         jsonGenerator.writeStringField(
-                SERIALIZABLE_STRING,
-                expression.asSerializableString(contextAdapter));
+                SERIALIZABLE_STRING, expression.asSerializableString(contextAdapter));
     }
 }

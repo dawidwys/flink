@@ -1,9 +1,9 @@
-package org.apache.flink.table.operations;
+package org.apache.flink.table.expressions;
 
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.functions.FunctionDefinition;
 
-public class DefaultSerializationContext implements SerializationContext {
+public class DefaultExpressionSerializationContext implements ExpressionSerializationContext {
     @Override
     public String serializeInlineFunction(FunctionDefinition functionDefinition) {
         throw new TableException(

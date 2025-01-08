@@ -32,7 +32,7 @@ import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.expressions.DefaultSerializationContext;
+import org.apache.flink.table.expressions.DefaultExpressionSerializationContext;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.functions.BuiltInFunctionDefinition;
@@ -530,7 +530,10 @@ abstract class BuiltInAggregateFunctionTestBase {
 
         private static String toSerializableExpr(List<ResolvedExpression> expressions) {
             return expressions.stream()
-                    .map(resolvedExpression -> resolvedExpression.asSerializableString(new DefaultSerializationContext()))
+                    .map(
+                            resolvedExpression ->
+                                    resolvedExpression.asSerializableString(
+                                            new DefaultExpressionSerializationContext()))
                     .collect(Collectors.joining(", "));
         }
 

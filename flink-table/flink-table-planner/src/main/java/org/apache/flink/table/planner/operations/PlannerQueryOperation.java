@@ -75,7 +75,7 @@ public class PlannerQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         try {
             return toSqlString.get();
         } catch (Exception e) {

@@ -684,11 +684,12 @@ public final class BuiltInFunctionDefinitions {
                             (sqlName, operands, context) ->
                                     String.format(
                                             "%s BETWEEN %s AND %s",
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(0), context),
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(1),
-                                                    context),
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(2),
-                                                    context)))
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(0), context),
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(1), context),
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(2), context)))
                     .inputTypeStrategy(
                             comparable(ConstantArgumentCount.of(3), StructuredComparison.FULL))
                     .outputTypeStrategy(nullableIfArgs(explicit(DataTypes.BOOLEAN())))
@@ -701,12 +702,12 @@ public final class BuiltInFunctionDefinitions {
                             (sqlName, operands, context) ->
                                     String.format(
                                             "%s NOT BETWEEN %s AND %s",
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(0),
-                                                    context),
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(1),
-                                                    context),
-                                            CallSyntaxUtils.asSerializableOperand(operands.get(2),
-                                                    context)))
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(0), context),
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(1), context),
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    operands.get(2), context)))
                     .kind(SCALAR)
                     .inputTypeStrategy(
                             comparable(ConstantArgumentCount.of(3), StructuredComparison.FULL))
@@ -2260,8 +2261,11 @@ public final class BuiltInFunctionDefinitions {
                                                             operands.get(0), TimePointUnit.class)
                                                     .name(),
                                             operands.subList(1, operands.size()).stream()
-                                                    .map(resolvedExpression -> resolvedExpression.asSerializableString(
-                                                            context))
+                                                    .map(
+                                                            resolvedExpression ->
+                                                                    resolvedExpression
+                                                                            .asSerializableString(
+                                                                                    context))
                                                     .collect(Collectors.joining(", "))))
                     .inputTypeStrategy(
                             sequence(

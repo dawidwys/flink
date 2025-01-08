@@ -625,7 +625,9 @@ abstract class PlannerBase(
               contextResolvedTable,
               new PlannerQueryOperation(
                 modify.getInput,
-                () => queryOperation.asSerializableString(tableConfig.getSerializationContext))
+                () =>
+                  queryOperation.asSerializableString(
+                    catalogManager.getOperationSerializationContext))
             )
             translateToRel(modifyOperation)
           case _ =>

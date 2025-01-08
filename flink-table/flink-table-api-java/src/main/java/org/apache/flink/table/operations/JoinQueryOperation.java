@@ -111,7 +111,7 @@ public class JoinQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
 
         Map<Integer, String> inputAliases = new HashMap<>();
         inputAliases.put(0, INPUT_1_ALIAS);
@@ -138,7 +138,7 @@ public class JoinQueryOperation implements QueryOperation {
         return leftColumns + ", " + rightColumns;
     }
 
-    private String rightToSerializable(SerializationContext context) {
+    private String rightToSerializable(OperationSerializationContext context) {
         final StringBuilder s = new StringBuilder();
         if (!correlated) {
             s.append("(");

@@ -21,8 +21,8 @@ package org.apache.flink.table.functions;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.expressions.CallExpression;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.flink.table.expressions.SerializationContext;
 import org.apache.flink.table.expressions.TimeIntervalUnit;
 import org.apache.flink.table.expressions.ValueLiteralExpression;
 import org.apache.flink.table.types.logical.LogicalTypeFamily;
@@ -35,13 +35,19 @@ import java.util.stream.Collectors;
 @Internal
 public interface SqlCallSyntax {
 
-    String unparse(String sqlName, List<ResolvedExpression> operands, SerializationContext context);
+    String unparse(
+            String sqlName,
+            List<ResolvedExpression> operands,
+            ExpressionSerializationContext context);
 
     /**
      * Special case for aggregate functions, which can have a DISTINCT function applied. Called only
      * from the DISTINCT function.
      */
-    default String unparseDistinct(String sqlName, List<ResolvedExpression> operands, SerializationContext context) {
+    default String unparseDistinct(
+            String sqlName,
+            List<ResolvedExpression> operands,
+            ExpressionSerializationContext context) {
         throw new UnsupportedOperationException(
                 "Only the FUNCTION syntax supports the DISTINCT clause.");
     }
@@ -50,24 +56,35 @@ public interface SqlCallSyntax {
     SqlCallSyntax FUNCTION =
             new SqlCallSyntax() {
                 @Override
-                public String unparse(String sqlName, List<ResolvedExpression> operands, SerializationContext context) {
+                public String unparse(
+                        String sqlName,
+                        List<ResolvedExpression> operands,
+                        ExpressionSerializationContext context) {
                     return doUnParse(sqlName, operands, false, context);
                 }
 
                 @Override
-                public String unparseDistinct(String sqlName, List<ResolvedExpression> operands, SerializationContext context) {
+                public String unparseDistinct(
+                        String sqlName,
+                        List<ResolvedExpression> operands,
+                        ExpressionSerializationContext context) {
                     return doUnParse(sqlName, operands, true, context);
                 }
 
                 private String doUnParse(
-                        String sqlName, List<ResolvedExpression> operands, boolean isDistinct,
-                        SerializationContext context) {
+                        String sqlName,
+                        List<ResolvedExpression> operands,
+                        boolean isDistinct,
+                        ExpressionSerializationContext context) {
                     return String.format(
                             "%s(%s%s)",
                             sqlName,
                             isDistinct ? "DISTINCT " : "",
                             operands.stream()
-                                    .map(resolvedExpression -> resolvedExpression.asSerializableString(context))
+                                    .map(
+                                            resolvedExpression ->
+                                                    resolvedExpression.asSerializableString(
+                                                            context))
                                     .collect(Collectors.joining(", ")));
                 }
             };
@@ -96,7 +113,9 @@ public interface SqlCallSyntax {
                                     context);
                 } else {
                     return SqlCallSyntax.FUNCTION.unparseDistinct(
-                            callExpression.getFunctionName(), callExpression.getResolvedChildren(), context);
+                            callExpression.getFunctionName(),
+                            callExpression.getResolvedChildren(),
+                            context);
                 }
             };
 
@@ -107,7 +126,10 @@ public interface SqlCallSyntax {
                             "%s[%s]",
                             sqlName,
                             operands.stream()
-                                    .map(resolvedExpression -> resolvedExpression.asSerializableString(context))
+                                    .map(
+                                            resolvedExpression ->
+                                                    resolvedExpression.asSerializableString(
+                                                            context))
                                     .collect(Collectors.joining(", ")));
 
     /** Binary operator syntax, as in "x - y". */
@@ -144,9 +166,10 @@ public interface SqlCallSyntax {
     SqlCallSyntax MULTIPLE_BINARY_OP =
             (sqlName, operands, context) ->
                     operands.stream()
-                            .map(expression -> CallSyntaxUtils.asSerializableOperand(
-                                    expression,
-                                    context))
+                            .map(
+                                    expression ->
+                                            CallSyntaxUtils.asSerializableOperand(
+                                                    expression, context))
                             .collect(Collectors.joining(String.format(" %s ", sqlName)));
 
     /** Postfix unary operator syntax, as in "x ++". */
@@ -154,14 +177,16 @@ public interface SqlCallSyntax {
             (sqlName, operands, context) ->
                     String.format(
                             "%s %s",
-                            CallSyntaxUtils.asSerializableOperand(operands.get(0), context), sqlName);
+                            CallSyntaxUtils.asSerializableOperand(operands.get(0), context),
+                            sqlName);
 
     /** Prefix unary operator syntax, as in "- x". */
     SqlCallSyntax UNARY_PREFIX_OP =
             (sqlName, operands, context) ->
                     String.format(
                             "%s %s",
-                            sqlName, CallSyntaxUtils.asSerializableOperand(operands.get(0), context));
+                            sqlName,
+                            CallSyntaxUtils.asSerializableOperand(operands.get(0), context));
 
     /**
      * Special sql syntax for CAST operators (CAST, TRY_CAST, REINTERPRET_CAST).
@@ -190,8 +215,9 @@ public interface SqlCallSyntax {
                                 operands.get(0).asSerializableString(context),
                                 operands.get(1).asSerializableString(context));
                 if (operands.size() == 3) {
-                    return s + String.format(" FOR %s)", operands.get(2).asSerializableString(
-                            context));
+                    return s
+                            + String.format(
+                                    " FOR %s)", operands.get(2).asSerializableString(context));
                 }
 
                 return s + ")";
@@ -270,8 +296,9 @@ public interface SqlCallSyntax {
 
                 // optional length
                 if (operands.size() == 4) {
-                    return s + String.format(" FOR %s)", operands.get(3).asSerializableString(
-                            context));
+                    return s
+                            + String.format(
+                                    " FOR %s)", operands.get(3).asSerializableString(context));
                 }
 
                 return s + ")";
@@ -302,8 +329,10 @@ public interface SqlCallSyntax {
                             "%s IN (%s)",
                             operands.get(0).asSerializableString(context),
                             operands.subList(1, operands.size()).stream()
-                                    .map(resolvedExpression -> resolvedExpression.asSerializableString(
-                                            context))
+                                    .map(
+                                            resolvedExpression ->
+                                                    resolvedExpression.asSerializableString(
+                                                            context))
                                     .collect(Collectors.joining(", ")));
 
     SqlCallSyntax WINDOW_START_END = (sqlName, operands, context) -> String.format("%s", sqlName);

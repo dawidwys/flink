@@ -224,7 +224,7 @@ public final class ValueLiteralExpression implements ResolvedExpression {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(ExpressionSerializationContext context) {
         if (value == null && !dataType.getLogicalType().is(LogicalTypeRoot.NULL)) {
             return String.format(
                     "CAST(NULL AS %s)",

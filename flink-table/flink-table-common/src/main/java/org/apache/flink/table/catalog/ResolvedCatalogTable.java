@@ -20,7 +20,7 @@ package org.apache.flink.table.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.Schema;
-import org.apache.flink.table.expressions.SerializationContext;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.util.Preconditions;
 
 import java.util.List;
@@ -72,7 +72,7 @@ public final class ResolvedCatalogTable
      * symmetric. The framework will resolve functions and perform other validation tasks. A catalog
      * implementation must not deal with this during a read operation.
      */
-    public Map<String, String> toProperties(SerializationContext context) {
+    public Map<String, String> toProperties(ExpressionSerializationContext context) {
         return CatalogPropertiesUtil.serializeCatalogTable(this, context);
     }
 

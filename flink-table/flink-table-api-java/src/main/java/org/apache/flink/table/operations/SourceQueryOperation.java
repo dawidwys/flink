@@ -79,7 +79,7 @@ public class SourceQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         String s =
                 String.format(
                         "SELECT %s FROM %s %s",

@@ -20,7 +20,6 @@ package org.apache.flink.table.expressions;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.functions.BuiltInFunctionDefinition;
@@ -198,17 +197,18 @@ public final class CallExpression implements ResolvedExpression {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(ExpressionSerializationContext context) {
         if (functionDefinition instanceof BuiltInFunctionDefinition) {
             final BuiltInFunctionDefinition definition =
                     (BuiltInFunctionDefinition) functionDefinition;
             return definition.getCallSyntax().unparse(definition.getSqlName(), args, context);
         } else {
-            return SqlCallSyntax.FUNCTION.unparse(getSerializableFunctionName(context), args, context);
+            return SqlCallSyntax.FUNCTION.unparse(
+                    getSerializableFunctionName(context), args, context);
         }
     }
 
-    private String getSerializableFunctionName(SerializationContext context) {
+    private String getSerializableFunctionName(ExpressionSerializationContext context) {
         if (functionIdentifier == null) {
             return context.serializeInlineFunction(functionDefinition);
         }

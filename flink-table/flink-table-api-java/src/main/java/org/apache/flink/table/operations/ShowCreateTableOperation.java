@@ -62,7 +62,7 @@ public class ShowCreateTableOperation implements ShowOperation {
                         table.getResolvedTable(),
                         tableIdentifier,
                         table.isTemporary(),
-                        ctx.getTableConfig().getSerializationContext());
+                        ctx.getCatalogManager().getOperationSerializationContext());
 
         return buildStringArrayResult("result", new String[] {resultRow});
     }

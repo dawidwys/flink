@@ -21,9 +21,9 @@ package org.apache.flink.table.planner.expressions;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.expressions.Expression;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.ExpressionVisitor;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.flink.table.expressions.SerializationContext;
 import org.apache.flink.table.types.DataType;
 
 import org.apache.calcite.rex.RexNode;
@@ -74,7 +74,7 @@ public final class RexNodeExpression implements ResolvedExpression {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(ExpressionSerializationContext context) {
         if (serializableString != null) {
             return serializableString;
         }

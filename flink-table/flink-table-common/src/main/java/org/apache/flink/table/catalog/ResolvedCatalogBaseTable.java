@@ -19,7 +19,7 @@
 package org.apache.flink.table.catalog;
 
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.table.expressions.DefaultSerializationContext;
+import org.apache.flink.table.expressions.DefaultExpressionSerializationContext;
 import org.apache.flink.table.legacy.api.TableSchema;
 
 /**
@@ -54,6 +54,7 @@ public interface ResolvedCatalogBaseTable<T extends CatalogBaseTable> extends Ca
      */
     @Deprecated
     default TableSchema getSchema() {
-        return TableSchema.fromResolvedSchema(getResolvedSchema(), new DefaultSerializationContext());
+        return TableSchema.fromResolvedSchema(
+                getResolvedSchema(), new DefaultExpressionSerializationContext());
     }
 }

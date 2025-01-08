@@ -20,9 +20,9 @@ package org.apache.flink.table.functions;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.OverWindowRange;
+import org.apache.flink.table.expressions.ExpressionSerializationContext;
 import org.apache.flink.table.expressions.FieldReferenceExpression;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.flink.table.expressions.SerializationContext;
 import org.apache.flink.table.expressions.TableSymbol;
 import org.apache.flink.table.expressions.ValueLiteralExpression;
 import org.apache.flink.table.types.logical.LogicalType;
@@ -40,7 +40,8 @@ class CallSyntaxUtils {
      * parenthesis if the expression is not a leaf expression such as e.g. {@link
      * ValueLiteralExpression} or {@link FieldReferenceExpression}.
      */
-    static String asSerializableOperand(ResolvedExpression expression, SerializationContext context) {
+    static String asSerializableOperand(
+            ResolvedExpression expression, ExpressionSerializationContext context) {
         if (expression.getResolvedChildren().isEmpty()) {
             return expression.asSerializableString(context);
         }
@@ -53,7 +54,9 @@ class CallSyntaxUtils {
     }
 
     static String overRangeToSerializableString(
-            ResolvedExpression preceding, ResolvedExpression following, SerializationContext context) {
+            ResolvedExpression preceding,
+            ResolvedExpression following,
+            ExpressionSerializationContext context) {
         if (((ValueLiteralExpression) preceding).isNull()
                 || ((ValueLiteralExpression) following).isNull()) {
             return "";
@@ -66,7 +69,9 @@ class CallSyntaxUtils {
     }
 
     private static String toStringPrecedingOrFollowing(
-            ResolvedExpression precedingOrFollowing, boolean isPreceding, SerializationContext context) {
+            ResolvedExpression precedingOrFollowing,
+            boolean isPreceding,
+            ExpressionSerializationContext context) {
         final String suffix = isPreceding ? "PRECEDING" : "FOLLOWING";
         return Optional.of(precedingOrFollowing)
                 .flatMap(

@@ -60,7 +60,7 @@ public class FilterQueryOperation implements QueryOperation {
     }
 
     @Override
-    public String asSerializableString(SerializationContext context) {
+    public String asSerializableString(OperationSerializationContext context) {
         return String.format(
                 "SELECT %s FROM (%s\n) %s WHERE %s",
                 OperationUtils.formatSelectColumns(getResolvedSchema(), INPUT_ALIAS),
