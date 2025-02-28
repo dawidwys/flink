@@ -92,6 +92,7 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatExceptionOfType, f
 import org.junit.jupiter.api.Assertions.{assertEquals, assertTrue}
 import org.junit.jupiter.api.extension.{BeforeEachCallback, ExtendWith, ExtensionContext, RegisterExtension}
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
 import org.junit.platform.commons.support.AnnotationSupport
 
 import java.io.{File, IOException}
@@ -99,7 +100,6 @@ import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import java.util.Collections
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
@@ -155,7 +155,11 @@ class TestName extends BeforeEachCallback {
       }
       methodName = s"${context.getTestMethod.get().getName}$displayName"
     } else {
-      methodName = context.getTestMethod.get().getName
+      if (AnnotationSupport.isAnnotated(context.getTestMethod, classOf[ParameterizedTest])) {
+        methodName = s"${context.getTestMethod.get().getName}[${context.getDisplayName}]"
+      } else {
+        methodName = context.getTestMethod.get().getName
+      }
     }
   }
 

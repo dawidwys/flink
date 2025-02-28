@@ -54,11 +54,13 @@ public final class ChangelogMode {
                     .build();
 
     private final Set<RowKind> kinds;
+    private final boolean supportsDeleteByKey;
 
-    private ChangelogMode(Set<RowKind> kinds) {
+    private ChangelogMode(Set<RowKind> kinds, boolean supportsDeleteByKey) {
         Preconditions.checkArgument(
                 kinds.size() > 0, "At least one kind of row should be contained in a changelog.");
         this.kinds = Collections.unmodifiableSet(kinds);
+        this.supportsDeleteByKey = supportsDeleteByKey;
     }
 
     /** Shortcut for a simple {@link RowKind#INSERT}-only changelog. */
@@ -96,6 +98,10 @@ public final class ChangelogMode {
         return kinds.size() == 1 && kinds.contains(kind);
     }
 
+    public boolean supportsDeleteByKey() {
+        return supportsDeleteByKey;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -125,6 +131,7 @@ public final class ChangelogMode {
     public static class Builder {
 
         private final Set<RowKind> kinds = EnumSet.noneOf(RowKind.class);
+        private boolean supportsDeleteByKey = false;
 
         private Builder() {
             // default constructor to allow a fluent definition
@@ -135,8 +142,13 @@ public final class ChangelogMode {
             return this;
         }
 
+        public Builder supportsDeleteByKey(boolean flag) {
+            this.supportsDeleteByKey = flag;
+            return this;
+        }
+
         public ChangelogMode build() {
-            return new ChangelogMode(kinds);
+            return new ChangelogMode(kinds, supportsDeleteByKey);
         }
     }
 }
