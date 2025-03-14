@@ -23,7 +23,8 @@ import org.apache.flink.table.api.config.ExecutionConfigOptions
 import org.apache.flink.table.api.config.ExecutionConfigOptions.UpsertMaterialize
 import org.apache.flink.table.connector.ChangelogMode
 import org.apache.flink.table.planner.plan.`trait`._
-import org.apache.flink.table.planner.plan.`trait`.UpdateKindTrait.{BEFORE_AND_AFTER, ONLY_UPDATE_AFTER, beforeAfterOrNone, onlyAfterOrNone}
+import org.apache.flink.table.planner.plan.`trait`.DeleteKindTrait.{deleteOnKeyOrNone, fullDeleteOrNone, DELETE_ON_KEY, FULL_DELETE}
+import org.apache.flink.table.planner.plan.`trait`.UpdateKindTrait.{beforeAfterOrNone, onlyAfterOrNone, BEFORE_AND_AFTER, ONLY_UPDATE_AFTER}
 import org.apache.flink.table.planner.plan.metadata.FlinkRelMetadataQuery
 import org.apache.flink.table.planner.plan.nodes.physical.stream._
 import org.apache.flink.table.planner.plan.utils._
@@ -33,9 +34,9 @@ import org.apache.flink.table.planner.utils.ShortcutUtils.unwrapTableConfig
 import org.apache.flink.table.runtime.operators.join.FlinkJoinType
 import org.apache.flink.table.types.inference.StaticArgumentTrait
 import org.apache.flink.types.RowKind
+
 import org.apache.calcite.rel.RelNode
 import org.apache.calcite.util.ImmutableBitSet
-import org.apache.flink.table.planner.plan.`trait`.DeleteKindTrait.{FULL_DELETE, deleteByKeyOrNone, fullDeleteOrNone}
 
 import scala.collection.JavaConversions._
 
@@ -78,7 +79,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     // step3: satisfy DeleteKind trait
     val requiredDeleteKindTraits = if (rootModifyKindSet.contains(ModifyKind.DELETE)) {
       // try DELETE_BY_KEY first, and then FULL_DELETE
-      Seq(DeleteKindTrait.DELETE_BY_KEY, DeleteKindTrait.FULL_DELETE)
+      Seq(DeleteKindTrait.DELETE_ON_KEY, DeleteKindTrait.FULL_DELETE)
     } else {
       // there is no deletes
       Seq(DeleteKindTrait.NONE)
@@ -122,19 +123,19 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
      * the ModifyKindSetTrait provided by children.
      *
      * @param rel
-     * the node who should satisfy the requiredTrait
+     *   the node who should satisfy the requiredTrait
      * @param requiredTrait
-     * the required ModifyKindSetTrait
+     *   the required ModifyKindSetTrait
      * @param requester
-     * the requester who starts the requirement, used for better exception message
+     *   the requester who starts the requirement, used for better exception message
      * @return
-     * A converted node which satisfy required traits by inputs node of current node. Or throws
-     * exception if required trait can’t be satisfied.
+     *   A converted node which satisfy required traits by inputs node of current node. Or throws
+     *   exception if required trait can’t be satisfied.
      */
     def visit(
-               rel: StreamPhysicalRel,
-               requiredTrait: ModifyKindSetTrait,
-               requester: String): StreamPhysicalRel = rel match {
+        rel: StreamPhysicalRel,
+        requiredTrait: ModifyKindSetTrait,
+        requester: String): StreamPhysicalRel = rel match {
       case sink: StreamPhysicalSink =>
         val name = s"Table sink '${sink.contextResolvedTable.getIdentifier.asSummaryString()}'"
         val queryModifyKindSet = deriveQueryDefaultChangelogMode(sink.getInput, name)
@@ -180,7 +181,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           .addContainedKind(ModifyKind.UPDATE)
         if (
           inputModifyKindSet.contains(ModifyKind.UPDATE) ||
-            inputModifyKindSet.contains(ModifyKind.DELETE)
+          inputModifyKindSet.contains(ModifyKind.DELETE)
         ) {
           builder.addContainedKind(ModifyKind.DELETE)
         }
@@ -203,7 +204,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           .addContainedKind(ModifyKind.UPDATE)
         if (
           inputModifyKindSet.contains(ModifyKind.UPDATE) ||
-            inputModifyKindSet.contains(ModifyKind.DELETE)
+          inputModifyKindSet.contains(ModifyKind.DELETE)
         ) {
           builder.addContainedKind(ModifyKind.DELETE)
         }
@@ -290,7 +291,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
         createNewNode(cep, children, ModifyKindSetTrait.INSERT_ONLY, requiredTrait, requester)
 
       case _: StreamPhysicalTemporalSort | _: StreamPhysicalIntervalJoin |
-           _: StreamPhysicalOverAggregate | _: StreamPhysicalPythonOverAggregate =>
+          _: StreamPhysicalOverAggregate | _: StreamPhysicalPythonOverAggregate =>
         // TemporalSort, OverAggregate, IntervalJoin only support consuming insert-only
         // and producing insert-only changes
         val children = visitChildren(rel, ModifyKindSetTrait.INSERT_ONLY)
@@ -330,9 +331,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
         createNewNode(temporalJoin, children, leftTrait, requiredTrait, requester)
 
       case _: StreamPhysicalCalcBase | _: StreamPhysicalCorrelateBase |
-           _: StreamPhysicalLookupJoin | _: StreamPhysicalExchange | _: StreamPhysicalExpand |
-           _: StreamPhysicalMiniBatchAssigner | _: StreamPhysicalWatermarkAssigner |
-           _: StreamPhysicalWindowTableFunction =>
+          _: StreamPhysicalLookupJoin | _: StreamPhysicalExchange | _: StreamPhysicalExpand |
+          _: StreamPhysicalMiniBatchAssigner | _: StreamPhysicalWatermarkAssigner |
+          _: StreamPhysicalWindowTableFunction =>
         // transparent forward requiredTrait to children
         val children = visitChildren(rel, requiredTrait, requester)
         val childrenTrait = children.head.getTraitSet.getTrait(ModifyKindSetTraitDef.INSTANCE)
@@ -364,7 +365,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
         createNewNode(ts, List(), providedTrait, requiredTrait, requester)
 
       case _: StreamPhysicalDataStreamScan | _: StreamPhysicalLegacyTableSourceScan |
-           _: StreamPhysicalValues =>
+          _: StreamPhysicalValues =>
         // DataStream, TableSource and Values only support producing insert-only messages
         createNewNode(rel, List(), ModifyKindSetTrait.INSERT_ONLY, requiredTrait, requester)
 
@@ -403,15 +404,15 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def visitChildren(
-                               parent: StreamPhysicalRel,
-                               requiredChildrenTrait: ModifyKindSetTrait): List[StreamPhysicalRel] = {
+        parent: StreamPhysicalRel,
+        requiredChildrenTrait: ModifyKindSetTrait): List[StreamPhysicalRel] = {
       visitChildren(parent, requiredChildrenTrait, getNodeName(parent))
     }
 
     private def visitChildren(
-                               parent: StreamPhysicalRel,
-                               requiredChildrenTrait: ModifyKindSetTrait,
-                               requester: String): List[StreamPhysicalRel] = {
+        parent: StreamPhysicalRel,
+        requiredChildrenTrait: ModifyKindSetTrait,
+        requester: String): List[StreamPhysicalRel] = {
       val newChildren = for (i <- 0 until parent.getInputs.size()) yield {
         visitChild(parent, i, requiredChildrenTrait, requester)
       }
@@ -419,8 +420,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def visitChildren(
-                               parent: StreamPhysicalRel,
-                               requiredChildrenTraits: List[ModifyKindSetTrait]): List[StreamPhysicalRel] = {
+        parent: StreamPhysicalRel,
+        requiredChildrenTraits: List[ModifyKindSetTrait]): List[StreamPhysicalRel] = {
       val requester = getNodeName(parent)
       val newChildren = for (i <- 0 until parent.getInputs.size()) yield {
         visitChild(parent, i, requiredChildrenTraits(i), requester)
@@ -429,10 +430,10 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def visitChild(
-                            parent: StreamPhysicalRel,
-                            childOrdinal: Int,
-                            requiredChildTrait: ModifyKindSetTrait,
-                            requester: String): StreamPhysicalRel = {
+        parent: StreamPhysicalRel,
+        childOrdinal: Int,
+        requiredChildTrait: ModifyKindSetTrait,
+        requester: String): StreamPhysicalRel = {
       val child = parent.getInput(childOrdinal).asInstanceOf[StreamPhysicalRel]
       this.visit(child, requiredChildTrait, requester)
     }
@@ -457,11 +458,11 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def createNewNode(
-                               node: StreamPhysicalRel,
-                               children: List[StreamPhysicalRel],
-                               providedTrait: ModifyKindSetTrait,
-                               requiredTrait: ModifyKindSetTrait,
-                               requestedOwner: String): StreamPhysicalRel = {
+        node: StreamPhysicalRel,
+        children: List[StreamPhysicalRel],
+        providedTrait: ModifyKindSetTrait,
+        requiredTrait: ModifyKindSetTrait,
+        requestedOwner: String): StreamPhysicalRel = {
       if (!providedTrait.satisfies(requiredTrait)) {
         val diff = providedTrait.modifyKindSet.minus(requiredTrait.modifyKindSet)
         val diffString = diff.getContainedKinds.toList.sorted // for deterministic error message
@@ -503,14 +504,16 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
      * itself not to generate UPDATE_BEFORE, or generating a new node to filter UPDATE_BEFORE.
      *
      * @param rel
-     * the node who should satisfy the requiredTrait
+     *   the node who should satisfy the requiredTrait
      * @param requiredUpdateTrait
-     * the required UpdateKindTrait
+     *   the required UpdateKindTrait
      * @return
-     * A converted node which satisfies required traits by input nodes of current node. Or None if
-     * required traits cannot be satisfied.
+     *   A converted node which satisfies required traits by input nodes of current node. Or None if
+     *   required traits cannot be satisfied.
      */
-    def visit(rel: StreamPhysicalRel, requiredUpdateTrait: UpdateKindTrait): Option[StreamPhysicalRel] =
+    def visit(
+        rel: StreamPhysicalRel,
+        requiredUpdateTrait: UpdateKindTrait): Option[StreamPhysicalRel] =
       rel match {
         case sink: StreamPhysicalSink =>
           val sinkRequiredTraits = inferSinkRequiredTraits(sink)
@@ -544,9 +547,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           visitSink(sink, sinkRequiredTraits)
 
         case _: StreamPhysicalGroupAggregate | _: StreamPhysicalGroupTableAggregate |
-             _: StreamPhysicalLimit | _: StreamPhysicalPythonGroupAggregate |
-             _: StreamPhysicalPythonGroupTableAggregate | _: StreamPhysicalGroupWindowAggregateBase |
-             _: StreamPhysicalWindowAggregate =>
+            _: StreamPhysicalLimit | _: StreamPhysicalPythonGroupAggregate |
+            _: StreamPhysicalPythonGroupTableAggregate | _: StreamPhysicalGroupWindowAggregateBase |
+            _: StreamPhysicalWindowAggregate =>
           // Aggregate, TableAggregate, Limit, GroupWindowAggregate, WindowAggregate,
           // and WindowTableAggregate requires update_before if there are updates
           val requiredChildUpdateTrait = beforeAfterOrNone(getModifyKindSet(rel.getInput(0)))
@@ -555,9 +558,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           createNewNode(rel, children, requiredUpdateTrait)
 
         case _: StreamPhysicalWindowRank | _: StreamPhysicalWindowDeduplicate |
-             _: StreamPhysicalTemporalSort | _: StreamPhysicalMatch |
-             _: StreamPhysicalOverAggregate | _: StreamPhysicalIntervalJoin |
-             _: StreamPhysicalPythonOverAggregate | _: StreamPhysicalWindowJoin =>
+            _: StreamPhysicalTemporalSort | _: StreamPhysicalMatch |
+            _: StreamPhysicalOverAggregate | _: StreamPhysicalIntervalJoin |
+            _: StreamPhysicalPythonOverAggregate | _: StreamPhysicalWindowJoin =>
           // WindowRank, WindowDeduplicate, Deduplicate, TemporalSort, CEP, OverAggregate,
           // and IntervalJoin, WindowJoin require nothing about UpdateKind.
           val children = visitChildren(rel, UpdateKindTrait.NONE)
@@ -616,7 +619,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
 
           // the left input required trait depends on it's parent in temporal join
           // the left input will send message to parent
-          val requiredUpdateBeforeByParent = requiredUpdateTrait.updateKind == UpdateKind.BEFORE_AND_AFTER
+          val requiredUpdateBeforeByParent =
+            requiredUpdateTrait.updateKind == UpdateKind.BEFORE_AND_AFTER
           val leftInputModifyKindSet = getModifyKindSet(left)
           val leftRequiredTrait = if (requiredUpdateBeforeByParent) {
             beforeAfterOrNone(leftInputModifyKindSet)
@@ -646,7 +650,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
         case calc: StreamPhysicalCalcBase =>
           if (
             requiredUpdateTrait == UpdateKindTrait.ONLY_UPDATE_AFTER &&
-              calc.getProgram.getCondition != null
+            calc.getProgram.getCondition != null
           ) {
             // we don't expect filter to satisfy ONLY_UPDATE_AFTER update kind,
             // to solve the bad case like a single 'cnt < 10' condition after aggregation.
@@ -663,9 +667,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           }
 
         case _: StreamPhysicalCorrelateBase | _: StreamPhysicalLookupJoin |
-             _: StreamPhysicalExchange | _: StreamPhysicalExpand |
-             _: StreamPhysicalMiniBatchAssigner | _: StreamPhysicalWatermarkAssigner |
-             _: StreamPhysicalWindowTableFunction =>
+            _: StreamPhysicalExchange | _: StreamPhysicalExpand |
+            _: StreamPhysicalMiniBatchAssigner | _: StreamPhysicalWatermarkAssigner |
+            _: StreamPhysicalWindowTableFunction =>
           // transparent forward requiredTrait to children
           visitChildren(rel, requiredUpdateTrait) match {
             case None => None
@@ -727,7 +731,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           val newSource = createNewNode(rel, Some(List()), providedTrait)
           if (
             providedTrait.equals(UpdateKindTrait.BEFORE_AND_AFTER) &&
-              requiredUpdateTrait.equals(UpdateKindTrait.ONLY_UPDATE_AFTER)
+            requiredUpdateTrait.equals(UpdateKindTrait.ONLY_UPDATE_AFTER)
           ) {
             // requiring only-after, but the source is CDC source, then drop update_before manually
             val dropUB = new StreamPhysicalDropUpdateBefore(rel.getCluster, rel.getTraitSet, rel)
@@ -737,7 +741,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           }
 
         case _: StreamPhysicalDataStreamScan | _: StreamPhysicalLegacyTableSourceScan |
-             _: StreamPhysicalValues =>
+            _: StreamPhysicalValues =>
           createNewNode(rel, Some(List()), UpdateKindTrait.NONE)
 
         case scan: StreamPhysicalIntermediateTableScan =>
@@ -776,8 +780,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
       }
 
     private def visitChildren(
-                               parent: StreamPhysicalRel,
-                               requiredChildrenUpdateTrait: UpdateKindTrait): Option[List[StreamPhysicalRel]] = {
+        parent: StreamPhysicalRel,
+        requiredChildrenUpdateTrait: UpdateKindTrait): Option[List[StreamPhysicalRel]] = {
       val newChildren = for (child <- parent.getInputs) yield {
         this.visit(child.asInstanceOf[StreamPhysicalRel], requiredChildrenUpdateTrait) match {
           case None =>
@@ -796,9 +800,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def createNewNode(
-                               node: StreamPhysicalRel,
-                               childrenOption: Option[List[StreamPhysicalRel]],
-                               providedUpdateTrait: UpdateKindTrait): Option[StreamPhysicalRel] = childrenOption match {
+        node: StreamPhysicalRel,
+        childrenOption: Option[List[StreamPhysicalRel]],
+        providedUpdateTrait: UpdateKindTrait): Option[StreamPhysicalRel] = childrenOption match {
       case None =>
         None
       case Some(children) =>
@@ -826,16 +830,16 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
      * Try all possible rank strategies and return the first viable new node.
      *
      * @param rankStrategies
-     * all possible supported rank strategy by current node
+     *   all possible supported rank strategy by current node
      * @param requiredUpdateKindTrait
-     * the required UpdateKindTrait by parent of rank node
+     *   the required UpdateKindTrait by parent of rank node
      * @param applyRankStrategy
-     * a function to apply rank strategy to get a new copied rank node
+     *   a function to apply rank strategy to get a new copied rank node
      */
     private def visitRankStrategies(
-                                     rankStrategies: Seq[RankProcessStrategy],
-                                     requiredUpdateKindTrait: UpdateKindTrait,
-                                     applyRankStrategy: RankProcessStrategy => StreamPhysicalRel): Option[StreamPhysicalRel] = {
+        rankStrategies: Seq[RankProcessStrategy],
+        requiredUpdateKindTrait: UpdateKindTrait,
+        applyRankStrategy: RankProcessStrategy => StreamPhysicalRel): Option[StreamPhysicalRel] = {
       // go pass every RankProcessStrategy, apply the rank strategy to get a new copied rank node,
       // return the first satisfied converted node
       for (strategy <- rankStrategies) {
@@ -855,8 +859,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def visitSink(
-                           sink: StreamPhysicalRel,
-                           sinkRequiredTraits: Seq[UpdateKindTrait]): Option[StreamPhysicalRel] = {
+        sink: StreamPhysicalRel,
+        sinkRequiredTraits: Seq[UpdateKindTrait]): Option[StreamPhysicalRel] = {
       val children = sinkRequiredTraits.flatMap(t => visitChildren(sink, t))
       if (children.isEmpty) {
         None
@@ -973,12 +977,12 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
      * itself not to generate UPDATE_BEFORE, or generating a new node to filter UPDATE_BEFORE.
      *
      * @param rel
-     * the node who should satisfy the requiredTrait
+     *   the node who should satisfy the requiredTrait
      * @param requiredTrait
-     * the required DeleteKindTrait
+     *   the required DeleteKindTrait
      * @return
-     * A converted node which satisfies required traits by input nodes of current node. Or None if
-     * required traits cannot be satisfied.
+     *   A converted node which satisfies required traits by input nodes of current node. Or None if
+     *   required traits cannot be satisfied.
      */
     def visit(rel: StreamPhysicalRel, requiredTrait: DeleteKindTrait): Option[StreamPhysicalRel] =
       rel match {
@@ -992,25 +996,19 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           visitSink(sink, Seq(fullDelete))
 
         case _: StreamPhysicalGroupAggregate | _: StreamPhysicalGroupTableAggregate |
-             _: StreamPhysicalLimit | _: StreamPhysicalPythonGroupAggregate |
-             _: StreamPhysicalPythonGroupTableAggregate | _: StreamPhysicalGroupWindowAggregateBase |
-             _: StreamPhysicalWindowAggregate | _ : StreamPhysicalSort | _:StreamPhysicalRank |
-             _: StreamPhysicalSortLimit | _: StreamPhysicalTemporalJoin |
-             _: StreamPhysicalCorrelateBase | _: StreamPhysicalLookupJoin |
-             _: StreamPhysicalWatermarkAssigner | _: StreamPhysicalWindowTableFunction =>
-          // Aggregate, TableAggregate, Limit, GroupWindowAggregate, WindowAggregate,
-          // and WindowTableAggregate requires full deletes if there are updates
+            _: StreamPhysicalLimit | _: StreamPhysicalPythonGroupAggregate |
+            _: StreamPhysicalPythonGroupTableAggregate | _: StreamPhysicalGroupWindowAggregateBase |
+            _: StreamPhysicalWindowAggregate | _: StreamPhysicalSort | _: StreamPhysicalRank |
+            _: StreamPhysicalSortLimit | _: StreamPhysicalTemporalJoin |
+            _: StreamPhysicalCorrelateBase | _: StreamPhysicalLookupJoin |
+            _: StreamPhysicalWatermarkAssigner | _: StreamPhysicalWindowTableFunction |
+            _: StreamPhysicalWindowRank | _: StreamPhysicalWindowDeduplicate |
+            _: StreamPhysicalTemporalSort | _: StreamPhysicalMatch |
+            _: StreamPhysicalOverAggregate | _: StreamPhysicalIntervalJoin |
+            _: StreamPhysicalPythonOverAggregate | _: StreamPhysicalWindowJoin =>
+          // if not explicitly supported, all operators require full deletes if there are updates
           val requiredChildTrait = fullDeleteOrNone(getModifyKindSet(rel.getInput(0)))
           val children = visitChildren(rel, requiredChildTrait)
-          createNewNode(rel, children, fullDeleteOrNone(getModifyKindSet(rel)))
-
-        case _: StreamPhysicalWindowRank | _: StreamPhysicalWindowDeduplicate |
-             _: StreamPhysicalTemporalSort | _: StreamPhysicalMatch |
-             _: StreamPhysicalOverAggregate | _: StreamPhysicalIntervalJoin |
-             _: StreamPhysicalPythonOverAggregate | _: StreamPhysicalWindowJoin =>
-          // WindowRank, WindowDeduplicate, Deduplicate, TemporalSort, CEP, OverAggregate,
-          // and IntervalJoin, WindowJoin require nothing about UpdateKind.
-          val children = visitChildren(rel, DeleteKindTrait.NONE)
           createNewNode(rel, children, fullDeleteOrNone(getModifyKindSet(rel)))
 
         case join: StreamPhysicalJoin =>
@@ -1019,9 +1017,10 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
               val physicalChild = child.asInstanceOf[StreamPhysicalRel]
               val supportsDeleteByKey = join.inputUniqueKeyContainsJoinKey(childOrdinal)
               val inputModifyKindSet = getModifyKindSet(physicalChild)
-              if (supportsDeleteByKey) {
-                this.visit(physicalChild, deleteByKeyOrNone(inputModifyKindSet)).orElse(
-                  this.visit(physicalChild, fullDeleteOrNone(inputModifyKindSet)))
+              if (supportsDeleteByKey && requiredTrait == DELETE_ON_KEY) {
+                this
+                  .visit(physicalChild, deleteOnKeyOrNone(inputModifyKindSet))
+                  .orElse(this.visit(physicalChild, fullDeleteOrNone(inputModifyKindSet)))
               } else {
                 this.visit(physicalChild, fullDeleteOrNone(inputModifyKindSet))
               }
@@ -1029,11 +1028,33 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           if (children.exists(_.isEmpty)) {
             None
           } else {
-            createNewNode(join, Some(children.flatten.toList), fullDeleteOrNone(getModifyKindSet(rel)))
+            val childRels = children.flatten.toList
+            if (childRels.exists(r => getDeleteKind(r) == DeleteKind.DELETE_ON_KEY)) {
+              createNewNode(join, Some(childRels), deleteOnKeyOrNone(getModifyKindSet(rel)))
+            } else {
+              createNewNode(join, Some(childRels), fullDeleteOrNone(getModifyKindSet(rel)))
+            }
+          }
+
+        case calc: StreamPhysicalCalcBase =>
+          if (
+            requiredTrait == DeleteKindTrait.DELETE_ON_KEY &&
+            calc.getProgram.getCondition != null
+          ) {
+            // this can be further improved by checking if the filter condition is on the key
+            None
+          } else {
+            // otherwise, forward UpdateKind requirement
+            visitChildren(rel, requiredTrait) match {
+              case None => None
+              case Some(children) =>
+                val childTrait = children.head.getTraitSet.getTrait(DeleteKindTraitDef.INSTANCE)
+                createNewNode(rel, Some(children), childTrait)
+            }
           }
 
         case _: StreamPhysicalExchange | _: StreamPhysicalExpand |
-             _: StreamPhysicalMiniBatchAssigner | _: StreamPhysicalCalcBase =>
+            _: StreamPhysicalMiniBatchAssigner =>
           // transparent forward requiredTrait to children
           visitChildren(rel, requiredTrait) match {
             case None => None
@@ -1083,10 +1104,16 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           }
 
         case normalize: StreamPhysicalChangelogNormalize =>
-
-          // if we don't need to produce UPDATE_BEFORE and children can satisfy the required delete
-          // trait, we can skip ChangelogNormalize
-          if (normalize.getTraitSet.getTrait(UpdateKindTraitDef.INSTANCE) == UpdateKindTrait.ONLY_UPDATE_AFTER) {
+          // if
+          // 1. we don't need to produce UPDATE_BEFORE,
+          // 2. children can satisfy the required delete trait,
+          // 3. the normalize doesn't have filter condition which we'd lose,
+          // we can skip ChangelogNormalize
+          if (
+            normalize.filterCondition == null &&
+            normalize.getTraitSet.getTrait(
+              UpdateKindTraitDef.INSTANCE) == UpdateKindTrait.ONLY_UPDATE_AFTER
+          ) {
             visitChildren(normalize, requiredTrait) match {
               case Some(children) =>
                 val input = children.head match {
@@ -1101,7 +1128,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           }
 
           // prefer delete by key, but accept both
-          val children = visitChildren(normalize, DeleteKindTrait.DELETE_BY_KEY)
+          val children = visitChildren(normalize, DeleteKindTrait.DELETE_ON_KEY)
             .orElse(visitChildren(normalize, DeleteKindTrait.FULL_DELETE))
 
           // changelog normalize produces full deletes
@@ -1113,7 +1140,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
           createNewNode(rel, Some(List()), providedTrait)
 
         case _: StreamPhysicalDataStreamScan | _: StreamPhysicalLegacyTableSourceScan |
-             _: StreamPhysicalValues =>
+            _: StreamPhysicalValues =>
           createNewNode(rel, Some(List()), DeleteKindTrait.NONE)
 
         case _: StreamPhysicalIntermediateTableScan =>
@@ -1135,8 +1162,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
       }
 
     private def visitChildren(
-                               parent: StreamPhysicalRel,
-                               requiredChildrenTrait: DeleteKindTrait): Option[List[StreamPhysicalRel]] = {
+        parent: StreamPhysicalRel,
+        requiredChildrenTrait: DeleteKindTrait): Option[List[StreamPhysicalRel]] = {
       val newChildren = for (child <- parent.getInputs) yield {
         this.visit(child.asInstanceOf[StreamPhysicalRel], requiredChildrenTrait) match {
           case None =>
@@ -1155,9 +1182,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def createNewNode(
-                               node: StreamPhysicalRel,
-                               childrenOption: Option[List[StreamPhysicalRel]],
-                               providedDeleteTrait: DeleteKindTrait): Option[StreamPhysicalRel] = childrenOption match {
+        node: StreamPhysicalRel,
+        childrenOption: Option[List[StreamPhysicalRel]],
+        providedDeleteTrait: DeleteKindTrait): Option[StreamPhysicalRel] = childrenOption match {
       case None =>
         None
       case Some(children) =>
@@ -1166,7 +1193,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
         val isDeleteKindValid = providedDeleteTrait.deleteKind match {
           case DeleteKind.NONE =>
             !modifyKindSetTrait.modifyKindSet.contains(ModifyKind.DELETE)
-          case DeleteKind.DELETE_BY_KEY | DeleteKind.FULL_DELETE =>
+          case DeleteKind.DELETE_ON_KEY | DeleteKind.FULL_DELETE =>
             modifyKindSetTrait.modifyKindSet.contains(ModifyKind.DELETE)
         }
         if (!isDeleteKindValid) {
@@ -1181,8 +1208,8 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     }
 
     private def visitSink(
-                           sink: StreamPhysicalRel,
-                           sinkRequiredTraits: Seq[DeleteKindTrait]): Option[StreamPhysicalRel] = {
+        sink: StreamPhysicalRel,
+        sinkRequiredTraits: Seq[DeleteKindTrait]): Option[StreamPhysicalRel] = {
       val children = sinkRequiredTraits.flatMap(t => visitChildren(sink, t))
       if (children.isEmpty) {
         None
@@ -1204,7 +1231,7 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
       val sinkDeleteTrait = DeleteKindTrait.fromChangelogMode(sinkChangelogMode)
 
       val fullDelete = fullDeleteOrNone(childModifyKindSet)
-      if (sinkDeleteTrait.equals(DeleteKindTrait.DELETE_BY_KEY)) {
+      if (sinkDeleteTrait.equals(DeleteKindTrait.DELETE_ON_KEY)) {
         if (areUpsertKeysDifferentFromPk(sink)) {
           Seq(fullDelete)
         } else {
@@ -1243,5 +1270,9 @@ class FlinkChangelogModeInferenceProgram extends FlinkOptimizeProgram[StreamOpti
     val modifyKindSetTrait = node.getTraitSet.getTrait(ModifyKindSetTraitDef.INSTANCE)
     modifyKindSetTrait.modifyKindSet
   }
-}
 
+  private def getDeleteKind(node: RelNode): DeleteKind = {
+    val deleteKindTrait = node.getTraitSet.getTrait(DeleteKindTraitDef.INSTANCE)
+    deleteKindTrait.deleteKind
+  }
+}

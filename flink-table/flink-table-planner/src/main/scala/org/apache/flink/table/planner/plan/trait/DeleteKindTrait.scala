@@ -17,9 +17,10 @@
  */
 package org.apache.flink.table.planner.plan.`trait`
 
-import org.apache.calcite.plan.{RelOptPlanner, RelTrait, RelTraitDef}
 import org.apache.flink.table.connector.ChangelogMode
 import org.apache.flink.types.RowKind
+
+import org.apache.calcite.plan.{RelOptPlanner, RelTrait, RelTraitDef}
 
 /** DeleteKindTrait is used to describe the kind of delete operation. */
 class DeleteKindTrait(val deleteKind: DeleteKind) extends RelTrait {
@@ -47,28 +48,22 @@ class DeleteKindTrait(val deleteKind: DeleteKind) extends RelTrait {
 
 object DeleteKindTrait {
 
-  /**
-   * An [[DeleteKindTrait]] that describes the node does not support delete operation.
-   */
+  /** An [[DeleteKindTrait]] that describes the node does not support delete operation. */
   val NONE = new DeleteKindTrait(DeleteKind.NONE)
 
-  /**
-   * An [[DeleteKindTrait]] that describes the node supports deletes by key only.
-   */
-  val DELETE_BY_KEY = new DeleteKindTrait(DeleteKind.DELETE_BY_KEY)
+  /** An [[DeleteKindTrait]] that describes the node supports deletes on key only. */
+  val DELETE_ON_KEY = new DeleteKindTrait(DeleteKind.DELETE_ON_KEY)
 
-  /**
-   * An [[DeleteKindTrait]] that describes the node produces requires deletes by full records.
-   */
+  /** An [[DeleteKindTrait]] that describes the node produces requires deletes by full records. */
   val FULL_DELETE = new DeleteKindTrait(DeleteKind.FULL_DELETE)
 
   /**
-   * Returns DELETE_BY_KEY [[DeleteKindTrait]] if there is delete changes. Otherwise, returns
-   * NONE [[DeleteKindTrait]].
+   * Returns DELETE_ON_KEY [[DeleteKindTrait]] if there is delete changes. Otherwise, returns NONE
+   * [[DeleteKindTrait]].
    */
-  def deleteByKeyOrNone(modifyKindSet: ModifyKindSet): DeleteKindTrait = {
+  def deleteOnKeyOrNone(modifyKindSet: ModifyKindSet): DeleteKindTrait = {
     val deleteKind = if (modifyKindSet.contains(ModifyKind.DELETE)) {
-      DeleteKind.DELETE_BY_KEY
+      DeleteKind.DELETE_ON_KEY
     } else {
       DeleteKind.NONE
     }
@@ -76,8 +71,8 @@ object DeleteKindTrait {
   }
 
   /**
-   * Returns FULL_DELETE [[DeleteKindTrait]] if there is delete changes. Otherwise, returns
-   * NONE [[DeleteKindTrait]].
+   * Returns FULL_DELETE [[DeleteKindTrait]] if there is delete changes. Otherwise, returns NONE
+   * [[DeleteKindTrait]].
    */
   def fullDeleteOrNone(modifyKindSet: ModifyKindSet): DeleteKindTrait = {
     val deleteKind = if (modifyKindSet.contains(ModifyKind.DELETE)) {
@@ -94,9 +89,9 @@ object DeleteKindTrait {
     if (!hasDelete) {
       DeleteKindTrait.NONE
     } else {
-      val hasDeleteByKey = changelogMode.supportsDeleteByKey()
-      if (hasDeleteByKey) {
-        DeleteKindTrait.DELETE_BY_KEY
+      val hasDeleteOnKey = changelogMode.deletesOnKey()
+      if (hasDeleteOnKey) {
+        DeleteKindTrait.DELETE_ON_KEY
       } else {
         DeleteKindTrait.FULL_DELETE
       }

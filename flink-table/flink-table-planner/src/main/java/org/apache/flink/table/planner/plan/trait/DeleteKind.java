@@ -21,19 +21,15 @@ package org.apache.flink.table.planner.plan.trait;
 /** Lists all kinds of {@link ModifyKind#DELETE} operation. */
 public enum DeleteKind {
 
-    /**
-     * This kind indicates that operators do not emit {@link ModifyKind#DELETE} operation.
-     */
+    /** This kind indicates that operators do not emit {@link ModifyKind#DELETE} operation. */
     NONE,
 
     /**
      * This kind indicates that operators can emit deletes with the key only. The rest of the row
      * may be not present.
      */
-    DELETE_BY_KEY,
+    DELETE_ON_KEY,
 
-    /**
-     * This kind indicates that operators should emit deletes with the full row.
-     */
+    /** This kind indicates that operators should emit deletes with the full row. */
     FULL_DELETE
 }

@@ -37,14 +37,21 @@ public class ChangelogNormalizeOptimizationTest extends TableTestBase {
         return Arrays.asList(
                 TestSpec.select(SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.UPSERT_SINK),
                 TestSpec.select(SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.UPSERT_SINK),
-                TestSpec.select(SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.UPSERT_SINK_FULL_DELETES),
-                TestSpec.select(SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.UPSERT_SINK_FULL_DELETES),
+                TestSpec.select(
+                        SourceTable.UPSERT_SOURCE_PARTIAL_DELETES,
+                        SinkTable.UPSERT_SINK_FULL_DELETES),
+                TestSpec.select(
+                        SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.UPSERT_SINK_FULL_DELETES),
                 TestSpec.select(SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.RETRACT_SINK),
                 TestSpec.select(SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.RETRACT_SINK),
-                TestSpec.selectWithFilter(SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.UPSERT_SINK),
-                TestSpec.selectWithFilter(SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.UPSERT_SINK),
-                TestSpec.selectWithFilter(SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.RETRACT_SINK),
-                TestSpec.selectWithFilter(SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.RETRACT_SINK),
+                TestSpec.selectWithFilter(
+                        SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.UPSERT_SINK),
+                TestSpec.selectWithFilter(
+                        SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.UPSERT_SINK),
+                TestSpec.selectWithFilter(
+                        SourceTable.UPSERT_SOURCE_PARTIAL_DELETES, SinkTable.RETRACT_SINK),
+                TestSpec.selectWithFilter(
+                        SourceTable.UPSERT_SOURCE_FULL_DELETES, SinkTable.RETRACT_SINK),
                 TestSpec.join(
                         SourceTable.UPSERT_SOURCE_FULL_DELETES,
                         SourceTable.UPSERT_SOURCE_FULL_DELETES,
@@ -105,14 +112,16 @@ public class ChangelogNormalizeOptimizationTest extends TableTestBase {
     }
 
     public enum SourceTable implements TableProperties {
-        UPSERT_SOURCE_PARTIAL_DELETES("upsert_table_partial_deletes",
+        UPSERT_SOURCE_PARTIAL_DELETES(
+                "upsert_table_partial_deletes",
                 "'connector' = 'values'",
                 "'changelog-mode' = 'I,UA,D'",
-                "'source.produces-delete-by-key'='true'"),
-        UPSERT_SOURCE_FULL_DELETES("upsert_table_full_deletes",
+                "'source.produces-delete-on-key'='true'"),
+        UPSERT_SOURCE_FULL_DELETES(
+                "upsert_table_full_deletes",
                 "'connector' = 'values'",
                 "'changelog-mode' = 'I,UA,D'",
-                "'source.produces-delete-by-key'='false'");
+                "'source.produces-delete-on-key'='false'");
 
         private final String tableName;
         private final List<String> options;
@@ -137,12 +146,12 @@ public class ChangelogNormalizeOptimizationTest extends TableTestBase {
         UPSERT_SINK(
                 "upsert_sink_table",
                 "  'connector' = 'values'",
-                "'sink.supports-delete-by-key' = 'true'",
+                "'sink.supports-delete-on-key' = 'true'",
                 "'sink-changelog-mode-enforced' = 'I,UA,D'"),
         UPSERT_SINK_FULL_DELETES(
                 "upsert_sink_table_full_deletes",
                 "  'connector' = 'values'",
-                "'sink.supports-delete-by-key' = 'false'",
+                "'sink.supports-delete-on-key' = 'false'",
                 "'sink-changelog-mode-enforced' = 'I,UA,D'"),
         RETRACT_SINK(
                 "all_change_sink_table",
